@@ -1,0 +1,1280 @@
+@import "tailwindcss";
+
+@theme {
+  /* 背景层级：主区 / 侧栏浅灰 / 悬浮卡片 */
+  --color-background: var(--nw-background);
+  --color-surface: var(--nw-surface);
+  --color-surface-2: var(--nw-surface-2);
+  --color-surface-3: var(--nw-surface-3);
+  --color-foreground: var(--nw-foreground);
+  --color-muted: var(--nw-muted);
+  --color-muted-foreground: var(--nw-muted-foreground);
+
+  /* 幽灵态：chip/卡片浅底色 + 幽灵按钮 hover 底 */
+  --color-ghost: var(--nw-ghost);
+  --color-ghost-hover: var(--nw-ghost-hover);
+
+  /* 白板画布：背景 / 点阵点 / 网格线 */
+  --color-canvas-bg: var(--nw-canvas-bg);
+  --color-canvas-dot: var(--nw-canvas-dot);
+  --color-canvas-grid: var(--nw-canvas-grid);
+
+  /* 边框：常规细边框 / 强调分割 */
+  --color-border: var(--nw-border);
+  --color-border-strong: var(--nw-border-strong);
+
+  /* 强调色：主操作绿（语雀绿） + 次强调（用于选中/激活态） */
+  --color-primary: var(--nw-primary);
+  --color-primary-hover: var(--nw-primary-hover);
+  --color-primary-foreground: #ffffff;
+  --color-accent: var(--nw-accent);
+  --color-accent-hover: var(--nw-accent-hover);
+  --color-accent-soft: var(--nw-accent-soft);
+  --color-ring: var(--nw-ring);
+
+  /* 语义状态色 */
+  --color-success: var(--nw-success);
+  --color-success-soft: var(--nw-success-soft);
+  --color-warning: var(--nw-warning);
+  --color-warning-soft: var(--nw-warning-soft);
+  --color-danger: var(--nw-danger);
+  --color-danger-soft: var(--nw-danger-soft);
+
+  /* 统一圆角 */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.875rem;
+  --radius-xl: 1.25rem;
+
+  /* 阴影令牌：低饱和、近距离投影 */
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08), 0 2px 4px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 10px 24px rgba(15, 23, 42, 0.1), 0 4px 8px rgba(15, 23, 42, 0.04);
+}
+
+/* ============================================================
+ * REQ-010 主题令牌：亮色（默认）
+ * ============================================================ */
+:root {
+  --nw-background: #ffffff;
+  --nw-surface: #ffffff;
+  --nw-surface-2: #f7f8fa;
+  --nw-surface-3: #f1f5f9;
+  --nw-foreground: #262626;
+  --nw-muted: #f1f5f9;
+  --nw-muted-foreground: #8C8C8C;
+  --nw-border: #E8EAED;
+  --nw-border-strong: #d6dae2;
+
+  /* 强调色（语雀绿） */
+  --nw-primary: #31B97F;
+  --nw-primary-hover: #2AA671;
+  --nw-accent: #31B97F;
+  --nw-accent-hover: #2AA671;
+  --nw-accent-soft: #E6F7F0;
+  --nw-ring: #7FD4AE;
+
+  /* 状态色 */
+  --nw-success: #16a34a;
+  --nw-success-soft: #f0fdf4;
+  --nw-warning: #d97706;
+  --nw-warning-soft: #fffbeb;
+  --nw-danger: #dc2626;
+  --nw-danger-soft: #fef2f2;
+
+  /* Markdown / 代码 / 编辑器等需要语义化颜色处使用 */
+  --nw-md-color: #334155;
+  --nw-md-heading: #1e293b;
+  --nw-code-bg: #f1f5f9;
+  --nw-pre-bg: #f8fafc;
+  --nw-toolbar-bg: #f1f5f9;
+  --nw-ghost: #f2f4f7;
+  --nw-ghost-hover: #eef0f4;
+  --nw-segmented-bg: #eef0f4;
+  --nw-segmented-active: #ffffff;
+  --nw-mermaid-bg: #ffffff;
+  --nw-mermaid-error-bg: #fef2f2;
+  --nw-mermaid-error-border: #fecaca;
+  --nw-scrollbar: #cbd5e1;
+  --nw-scrollbar-hover: #94a3b8;
+
+  /* 白板画布 */
+  --nw-canvas-bg: #f1f5f9;
+  --nw-canvas-dot: #cbd5e1;
+  --nw-canvas-grid: #e2e8f0;
+}
+
+/* ============================================================
+ * REQ-010 暗色主题
+ * ============================================================ */
+html.dark {
+  --nw-background: #0f1115;
+  --nw-surface: #15181e;
+  --nw-surface-2: #1b1f27;
+  --nw-surface-3: #1f242d;
+  --nw-foreground: #e5e7eb;
+  --nw-muted: #1f242d;
+  --nw-muted-foreground: #94a3b8;
+  --nw-border: #2a2f38;
+  --nw-border-strong: #3a4150;
+
+  /* 强调色（语雀绿） */
+  --nw-primary: #3CC98A;
+  --nw-primary-hover: #31B97F;
+  --nw-accent: #3CC98A;
+  --nw-accent-hover: #31B97F;
+  --nw-accent-soft: #16352A;
+  --nw-ring: #31B97F;
+
+  /* 状态色 */
+  --nw-success: #22c55e;
+  --nw-success-soft: #052e16;
+  --nw-warning: #f59e0b;
+  --nw-warning-soft: #3f2c06;
+  --nw-danger: #ef4444;
+  --nw-danger-soft: #2a1517;
+
+  --nw-md-color: #cbd5e1;
+  --nw-md-heading: #f1f5f9;
+  --nw-code-bg: #1f242d;
+  --nw-pre-bg: #11151b;
+  --nw-toolbar-bg: #11151b;
+  --nw-ghost: #1f242e;
+  --nw-ghost-hover: #232936;
+  --nw-segmented-bg: #232936;
+  --nw-segmented-active: #2a2f38;
+  --nw-mermaid-bg: #11151b;
+  --nw-mermaid-error-bg: #2a1517;
+  --nw-mermaid-error-border: #5b2a2a;
+  --nw-scrollbar: #3a4150;
+  --nw-scrollbar-hover: #525c6e;
+
+  /* 白板画布 */
+  --nw-canvas-bg: #181c24;
+  --nw-canvas-dot: #3a4150;
+  --nw-canvas-grid: #262c37;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  /* 界面基础字号：稍大一点，便于阅读 */
+  font-size: 15px;
+  line-height: 1.6;
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Markdown preview tweaks */
+.markdown-body {
+  font-size: 15.5px;
+  line-height: 1.7;
+  color: var(--nw-md-color);
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4,
+.markdown-body h5,
+.markdown-body h6 {
+  margin-top: 1.4rem;
+  margin-bottom: 0.6rem;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: var(--nw-md-heading);
+}
+
+.markdown-body h1 {
+  font-size: 1.5rem; /* 24px */
+}
+.markdown-body h2 {
+  font-size: 1.35rem;
+}
+.markdown-body h3 {
+  font-size: 1.15rem;
+}
+
+.markdown-body p {
+  margin-bottom: 0.85rem;
+  line-height: 1.8;
+  color: var(--nw-md-color);
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  padding-left: 1.5rem;
+  margin-bottom: 0.85rem;
+  line-height: 1.8;
+}
+
+.markdown-body li {
+  margin-bottom: 0.35rem;
+}
+
+.markdown-body pre {
+  background: var(--nw-pre-bg);
+  padding: 0.875rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+}
+
+.markdown-body code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.85em;
+  background: var(--nw-code-bg);
+  padding: 0.125rem 0.375rem;
+  border-radius: var(--radius-sm);
+}
+
+.markdown-body pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.markdown-body blockquote {
+  border-left: 3px solid var(--color-primary);
+  background: var(--color-muted);
+  padding: 0.5rem 1rem;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  color: var(--color-muted-foreground);
+  margin-bottom: 0.75rem;
+}
+
+.markdown-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 0.75rem;
+}
+
+.markdown-body th,
+.markdown-body td {
+  border: 1px solid var(--color-border);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+
+.markdown-body th {
+  background: var(--color-muted);
+  font-weight: 600;
+}
+
+/* Markdown 自适应：防止图片/表格/代码块撑破容器宽度 */
+.markdown-body img {
+  max-width: 100%;
+  height: auto;
+}
+
+.markdown-body table {
+  display: block;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.markdown-body pre {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.markdown-body {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* 批注高亮：原文固定颜色，点击可联动右侧面板 */
+.annotation-highlight {
+  background-color: #fef08a; /* bg-yellow-200 */
+  border-radius: 2px;
+  cursor: pointer;
+  padding: 0 1px;
+  transition: background-color 0.15s ease;
+}
+
+.annotation-highlight:hover {
+  background-color: #fde047; /* bg-yellow-300 */
+}
+
+/* 暗色：改用柔和的半透明琥珀色，避免亮黄刺眼（参照 search-mark/mark 的暗色处理） */
+html.dark .annotation-highlight {
+  background-color: rgba(250, 204, 21, 0.32);
+}
+
+html.dark .annotation-highlight:hover {
+  background-color: rgba(250, 204, 21, 0.5);
+}
+
+/* ============================================================
+ * 代码块（REQ-009）：react-syntax-highlighter 容器 + 工具栏 + 复制按钮
+ * ============================================================ */
+.markdown-body .code-block,
+.milkdown-editor .code-block {
+  margin-bottom: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--nw-pre-bg);
+  overflow: hidden;
+}
+
+.markdown-body .code-block pre,
+.milkdown-editor .code-block pre {
+  margin: 0;
+  border: none;
+  background: transparent;
+  padding: 0.75rem 0.875rem;
+}
+
+.code-block-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.25rem 0.625rem;
+  background: var(--nw-toolbar-bg);
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.75rem;
+}
+
+.code-block-lang {
+  color: var(--color-muted-foreground);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  text-transform: lowercase;
+}
+
+.code-block-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--color-muted-foreground);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.125rem 0.375rem;
+  border-radius: var(--radius-sm);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.code-block-copy:hover {
+  background: var(--color-border);
+  color: var(--nw-foreground);
+}
+
+/* ============================================================
+ * Mermaid 图表（REQ-003）
+ * ============================================================ */
+.markdown-body .mermaid-block,
+.milkdown-editor .mermaid-block {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  padding: 1rem;
+  background: var(--nw-mermaid-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+}
+
+.markdown-body .mermaid-block svg,
+.milkdown-editor .mermaid-block svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.markdown-body .mermaid-block-loading {
+  color: #94a3b8;
+  justify-content: center;
+}
+
+.markdown-body .mermaid-block-error {
+  flex-direction: column;
+  align-items: stretch;
+  background: var(--nw-mermaid-error-bg);
+  border-color: var(--nw-mermaid-error-border);
+}
+
+.mermaid-error-label {
+  color: #f87171;
+  font-size: 0.75rem;
+  margin-bottom: 0.375rem;
+}
+
+.mermaid-error-detail {
+  color: #fca5a5;
+  font-size: 0.75rem;
+  margin-top: 0.375rem;
+  white-space: pre-wrap;
+}
+
+.markdown-body .mermaid-block-error pre {
+  background: transparent;
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* ============================================================
+ * Milkdown WYSIWYG 编辑器（REQ-001）
+ * ============================================================ */
+.milkdown-editor .ProseMirror {
+  outline: none;
+  min-height: 100%;
+  padding: 0.25rem 0;
+  color: var(--nw-md-color);
+  font-size: 15.5px;
+  line-height: 1.7;
+}
+
+/* 空文档占位提示（milkdown-placeholder 插件挂 data-placeholder 属性，Typora 式） */
+.milkdown-editor .ProseMirror .milkdown-placeholder::before {
+  content: attr(data-placeholder);
+  color: var(--color-muted-foreground);
+  opacity: 0.7;
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* 语雀式排版：编辑态与 .markdown-body 预览保持一致观感 */
+.milkdown-editor .ProseMirror p {
+  margin-bottom: 0.85rem;
+  line-height: 1.8;
+}
+
+.milkdown-editor .ProseMirror ul,
+.milkdown-editor .ProseMirror ol {
+  padding-left: 1.5rem;
+  margin-bottom: 0.85rem;
+  line-height: 1.8;
+}
+
+.milkdown-editor .ProseMirror li {
+  margin-bottom: 0.35rem;
+}
+
+.milkdown-editor .ProseMirror h1,
+.milkdown-editor .ProseMirror h2,
+.milkdown-editor .ProseMirror h3,
+.milkdown-editor .ProseMirror h4,
+.milkdown-editor .ProseMirror h5,
+.milkdown-editor .ProseMirror h6 {
+  margin-top: 1.4rem;
+  margin-bottom: 0.6rem;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: var(--nw-md-heading);
+}
+
+.milkdown-editor .ProseMirror h1 {
+  font-size: 1.5rem;
+}
+
+.milkdown-editor .ProseMirror h2 {
+  font-size: 1.35rem;
+}
+
+.milkdown-editor .ProseMirror h3 {
+  font-size: 1.15rem;
+}
+
+.milkdown-editor .ProseMirror a {
+  color: var(--nw-primary);
+  text-decoration: none;
+}
+
+.milkdown-editor .ProseMirror blockquote {
+  border-left: 3px solid var(--nw-primary);
+  background: var(--nw-muted);
+  padding: 0.5rem 1rem;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  color: var(--nw-muted-foreground);
+  margin-bottom: 0.75rem;
+}
+
+.milkdown-editor .ProseMirror hr {
+  border: none;
+  border-top: 1px solid var(--nw-border);
+  margin: 1.5rem 0;
+}
+
+/* Milkdown prism 代码高亮 token 配色（plugin-prism 不自带主题 CSS） */
+.milkdown-editor .ProseMirror code,
+.milkdown-editor .ProseMirror pre {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.milkdown-editor .ProseMirror code {
+  font-size: 0.85em;
+  background: var(--nw-code-bg);
+  padding: 0.125rem 0.375rem;
+  border-radius: var(--radius-sm);
+}
+
+.milkdown-editor .ProseMirror pre {
+  background: var(--nw-pre-bg);
+  padding: 0.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+
+.milkdown-editor .ProseMirror pre code {
+  background: transparent;
+  padding: 0;
+}
+
+/* prism token 配色与预览端 CodeBlock 的 react-syntax-highlighter oneLight/oneDark 对齐。
+   默认（亮色）为 oneLight 调色板，暗色在 html.dark 下为 oneDark 调色板。 */
+.milkdown-editor .ProseMirror code .keyword,
+.milkdown-editor .ProseMirror code .atom,
+.milkdown-editor .ProseMirror code .built-in {
+  color: hsl(301, 63%, 40%);
+}
+
+.milkdown-editor .ProseMirror code .string,
+.milkdown-editor .ProseMirror code .char {
+  color: hsl(119, 34%, 47%);
+}
+
+.milkdown-editor .ProseMirror code .comment,
+.milkdown-editor .ProseMirror code .prolog {
+  color: hsl(230, 4%, 64%);
+  font-style: italic;
+}
+
+.milkdown-editor .ProseMirror code .number,
+.milkdown-editor .ProseMirror code .literal {
+  color: hsl(35, 99%, 36%);
+}
+
+.milkdown-editor .ProseMirror code .function,
+.milkdown-editor .ProseMirror code .title {
+  color: hsl(221, 87%, 60%);
+}
+
+.milkdown-editor .ProseMirror code .variable,
+.milkdown-editor .ProseMirror code .attr {
+  color: hsl(5, 74%, 59%);
+}
+
+html.dark .milkdown-editor .ProseMirror code .keyword,
+html.dark .milkdown-editor .ProseMirror code .atom,
+html.dark .milkdown-editor .ProseMirror code .built-in {
+  color: hsl(286, 60%, 67%);
+}
+
+html.dark .milkdown-editor .ProseMirror code .string,
+html.dark .milkdown-editor .ProseMirror code .char {
+  color: hsl(95, 38%, 62%);
+}
+
+html.dark .milkdown-editor .ProseMirror code .comment,
+html.dark .milkdown-editor .ProseMirror code .prolog {
+  color: hsl(220, 10%, 40%);
+  font-style: italic;
+}
+
+html.dark .milkdown-editor .ProseMirror code .number,
+html.dark .milkdown-editor .ProseMirror code .literal {
+  color: hsl(29, 54%, 61%);
+}
+
+html.dark .milkdown-editor .ProseMirror code .function,
+html.dark .milkdown-editor .ProseMirror code .title {
+  color: hsl(207, 82%, 66%);
+}
+
+html.dark .milkdown-editor .ProseMirror code .variable,
+html.dark .milkdown-editor .ProseMirror code .attr {
+  color: hsl(355, 65%, 65%);
+}
+
+/* KaTeX 块级公式居中显示 */
+.markdown-body .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.5rem 0;
+}
+
+/* ============================================================
+ * Milkdown 编辑态公式节点（REQ-002）：选中时可编辑源码
+ * ============================================================ */
+.milkdown-editor .milkdown-math-block {
+  text-align: center;
+  padding: 0.25rem 0;
+}
+.milkdown-editor .milkdown-math-inline,
+.milkdown-editor .milkdown-math-block {
+  cursor: text;
+}
+.milkdown-editor .milkdown-math-input,
+.milkdown-editor .milkdown-mermaid-input {
+  width: 100%;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.85rem;
+  padding: 0.375rem 0.5rem;
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  background: var(--nw-surface);
+  color: var(--nw-foreground);
+  resize: vertical;
+  outline: none;
+}
+
+/* Milkdown 编辑态 Mermaid 节点（REQ-003）容器复用 .mermaid-block 样式，
+   选中态给一个可编辑提示边框 */
+.milkdown-editor .milkdown-mermaid-block {
+  cursor: pointer;
+}
+.milkdown-editor .milkdown-mermaid-block:hover {
+  border-color: var(--color-primary);
+}
+
+/* ============================================================
+ * 斜杠命令菜单（REQ-001）
+ * ============================================================ */
+.slash-menu-container {
+  position: fixed;
+  z-index: 50;
+  left: -9999px;
+  top: -9999px;
+  visibility: hidden;
+}
+.slash-menu-container[data-show='true'] {
+  visibility: visible;
+}
+.slash-menu {
+  width: 220px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--nw-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: 0.375rem;
+}
+.slash-menu-title {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.7rem;
+  color: #94a3b8;
+  font-weight: 500;
+}
+.slash-menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+.slash-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.375rem 0.5rem;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  color: var(--nw-foreground);
+  text-align: left;
+  cursor: pointer;
+}
+.slash-menu-item-active {
+  background: var(--nw-accent-soft);
+  color: var(--color-primary);
+}
+.slash-menu-item-icon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  color: var(--color-muted-foreground);
+}
+.slash-menu-item-active .slash-menu-item-icon {
+  color: var(--color-primary);
+}
+.slash-menu-empty {
+  padding: 0.75rem 0.5rem;
+  font-size: 0.8rem;
+  color: #94a3b8;
+  text-align: center;
+}
+
+
+/* react-md-editor customization */
+.w-md-editor {
+  --md-editor-font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+
+/* 语雀式 Markdown 源码模式（文档/小记正文编辑）：无框、等宽、纯净 */
+.md-source-editor .w-md-editor {
+  --md-editor-font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* 行高必须同时覆盖文本容器与高亮 code（库对两者分别 !important 固定 18px），
+   否则透明 textarea 的光标/选区与可见文字逐行错位 */
+.md-source-editor .w-md-editor-text,
+.md-source-editor .w-md-editor-text-pre > code {
+  line-height: 1.7 !important;
+}
+
+/* 分屏预览（live）时源码与预览之间的分隔线 */
+.md-source-editor .w-md-editor-preview {
+  border-left: 1px solid var(--nw-border);
+  box-shadow: none;
+}
+
+.w-md-editor-content {
+  font-size: 0.95rem;
+}
+
+/* 暗色：编辑器外壳/工具栏/边框与全局语义变量对齐；
+   预览与代码 token 配色由容器 data-color-mode（NoteEditor 随 html.dark 同步）驱动 */
+html.dark .w-md-editor {
+  --md-editor-background-color: var(--nw-surface);
+  --md-editor-box-shadow-color: var(--nw-border);
+  color: var(--nw-foreground);
+}
+
+html.dark .w-md-editor-toolbar {
+  background-color: var(--nw-toolbar-bg);
+}
+
+/* Milkdown nord 主题的暗色规则只挂在 @media (prefers-color-scheme: dark)，
+   应用内 html.dark 切换不命中；这里按 nord 源码 media query 块内的清单补齐
+   （--color-gray-* 由 theme-nord style.css 在 :root 定义） */
+html.dark .milkdown-theme-nord.prose tr {
+  border-color: var(--color-gray-600);
+}
+
+html.dark .milkdown-theme-nord.prose :where(td, th):nth-child(odd) {
+  background-color: var(--color-gray-900);
+}
+
+html.dark .milkdown-theme-nord pre {
+  background-color: var(--color-gray-800);
+}
+
+html.dark .milkdown-theme-nord code {
+  background-color: var(--color-gray-700);
+}
+
+/* ============ 现代语义设计系统工具类 ============ */
+
+/* 面板层级 */
+.surface {
+  background-color: var(--color-surface);
+  color: var(--color-foreground);
+}
+.surface-elevated {
+  background-color: var(--color-surface);
+  color: var(--color-foreground);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+.surface-inset {
+  background-color: var(--color-surface-2);
+  color: var(--color-foreground);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.panel {
+  background-color: var(--color-surface-2);
+  border-right: 1px solid var(--color-border);
+}
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-surface-2);
+}
+
+/* 基础按钮 */
+
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  padding: 0.375rem;
+  color: var(--color-muted-foreground);
+  background-color: transparent;
+  border: 1px solid transparent;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  cursor: pointer;
+}
+.btn-icon:hover {
+  background-color: var(--nw-ghost-hover);
+  color: var(--color-foreground);
+}
+.btn-icon[aria-pressed='true'],
+.btn-icon.is-active {
+  background-color: var(--color-accent-soft);
+  color: var(--color-primary);
+}
+
+/* 幽灵按钮 */
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  white-space: nowrap;
+  border-radius: var(--radius-md);
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25;
+  cursor: pointer;
+  border: 1px solid transparent;
+  color: var(--color-muted-foreground);
+  background-color: transparent;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.btn-ghost:hover {
+  background-color: var(--nw-ghost-hover);
+  color: var(--color-foreground);
+}
+
+/* 主操作按钮 */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  white-space: nowrap;
+  border-radius: var(--radius-md);
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25;
+  cursor: pointer;
+  border: 1px solid transparent;
+  color: var(--color-primary-foreground);
+  background-color: var(--color-primary);
+  box-shadow: var(--shadow-xs);
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--color-primary-hover);
+  box-shadow: var(--shadow-sm);
+}
+.btn-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* 次要按钮 */
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  white-space: nowrap;
+  border-radius: var(--radius-md);
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25;
+  cursor: pointer;
+  border: 1px solid var(--color-border);
+  color: var(--color-foreground);
+  background-color: var(--color-surface);
+  box-shadow: var(--shadow-xs);
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--color-surface-2);
+  border-color: var(--color-border-strong);
+}
+.btn-secondary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* 危险操作按钮 */
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  white-space: nowrap;
+  border-radius: var(--radius-md);
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25;
+  cursor: pointer;
+  border: 1px solid var(--color-danger-soft);
+  color: var(--color-danger);
+  background-color: var(--color-surface);
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.btn-danger:hover:not(:disabled) {
+  background-color: var(--color-danger-soft);
+}
+.btn-danger:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* 分段控件：编辑/预览切换等 */
+.segmented {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+  border-radius: var(--radius-md);
+  background-color: var(--nw-segmented-bg);
+  padding: 0.1875rem;
+}
+.segmented-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+  border-radius: calc(var(--radius-md) - 0.125rem);
+  padding: 0.25rem 0.625rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-muted-foreground);
+  background-color: transparent;
+  border: 1px solid transparent;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  cursor: pointer;
+}
+.segmented-item:hover {
+  color: var(--color-foreground);
+}
+.segmented-item.is-active {
+  background-color: var(--nw-segmented-active);
+  color: var(--color-primary);
+  box-shadow: var(--shadow-xs);
+}
+
+/* 工具栏开关按钮（用于 KbDocEditor 顶部一排开关） */
+.toggle-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  white-space: nowrap;
+  border-radius: var(--radius-md);
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-muted-foreground);
+  background-color: transparent;
+  border: 1px solid var(--color-border);
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  cursor: pointer;
+}
+.toggle-button:hover {
+  background-color: var(--nw-ghost-hover);
+  color: var(--color-foreground);
+}
+.toggle-button.is-active {
+  background-color: var(--color-accent-soft);
+  color: var(--color-primary);
+  border-color: var(--color-ring);
+}
+
+/* 表单输入框 */
+.input {
+  width: 100%;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-foreground);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+.input::placeholder {
+  color: var(--color-muted-foreground);
+}
+.input:hover {
+  border-color: var(--color-border-strong);
+}
+.input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-ring);
+  background-color: var(--color-surface);
+}
+.input:read-only,
+.input[readonly] {
+  background-color: var(--color-surface-2);
+}
+
+/* 徽章/标签 */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+  border-radius: 9999px;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-muted-foreground);
+  background-color: var(--color-muted);
+}
+.badge-primary {
+  color: var(--color-primary);
+  background-color: var(--color-accent-soft);
+}
+.badge-success {
+  color: var(--color-success);
+  background-color: var(--color-success-soft);
+}
+.badge-danger {
+  color: var(--color-danger);
+  background-color: var(--color-danger-soft);
+}
+
+/* 分隔线 */
+.divider {
+  height: 1px;
+  background-color: var(--color-border);
+  border: none;
+  margin: 0;
+}
+
+/* 链接 */
+.link {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+.link:hover {
+  color: var(--color-primary-hover);
+  text-decoration: underline;
+}
+
+/* ============================================================
+ * 键盘可达性：全局 :focus-visible 焦点环
+ * 仅键盘聚焦时显示（鼠标点击不触发），颜色随主题令牌 --color-ring。
+ * 文本输入类控件（.input / textarea）沿用自身 :focus 边框+阴影样式，不在此处理。
+ * ============================================================ */
+button:focus-visible,
+a[href]:focus-visible,
+[role='button']:focus-visible,
+summary:focus-visible,
+select:focus-visible,
+input[type='checkbox']:focus-visible,
+input[type='radio']:focus-visible,
+input[type='date']:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 1px;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--nw-scrollbar);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--nw-scrollbar-hover);
+}
+
+/* 搜索结果高亮片段（REQ-005） */
+search-mark,
+.search-mark {
+  background-color: #fef08a;
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+html.dark .search-mark {
+  background-color: #ca8a04;
+  color: #1e293b;
+}
+
+/* ===== REQ-101 查找替换浮层 ===== */
+.find-replace-bar input:focus {
+  outline: none;
+}
+
+/* ===== REQ-103 Front Matter 卡片 ===== */
+.front-matter-card {
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: 6px;
+  background: var(--color-surface-2);
+  font-size: 0.78rem;
+  color: var(--color-muted-foreground);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: pre-wrap;
+}
+.front-matter-card .fm-title {
+  font-weight: 600;
+  color: var(--color-accent);
+  margin-bottom: 0.25rem;
+}
+
+/* ===== REQ-107 Focus / Typewriter 模式 ===== */
+/* 专注模式：顶层块默认淡化，光标所在块（由编辑器 selectionUpdated 监听加 is-current）保持不透明。 */
+.focus-mode .ProseMirror > * {
+  opacity: 0.35;
+  transition: opacity 0.15s ease;
+  filter: grayscale(0.3);
+}
+.focus-mode .ProseMirror > .is-current {
+  opacity: 1;
+  filter: none;
+}
+.typewriter-mode .ProseMirror {
+  scroll-margin-top: 40vh;
+}
+
+/* ===== REQ-106 扩展内联标记 ===== */
+.markdown-body mark,
+.milkdown-editor mark {
+  background-color: #fef08a;
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 2px;
+}
+html.dark .markdown-body mark,
+html.dark .milkdown-editor mark {
+  background-color: #ca8a04;
+  color: #1e293b;
+}
+.markdown-body sub,
+.markdown-body sup,
+.milkdown-editor sub,
+.milkdown-editor sup {
+  font-size: 0.72em;
+}
+
+/* ===== REQ-115 图表块（plantuml/graphviz，复用 mermaid-block 样式） ===== */
+.mermaid-block svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ============================================================
+ * 语雀风格界面重构：布局/组件工具类
+ * 明暗两态均通过 --nw-* 语义变量取色，无需单独的 html.dark 覆盖
+ * ============================================================ */
+
+/* 左侧图标导航栏容器 */
+.nav-rail {
+  width: 4rem;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--nw-surface-2);
+  border-right: 1px solid var(--nw-border);
+  padding: 0.75rem 0;
+}
+
+/* 导航栏图标按钮 */
+.nav-rail-item {
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  color: var(--nw-muted-foreground);
+  position: relative;
+  transition: background 0.15s, color 0.15s;
+}
+.nav-rail-item:hover {
+  background: var(--nw-ghost-hover);
+  color: var(--nw-foreground);
+}
+.nav-rail-item.is-active {
+  color: var(--nw-primary);
+  background: var(--nw-accent-soft);
+}
+/* 激活态左侧指示条 */
+.nav-rail-item.is-active::before {
+  content: '';
+  position: absolute;
+  left: -12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 20px;
+  border-radius: 2px;
+  background: var(--nw-primary);
+}
+
+/* 知识库卡片 */
+.kb-card {
+  background: var(--nw-surface);
+  border: 1px solid var(--nw-border);
+  border-radius: var(--radius-lg);
+  padding: 1rem;
+  cursor: pointer;
+  transition: box-shadow 0.15s, transform 0.15s, border-color 0.15s;
+}
+.kb-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+  border-color: var(--nw-border-strong);
+}
+
+/* 文档内容居中列 */
+.doc-content-col {
+  max-width: 780px;
+  margin-inline: auto;
+  padding-inline: 2rem;
+  width: 100%;
+}
+
+/* 工作台下划线 Tab 按钮 */
+.dash-tab {
+  padding: 0.5rem 0.25rem;
+  font-size: 0.875rem;
+  color: var(--nw-muted-foreground);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s;
+}
+.dash-tab:hover {
+  color: var(--nw-foreground);
+}
+.dash-tab.is-active {
+  color: var(--nw-primary);
+  border-bottom-color: var(--nw-primary);
+  font-weight: 500;
+}

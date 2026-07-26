@@ -1,0 +1,53 @@
+appId: com.noteweave.app
+productName: NoteWeave
+copyright: Copyright © 2026
+directories:
+  output: dist
+  buildResources: buildResources
+files:
+  - out/**/*
+  - package.json
+  - '!node_modules/**/*.map'
+  - '!node_modules/**/*.d.ts'
+  - '!node_modules/**/*.d.cts'
+  - '!node_modules/**/*.d.mts'
+  - '!node_modules/**/README*'
+  - '!node_modules/**/CHANGELOG*'
+  - '!node_modules/**/LICENSE*'
+  - '!node_modules/**/test/**/*'
+  - '!node_modules/**/tests/**/*'
+  - '!node_modules/**/__tests__/**/*'
+  - '!node_modules/**/docs/**/*'
+  - '!node_modules/**/examples/**/*'
+  - '!node_modules/lucide-react/dist/cjs/**/*'
+  - '!node_modules/lucide-react/dist/umd/**/*'
+  - '!node_modules/lucide-react/dist/*.d.ts'
+  - '!node_modules/mermaid/node_modules/**/docs/**/*'
+  - '!node_modules/mermaid/node_modules/**/examples/**/*'
+compression: maximum
+asar:
+  smartUnpack: true
+electronLanguages:
+  - zh-CN
+  - en-US
+# REQ-115：如需随应用分发 PlantUML jar，请将 plantuml.jar 放入 buildResources/
+# 并取消注释下列 extraResources（需用户系统 Java 运行）。
+# extraResources:
+#   - from: buildResources/plantuml.jar
+#     to: plantuml.jar
+#     filter: ['**/*']
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+portable:
+  artifactName: ${productName}-${version}-portable.exe
