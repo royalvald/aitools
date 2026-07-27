@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AutoBugFixer 控制台</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">AutoBugFixer 控制台</div>
+    <nav class="nav">
+      <a href="#/board" data-nav="board">看板</a>
+      <a href="#/interventions" data-nav="interventions">介入待办 <span id="nav-pending" class="nav-badge" hidden></span></a>
+      <a href="#/experience" data-nav="experience">经验库</a>
+    </nav>
+    <div class="top-actions">
+      <label class="chk"><input type="checkbox" id="csv-analysis"> 导入后预处理分析</label>
+      <button id="btn-import" class="btn">导入 CSV</button>
+      <input type="file" id="csv-file" accept=".csv" hidden>
+    </div>
+  </header>
+
+  <main id="app" class="container"><p class="muted">加载中…</p></main>
+
+  <!-- 介入处理弹窗 -->
+  <div id="modal" class="modal-mask" hidden>
+    <div class="modal">
+      <div class="modal-head">
+        <span id="modal-title"></span>
+        <button id="modal-close" class="btn btn-link">关闭</button>
+      </div>
+      <div id="modal-body" class="modal-body"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
