@@ -14,6 +14,7 @@ from .db import Base
 
 
 def utcnow() -> datetime:
+    """返回当前 UTC 时间（带时区），作为所有表 created_at/updated_at 的默认值。"""
     return datetime.now(timezone.utc)
 
 
@@ -116,6 +117,8 @@ class FixRecord(Base):
 
 
 class DeployRecord(Base):
+    """部署记录：部署状态与执行步骤留痕（成功/失败/已回滚）。"""
+
     __tablename__ = "deploy_record"
 
     id: Mapped[int] = mapped_column(primary_key=True)

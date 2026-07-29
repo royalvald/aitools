@@ -31,6 +31,8 @@ logger = logging.getLogger(__name__)
 
 
 class Scheduler:
+    """常驻调度器：轮询拉新、优先级出队、超时回收、介入 SLA。"""
+
     def __init__(self, orchestrator: Orchestrator,
                  platform: BugPlatformAdapter,
                  notifier: Notifier,
@@ -155,6 +157,7 @@ class Scheduler:
     # ---------- 常驻循环 ----------
 
     def stop(self) -> None:
+        """请求优雅停止（下一轮 sleep 结束后退出）。"""
         self._stop = True
 
     def run_forever(self) -> None:

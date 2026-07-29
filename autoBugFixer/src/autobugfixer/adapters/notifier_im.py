@@ -38,6 +38,7 @@ class IMNotifier:
         return {"msgtype": "markdown", "markdown": {"content": text}}  # wecom
 
     def send(self, role: str, message: NoticeMessage) -> None:
+        """推送 markdown 消息到群机器人；失败仅记日志，不阻断主流程。"""
         try:
             client = self._client
             if client is None:

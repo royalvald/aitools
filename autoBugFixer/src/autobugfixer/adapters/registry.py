@@ -28,10 +28,12 @@ _builtins_ready = False
 
 
 def register_bug_platform(name: str, factory: Callable[..., Any]) -> None:
+    """注册缺陷平台适配器工厂（第三方扩展接入点）。"""
     _BUG_PLATFORMS[name] = factory
 
 
 def register_env_executor(name: str, factory: Callable[..., Any]) -> None:
+    """注册环境执行器工厂（第三方扩展接入点）。"""
     _ENV_EXECUTORS[name] = factory
 
 

@@ -20,6 +20,7 @@ from .services.llm_gateway import LLMGateway
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """构造命令行参数解析器（csv 路径 + platform + run-analysis 开关）。"""
     parser = argparse.ArgumentParser(
         prog="autobugfixer-import", description="从 CSV 批量导入 Bug 并可选执行预处理分析")
     parser.add_argument("csv_path", help="CSV 文件路径（支持 utf-8-sig / GBK）")
@@ -30,6 +31,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None, settings: Settings | None = None) -> int:
+    """CLI 入口：解析 CSV、导入任务，可选执行预处理分析。"""
     args = build_parser().parse_args(argv)
     from .logging_setup import setup_logging
 

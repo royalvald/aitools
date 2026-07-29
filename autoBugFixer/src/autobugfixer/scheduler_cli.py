@@ -37,6 +37,7 @@ def build_scheduler(settings: Settings | None = None) -> Scheduler:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """CLI 入口：启动常驻调度器（--once 仅跑一轮用于调试）。"""
     parser = argparse.ArgumentParser(prog="autobugfixer-scheduler",
                                      description="常驻调度器（轮询/出队/回收/SLA）")
     parser.add_argument("--once", action="store_true", help="只跑一轮后退出（调试用）")

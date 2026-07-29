@@ -27,4 +27,5 @@ def mount_web(app: FastAPI) -> None:
 
     @app.get("/", include_in_schema=False)
     def index() -> FileResponse:
+        """返回控制台首页。"""
         return FileResponse(STATIC_DIR / "index.html")

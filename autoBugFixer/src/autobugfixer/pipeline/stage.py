@@ -37,6 +37,8 @@ class InterventionRequest(BaseModel):
 
 
 class StageResult(BaseModel):
+    """Stage 执行结果：四类状态（成功/需介入/重试/失败）+ 下一状态 + 产出与介入请求。"""
+
     status: Literal["success", "need_intervention", "retry", "failed"]
     next_state: TaskState | None = None
     artifacts: dict = {}  # 本阶段产出（方案、差异、证据等）
@@ -74,6 +76,10 @@ class TaskContext:
 
 
 class Stage(Protocol):
+    """Stage 插件协议：所有阶段实现统一接口，通过 TaskContext 传递数据。"""
+
     name: str
 
-    def run(self, ctx: TaskContext) -> StageResult: ...
+    def run(self, ctx: TaskContext) -> StageResult:
+        """执行本阶段逻辑并返回结果（由 Orchestrator 据此迁移状态）。"""
+        ...

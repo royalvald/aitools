@@ -35,6 +35,7 @@ class DBPerception:
         self.runtime = runtime
 
     def observe(self, steps: list[DSLStep], ctx: ObservationContext) -> DBObservation | None:
+        """执行只读 SQL 检查点，输出记录完整性/一致性观测结果。"""
         db_steps = [s for s in steps if s.action in DB_ACTIONS]
         if not db_steps:
             return None

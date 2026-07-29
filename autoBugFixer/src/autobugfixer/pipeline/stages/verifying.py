@@ -16,9 +16,12 @@ logger = logging.getLogger(__name__)
 
 
 class VerifyingStage:
+    """验证阶段（DSL 解释执行 + 重试环 + 感知对比）。"""
+
     name = "verifying"
 
     def run(self, ctx: TaskContext) -> StageResult:
+        """按验证方案执行 DSL 步骤，通过则进经验沉淀，未通过则按重试上限回修复或失败分支。"""
         task = ctx.task
         plan = ctx.session.scalar(select(VerificationPlan).where(
             VerificationPlan.task_id == task.id).order_by(VerificationPlan.version.desc()))

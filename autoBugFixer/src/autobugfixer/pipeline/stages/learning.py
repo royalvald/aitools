@@ -19,9 +19,12 @@ from .common import build_bug_block
 
 
 class LearningStage:
+    """经验沉淀阶段（成功入库 / 失败讨论两条分支）。"""
+
     name = "learning"
 
     def run(self, ctx: TaskContext) -> StageResult:
+        """按最近验证结论分流：通过则经验入库并关闭缺陷单，未通过则生成讨论议题。"""
         task = ctx.task
         last_verify = ctx.session.scalar(select(VerifyRecord).where(
             VerifyRecord.task_id == task.id).order_by(VerifyRecord.attempt.desc()))

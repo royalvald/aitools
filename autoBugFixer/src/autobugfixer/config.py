@@ -13,6 +13,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    """系统全局配置：集中所有可调项，支持环境变量（前缀 AUTOBUGFIXER_）与 .env 覆盖。"""
+
     model_config = SettingsConfigDict(env_prefix="AUTOBUGFIXER_", env_file=".env", extra="ignore")
 
     # 数据库
@@ -104,4 +106,5 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
+    """返回单例 Settings（lru_cache 缓存，进程内共享同一实例）。"""
     return Settings()

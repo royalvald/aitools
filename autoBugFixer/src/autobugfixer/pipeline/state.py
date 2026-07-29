@@ -9,6 +9,8 @@ from enum import StrEnum
 
 
 class TaskState(StrEnum):
+    """任务全生命周期状态枚举（状态机节点）。"""
+
     DISCOVERED = "DISCOVERED"  # 适配器拉取/接收 Bug，完成标准化
     ANALYZING = "ANALYZING"  # 完整性分析
     WAIT_INFO = "WAIT_INFO"  # 介入：待人工补充信息
@@ -59,9 +61,11 @@ class IllegalTransitionError(Exception):
 
 
 def can_transition(from_state: TaskState | str, to_state: TaskState | str) -> bool:
+    """查询迁移是否合法（查 LEGAL_TRANSITIONS 表）。"""
     return TaskState(to_state) in LEGAL_TRANSITIONS.get(TaskState(from_state), set())
 
 
 def assert_transition(from_state: TaskState | str, to_state: TaskState | str) -> None:
+    """断言迁移合法；非法则抛 IllegalTransitionError。"""
     if not can_transition(from_state, to_state):
         raise IllegalTransitionError(f"非法状态迁移: {from_state} -> {to_state}")

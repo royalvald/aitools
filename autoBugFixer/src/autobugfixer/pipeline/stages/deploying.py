@@ -17,9 +17,12 @@ from .common import resolve_executor
 
 
 class DeployingStage:
+    """部署阶段（环境锁临界区 + 声明式部署 + 失败回滚）。"""
+
     name = "deploying"
 
     def run(self, ctx: TaskContext) -> StageResult:
+        """取环境锁后执行部署脚本与产物更新，失败自动回滚；成功进入验证。"""
         task = ctx.task
         env = self._resolve_env(ctx)
         if env is None:

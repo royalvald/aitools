@@ -33,8 +33,15 @@ class FixResult(BaseModel):
 
 
 class ClaudeCodeAdapter(Protocol):
-    def fix(self, workspace: str | Path, prompt: str) -> FixResult: ...
-    def analyze(self, prompt: str, schema: type, *, workspace: str | Path | None = None) -> Any: ...
+    """Claude Code headless 修复通道协议。"""
+
+    def fix(self, workspace: str | Path, prompt: str) -> FixResult:
+        """在工作区内执行修复，返回变更文件/diff/摘要。"""
+        ...
+
+    def analyze(self, prompt: str, schema: type, *, workspace: str | Path | None = None) -> Any:
+        """结构化分析：约束输出 JSON 并按 schema 校验。"""
+        ...
 
 
 class ClaudeCodeError(RuntimeError):
@@ -72,6 +79,7 @@ class ClaudeCodeCLI:
     # ---- ClaudeCodeAdapter 契约 ----
 
     def fix(self, workspace: str | Path, prompt: str) -> FixResult:
+        """在工作区内执行 headless 修复，CLI 输出结合工作区 diff 产出 FixResult。"""
         workspace = Path(workspace)
         proc = self._run(self._build_args(prompt), cwd=str(workspace))
         payload = _parse_payload(proc.stdout)
@@ -156,11 +164,13 @@ class ClaudeCodeFixChannel:
         self._workspace = Path(workspace) if workspace is not None else None
 
     def create_fix_agent(self, tools: list[Any]) -> _CliAgent:
+        """构造 CLI agent 句柄（与 LangChain 通道同签名），工作区优先用构造时显式传入的。"""
         return _CliAgent(self._cli, self._workspace or _workspace_from_tools(tools))
 
     def run_fix_agent(
         self, agent: _CliAgent, prompt: str, *, task_id: int | None = None, session=None
     ) -> str:
+        """执行修复并返回摘要（无工作区时抛错）。"""
         if agent.workspace is None:
             raise ClaudeCodeError(
                 "无法确定 Claude Code 工作区：请构造 "

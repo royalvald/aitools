@@ -27,6 +27,8 @@ TYPE_TO_ROLE = {
 
 
 class InterventionService:
+    """人工介入服务：创建介入单、处理结果回写并驱动任务续跑。"""
+
     def __init__(self, session: Session, notifier: Notifier | None = None,
                  writeback=None) -> None:
         self.session = session
@@ -145,6 +147,7 @@ class InterventionService:
         return task
 
     def list_pending(self, assignee: str | None = None) -> list[Intervention]:
+        """查询待处理介入单（可按角色过滤）。"""
         stmt = select(Intervention).where(Intervention.status == "pending")
         if assignee:
             stmt = stmt.where(Intervention.assignee_role == assignee)

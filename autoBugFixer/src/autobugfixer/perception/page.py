@@ -54,6 +54,7 @@ class PagePerception:
         self.force_fallback = force_fallback
 
     def observe(self, steps: list[DSLStep], ctx: ObservationContext) -> PageObservation | None:
+        """回放页面步骤；优先 Playwright，缺包或失败时降级 httpx 存在性检查。"""
         page_steps = [s for s in steps if s.action in PAGE_ACTIONS]
         if not page_steps:
             return None

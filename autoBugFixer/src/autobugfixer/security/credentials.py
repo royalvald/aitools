@@ -27,12 +27,15 @@ class CredentialVault:
 
     @staticmethod
     def generate_key() -> str:
+        """生成一个新的 Fernet 主密钥（base64 字符串）。"""
         return Fernet.generate_key().decode()
 
     def encrypt(self, plaintext: str) -> str:
+        """加密明文为 Fernet 密文字符串。"""
         return self._fernet.encrypt(plaintext.encode()).decode()
 
     def decrypt(self, ciphertext: str) -> str:
+        """解密 Fernet 密文；主密钥不匹配或密文损坏抛 ValueError。"""
         try:
             return self._fernet.decrypt(ciphertext.encode()).decode()
         except InvalidToken as exc:

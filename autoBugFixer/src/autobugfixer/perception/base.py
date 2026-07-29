@@ -19,6 +19,7 @@ PerceptionPhase = Literal["pre_fix", "post_fix"]
 
 
 def utcnow() -> datetime:
+    """返回当前 UTC 时间（带时区），作为快照采集时间默认值。"""
     return datetime.now(timezone.utc)
 
 

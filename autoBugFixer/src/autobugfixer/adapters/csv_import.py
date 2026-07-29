@@ -37,12 +37,16 @@ class CsvFormatError(ValueError):
 
 @dataclass
 class RowFailure:
+    """行级解析失败记录（行号 + 原因）。"""
+
     row: int  # CSV 行号（header 为第 1 行，数据从第 2 行起）
     reason: str
 
 
 @dataclass
 class ParseResult:
+    """CSV 解析结果：成功行 + 失败行 + 表头。"""
+
     rows: list[BugTicketData] = field(default_factory=list)
     failures: list[RowFailure] = field(default_factory=list)
     headers: list[str] = field(default_factory=list)

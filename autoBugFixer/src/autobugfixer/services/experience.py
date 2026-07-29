@@ -12,6 +12,8 @@ from ..models import Experience
 
 
 class ExperienceService:
+    """经验库服务：分类入库、比对去重、检索复用。"""
+
     def __init__(self, session: Session) -> None:
         self.session = session
 
@@ -19,6 +21,7 @@ class ExperienceService:
              root_cause_pattern: str = "", fix_pattern: str = "",
              verification_points: str = "", applicable_conditions: str = "",
              source_task_ids: list[int] | None = None) -> Experience:
+        """新增一条经验条目（不做去重，直接落库）。"""
         entry = Experience(
             category=category, problem_signature=problem_signature, symptoms=symptoms,
             root_cause_pattern=root_cause_pattern, fix_pattern=fix_pattern,

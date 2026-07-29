@@ -12,9 +12,12 @@ REQUIRED_FIELDS = ["title", "description", "repro_steps", "expected", "actual", 
 
 
 class CompletenessStage:
+    """完整性分析阶段（规则快路径 + LLM 评估）。"""
+
     name = "completeness"
 
     def run(self, ctx: TaskContext) -> StageResult:
+        """规则快路径检查关键字段，通过后 LLM 评估质量；不足则发起信息补充介入。"""
         bug = ctx.bug
         # 1) 规则检查（快路径）：关键字段非空校验
         missing = [f for f in REQUIRED_FIELDS if not getattr(bug, f, None)]

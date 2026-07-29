@@ -12,6 +12,7 @@ from .services.export import render_markdown
 
 
 def main(argv: list[str] | None = None, settings: Settings | None = None) -> int:
+    """CLI 入口：导出经验库为 Markdown 文件（导出前脱敏）。"""
     parser = argparse.ArgumentParser(prog="autobugfixer-export",
                                      description="导出经验库为知识文档（导出前脱敏）")
     parser.add_argument("--format", default="markdown", choices=["markdown"])

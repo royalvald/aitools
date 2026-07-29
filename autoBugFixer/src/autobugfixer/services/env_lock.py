@@ -17,6 +17,8 @@ from ..models import EnvLock
 
 
 class EnvLockService:
+    """环境锁服务（DB 行实现，带租约的互斥锁）。"""
+
     def __init__(self, session: Session, lease_seconds: int = 1800) -> None:
         self.session = session
         self.lease_seconds = lease_seconds

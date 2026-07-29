@@ -76,6 +76,7 @@ class DockerExecutor:
     # ---- EnvExecutor 契约 ----
 
     def exec(self, cmd: str) -> ExecResult:
+        """白名单校验后在容器内以 sh -c 执行命令。"""
         self.whitelist.assert_allowed(cmd)  # 越权直接拒绝
         returncode, output = self._container().exec_run(
             ["/bin/sh", "-c", cmd], workdir=self.workdir, demux=True
@@ -86,6 +87,7 @@ class DockerExecutor:
         )
 
     def upload(self, local: str | Path, remote_rel: str) -> None:
+        """把本地文件/目录打包为 tar 拷入容器。"""
         src = Path(local)
         dest = self._remote(remote_rel)
         if src.is_dir():
@@ -95,6 +97,7 @@ class DockerExecutor:
             self._container().put_archive(parent, _make_tar(src, src.name))
 
     def download(self, remote_rel: str, local: str | Path) -> None:
+        """从容器拉取文件/目录到本地（解 tar 归档）。"""
         data = self._fetch_archive(self._remote(remote_rel))
         dst = Path(local)
         with tarfile.open(fileobj=io.BytesIO(data)) as tar:
@@ -110,6 +113,7 @@ class DockerExecutor:
                     target.write_bytes(tar.extractfile(m).read())
 
     def health_check(self) -> Health:
+        """检查容器 running 状态，可选执行配置的健康检查命令。"""
         try:
             container = self._container()
             container.reload()
@@ -126,6 +130,7 @@ class DockerExecutor:
             return Health(ok=False, detail=f"{type(exc).__name__}: {exc}")
 
     def read_text(self, rel_path: str) -> str | None:
+        """读取容器内文件文本；不可读或不存在返回 None。"""
         try:
             data = self._fetch_archive(self._remote(rel_path))
             with tarfile.open(fileobj=io.BytesIO(data)) as tar:
@@ -138,12 +143,14 @@ class DockerExecutor:
             return None  # 远端无此文件或归档失败均视为不可读
 
     def query_db(self, sql: str) -> list[dict]:
+        """Docker 执行器不内建 DB 通道，固定抛 NotImplementedError。"""
         raise NotImplementedError(
             "Docker 执行器不内建数据库通道：请用 exec + 白名单 SQL 客户端命令，"
             "或为该环境配置支持 query_db 的执行器（如 LocalExecutor）"
         )
 
     def close(self) -> None:
+        """关闭底层 docker client。"""
         if self._client is not None:
             self._client.close()
 

@@ -47,6 +47,7 @@ def create_app(
     settings: Settings | None = None,
     platform: BugPlatformAdapter | None = None,
 ) -> FastAPI:
+    """组装 FastAPI 应用：建库、装配适配器与编排器、挂载路由与 Web 控制台。"""
     settings = settings or get_settings()
     engine = make_engine(settings.database_url)
     init_db(engine)
@@ -84,6 +85,7 @@ def create_app(
 
 
 def main() -> None:
+    """CLI 入口：启动 uvicorn 服务（默认 127.0.0.1:8000）。"""
     import uvicorn
 
     setup_logging()

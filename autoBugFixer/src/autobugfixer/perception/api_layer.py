@@ -47,6 +47,7 @@ class APIPerception:
         return httpx.Client(base_url=self.base_url, timeout=self.timeout)
 
     def observe(self, steps: list[DSLStep], ctx: ObservationContext) -> APIObservation | None:
+        """回放接口步骤，捕获异常状态码、错误报文与超时（带一次重试）。"""
         api_steps = [s for s in steps if s.action in API_ACTIONS]
         if not api_steps:
             return None

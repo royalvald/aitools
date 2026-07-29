@@ -30,9 +30,12 @@ logger = logging.getLogger(__name__)
 
 
 class FixingStage:
+    """AI 修复阶段（含经验复用、重试反馈、出口校验）。"""
+
     name = "fixing"
 
     def run(self, ctx: TaskContext) -> StageResult:
+        """准备工作区并执行修复，校验变更后产出 FixRecord，决定下一步状态。"""
         task = ctx.task
         attempt = ctx.attempt
         branch = f"autofix/{ctx.bug.platform_bug_id}"

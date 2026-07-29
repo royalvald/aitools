@@ -89,6 +89,7 @@ class SSHExecutor:
     # ---- EnvExecutor 契约 ----
 
     def exec(self, cmd: str) -> ExecResult:
+        """白名单校验后在远程主机执行命令（自动 cd 到 workdir）。"""
         self.whitelist.assert_allowed(cmd)  # 越权直接拒绝（连接前）
         full = (
             f"cd {shlex.quote(self.workdir)} && {cmd}"
@@ -105,6 +106,7 @@ class SSHExecutor:
         )
 
     def upload(self, local: str | Path, remote_rel: str) -> None:
+        """SFTP 上传本地文件/目录到远程（自动建父目录）。"""
         src = Path(local)
         dest = self._remote(remote_rel)
         sftp = self._sftp()
@@ -121,6 +123,7 @@ class SSHExecutor:
             sftp.put(str(src), dest)
 
     def download(self, remote_rel: str, local: str | Path) -> None:
+        """SFTP 下载远程文件/目录到本地。"""
         sftp = self._sftp()
         src = self._remote(remote_rel)
         dst = Path(local)
@@ -133,6 +136,7 @@ class SSHExecutor:
             sftp.get(src, str(dst))
 
     def health_check(self) -> Health:
+        """执行配置的健康检查命令，未配置则仅检查 SSH 连通性。"""
         if self.health_cmd:
             result = self.exec(self.health_cmd)
             return Health(ok=result.ok, detail=result.stdout or result.stderr)
@@ -145,6 +149,7 @@ class SSHExecutor:
             return Health(ok=False, detail=f"{type(exc).__name__}: {exc}")
 
     def read_text(self, rel_path: str) -> str | None:
+        """读取远程文件文本；IO 异常返回 None。"""
         sftp = self._sftp()
         try:
             with sftp.open(self._remote(rel_path), "r") as f:
@@ -153,6 +158,7 @@ class SSHExecutor:
             return None
 
     def query_db(self, sql: str) -> list[dict]:
+        """SSH 执行器不内建 DB 通道，固定抛 NotImplementedError。"""
         raise NotImplementedError(
             "SSH 执行器不内建数据库通道：请用 exec + 白名单 SQL 客户端命令，"
             "或为该环境配置支持 query_db 的执行器（如 LocalExecutor）"
@@ -180,11 +186,13 @@ class SSHExecutor:
         return self._connect().open_sftp()
 
     def close(self) -> None:
+        """关闭 SSH 连接并清空引用。"""
         if self._client is not None:
             self._client.close()
             self._client = None
 
     def __enter__(self) -> "SSHExecutor":
+        """支持 with 语句。"""
         return self
 
     def __exit__(self, *exc) -> None:

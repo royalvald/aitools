@@ -53,6 +53,7 @@ class JiraBugPlatform:
     # ---- BugPlatformAdapter 契约 ----
 
     def list_bugs(self, since: datetime | None = None) -> list[BugTicketData]:
+        """JQL 搜索 Bug（可选增量过滤），逐条转为标准化数据对象。"""
         jql = self.jql
         if since is not None:
             aware = since if since.tzinfo else since.replace(tzinfo=timezone.utc)
@@ -65,6 +66,7 @@ class JiraBugPlatform:
         return [self._to_ticket(issue) for issue in resp.json().get("issues", [])]
 
     def get_bug(self, bug_id: str) -> BugTicketData:
+        """按 issue key 查询详情并转标准化数据对象。"""
         resp = self._client.get(
             f"/rest/api/3/issue/{bug_id}", params={"fields": ",".join(self._fields())}
         )
@@ -72,6 +74,7 @@ class JiraBugPlatform:
         return self._to_ticket(resp.json())
 
     def update_bug(self, bug_id: str, patch: BugPatch) -> None:
+        """回写：评论（ADF）+ 字段更新 + 状态流转（按 status_map 解析 transition 名）。"""
         if patch.comment:
             _raise(self._client.post(
                 f"/rest/api/3/issue/{bug_id}/comment",
@@ -85,6 +88,7 @@ class JiraBugPlatform:
             self._transition(bug_id, self.status_map.get(patch.status, patch.status))
 
     def close(self) -> None:
+        """关闭底层 httpx 连接池。"""
         self._client.close()
 
     # ---- 内部 ----

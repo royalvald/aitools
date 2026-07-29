@@ -84,6 +84,7 @@ class SnapshotDiff:
 
     @property
     def summary(self) -> str:
+        """生成可读的差异摘要文本（统计 + 逐条列出三类异常）。"""
         lines = [
             f"已消除 {len(self.resolved)} 项 / 仍存在 {len(self.persistent)} 项 / 新增 {len(self.introduced)} 项"
         ]
@@ -94,6 +95,7 @@ class SnapshotDiff:
         return "\n".join(lines)
 
     def to_dict(self) -> dict:
+        """序列化为字典（含三类异常、是否修复、摘要文本）。"""
         return {
             "resolved": [e.model_dump() for e in self.resolved],
             "persistent": [e.model_dump() for e in self.persistent],

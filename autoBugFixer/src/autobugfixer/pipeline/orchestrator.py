@@ -87,6 +87,7 @@ class Orchestrator:
     # ---------- 内部 ----------
 
     def _build_context(self, session: Session, task: Task) -> TaskContext:
+        """为单个任务构建执行上下文：装配 BugTicket 与全部服务句柄。"""
         bug = session.get(BugTicket, task.bug_ticket_id)
         assert bug is not None, f"task {task.id} 缺少关联 BugTicket"
 
@@ -113,6 +114,7 @@ class Orchestrator:
         )
 
     def _transition(self, ctx: TaskContext, to_state: TaskState, stage: str, message: str = "") -> None:
+        """执行状态迁移：断言合法性、写状态历史与审计、触发平台状态回写。"""
         task = ctx.task
         from_state = TaskState(task.state)
         assert_transition(from_state, to_state)
@@ -139,6 +141,7 @@ class Orchestrator:
         logger.info("task=%s %s -> %s (%s)", task.id, from_state, to_state, message)
 
     def _handle_result(self, ctx: TaskContext, stage: Stage, result: StageResult) -> StageResult:
+        """按四类结果（成功/介入/重试/失败）处理状态迁移与介入单创建。"""
         task = ctx.task
         if result.status == "success":
             assert result.next_state is not None, "success 必须给出 next_state"
@@ -221,6 +224,7 @@ class Orchestrator:
         return self._state_of(task_id)
 
     def _state_of(self, task_id: int) -> TaskState:
+        """查询任务当前状态（独立会话，不依赖 run_task 的会话）。"""
         with self.session_factory() as session:
             task = session.get(Task, task_id)
             if task is None:

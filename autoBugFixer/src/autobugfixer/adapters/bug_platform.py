@@ -48,9 +48,19 @@ class BugPatch(BaseModel):
 
 
 class BugPlatformAdapter(Protocol):
-    def list_bugs(self, since: datetime | None = None) -> list[BugTicketData]: ...
-    def get_bug(self, bug_id: str) -> BugTicketData: ...
-    def update_bug(self, bug_id: str, patch: BugPatch) -> None: ...
+    """缺陷平台适配器协议（FR-PRE-01）：拉取、查询、回写三类操作的统一契约。"""
+
+    def list_bugs(self, since: datetime | None = None) -> list[BugTicketData]:
+        """列出 Bug（可按增量时间过滤），返回标准化数据对象列表。"""
+        ...
+
+    def get_bug(self, bug_id: str) -> BugTicketData:
+        """按平台 Bug 编号查询单条详情。"""
+        ...
+
+    def update_bug(self, bug_id: str, patch: BugPatch) -> None:
+        """回写状态/评论/字段到平台（11.7 状态映射）。"""
+        ...
 
 
 class MockBugPlatform:
@@ -61,14 +71,17 @@ class MockBugPlatform:
         self.updates: list[tuple[str, BugPatch]] = []  # 回写留痕
 
     def list_bugs(self, since: datetime | None = None) -> list[BugTicketData]:
+        """返回全部 Bug（since 参数仅作契约兼容，Mock 忽略）。"""
         return list(self._bugs.values())
 
     def get_bug(self, bug_id: str) -> BugTicketData:
+        """按编号取 Bug；不存在抛 KeyError。"""
         if bug_id not in self._bugs:
             raise KeyError(f"平台 Bug 不存在: {bug_id}")
         return self._bugs[bug_id]
 
     def update_bug(self, bug_id: str, patch: BugPatch) -> None:
+        """回写补丁并记录到 updates 留痕，fields 中的已知字段同步到对象。"""
         self.get_bug(bug_id)  # 不存在则抛错
         self.updates.append((bug_id, patch))
         for key, value in patch.fields.items():
@@ -81,6 +94,7 @@ class MockBugPlatform:
 
     # Mock 辅助：模拟人工在平台侧补充了信息
     def apply_human_supplement(self, bug_id: str, fields: dict) -> None:
+        """模拟人工在平台侧补充信息（测试 WAIT_INFO 唤醒链路用）。"""
         bug = self.get_bug(bug_id)
         for key, value in fields.items():
             setattr(bug, key, value)

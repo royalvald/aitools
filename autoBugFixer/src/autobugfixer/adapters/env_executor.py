@@ -19,6 +19,8 @@ from .whitelist import CommandWhitelist
 
 
 class ExecResult(BaseModel):
+    """命令执行结果（返回码 + 标准输出/错误）。"""
+
     cmd: str
     returncode: int
     stdout: str = ""
@@ -26,10 +28,13 @@ class ExecResult(BaseModel):
 
     @property
     def ok(self) -> bool:
+        """返回码为 0 即成功。"""
         return self.returncode == 0
 
 
 class Health(BaseModel):
+    """环境健康检查结果。"""
+
     ok: bool
     detail: str = ""
 
@@ -37,12 +42,26 @@ class Health(BaseModel):
 class EnvExecutor(Protocol):
     """统一环境操作接口，白名单校验内建于 exec。"""
 
-    def exec(self, cmd: str) -> ExecResult: ...
-    def upload(self, local: str | Path, remote_rel: str) -> None: ...
-    def health_check(self) -> Health: ...
+    def exec(self, cmd: str) -> ExecResult:
+        """执行命令（经白名单校验），返回执行结果。"""
+        ...
+
+    def upload(self, local: str | Path, remote_rel: str) -> None:
+        """把本地产物上传到环境（部署用）。"""
+        ...
+
+    def health_check(self) -> Health:
+        """检查环境是否就绪。"""
+        ...
+
     # DSL 运行时能力（验证阶段解释执行用）
-    def read_text(self, rel_path: str) -> str | None: ...
-    def query_db(self, sql: str) -> list[dict]: ...
+    def read_text(self, rel_path: str) -> str | None:
+        """读取环境内文件文本（不存在返回 None）。"""
+        ...
+
+    def query_db(self, sql: str) -> list[dict]:
+        """在环境数据库上执行只读 SQL，返回行列表（DSL 断言用）。"""
+        ...
 
 
 class LocalExecutor:
@@ -63,12 +82,14 @@ class LocalExecutor:
         return target
 
     def read_text(self, rel_path: str) -> str | None:
+        """读取环境内文件文本；不存在返回 None。"""
         target = self._resolve(rel_path)
         if not target.is_file():
             return None
         return target.read_text(encoding="utf-8")
 
     def write_text(self, rel_path: str, content: str) -> None:
+        """写入环境内文件（自动建父目录）。"""
         target = self._resolve(rel_path)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
@@ -88,6 +109,7 @@ class LocalExecutor:
     # ---- 命令（白名单内建） ----
 
     def exec(self, cmd: str) -> ExecResult:
+        """执行命令：先白名单校验（越权拒绝），echo 内建仿真，其余走 subprocess。"""
         self.whitelist.assert_allowed(cmd)  # 越权直接拒绝
         argv = shlex.split(cmd)
         if not argv:
@@ -112,6 +134,7 @@ class LocalExecutor:
     # ---- 健康与回滚 ----
 
     def health_check(self) -> Health:
+        """检查 env_root 是否存在以判定环境就绪。"""
         ok = self.env_root.exists()
         return Health(ok=ok, detail=f"env_root={self.env_root}")
 
@@ -147,6 +170,7 @@ class LocalExecutor:
     # ---- DSL 运行时 ----
 
     def query_db(self, sql: str) -> list[dict]:
+        """在仿真环境 app.db 上执行 SQL，返回字典行列表。"""
         db_path = self.env_root / "app.db"
         if not db_path.exists():
             raise FileNotFoundError("仿真环境数据库不存在: app.db")

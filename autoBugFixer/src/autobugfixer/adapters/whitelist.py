@@ -26,11 +26,14 @@ def _template_to_regex(template: str) -> re.Pattern:
 
 
 class CommandWhitelist:
+    """命令白名单校验器：模板匹配 + 危险字符拒绝。"""
+
     def __init__(self, templates: list[str]) -> None:
         self.templates = list(templates)
         self._compiled = [_template_to_regex(t) for t in self.templates]
 
     def is_allowed(self, cmd: str) -> bool:
+        """判断命令是否匹配任一模板且参数无危险字符。"""
         cmd = cmd.strip()
         if not cmd:
             return False
@@ -44,6 +47,7 @@ class CommandWhitelist:
         return False
 
     def assert_allowed(self, cmd: str) -> None:
+        """校验并断言；不通过抛 CommandRejectedError。"""
         if not self.is_allowed(cmd):
             raise CommandRejectedError(f"命令不在白名单内: {cmd}")
 

@@ -38,6 +38,7 @@ class DSLStep(BaseModel):
     @field_validator("action")
     @classmethod
     def action_must_be_in_vocab(cls, v: str) -> str:
+        """校验动作必须在 DSL_ACTIONS 词表内。"""
         if v not in DSL_ACTIONS:
             raise ValueError(f"非法 DSL 动作: {v}，允许: {sorted(DSL_ACTIONS)}")
         return v
@@ -45,6 +46,7 @@ class DSLStep(BaseModel):
     @field_validator("params")
     @classmethod
     def params_must_cover_required(cls, v: dict[str, Any], info) -> dict[str, Any]:
+        """校验 params 覆盖该动作的必填参数。"""
         # action 校验先于 params 执行（按字段声明顺序）
         action = info.data.get("action")
         if action in DSL_ACTIONS:
@@ -56,6 +58,8 @@ class DSLStep(BaseModel):
 
 @dataclass
 class StepResult:
+    """单步验证结果（通过/失败 + 详情 + 证据摘要）。"""
+
     action: str
     passed: bool
     detail: str = ""
@@ -65,8 +69,13 @@ class StepResult:
 class DSLRuntime(Protocol):
     """DSL 解释执行器依赖的运行时能力（由 EnvExecutor 提供）。"""
 
-    def read_text(self, rel_path: str) -> str | None: ...
-    def query_db(self, sql: str) -> list[dict]: ...
+    def read_text(self, rel_path: str) -> str | None:
+        """读取环境内文件文本。"""
+        ...
+
+    def query_db(self, sql: str) -> list[dict]:
+        """执行只读 SQL 返回行列表。"""
+        ...
 
 
 def _json_path_get(obj: Any, path: str) -> Any:
@@ -94,6 +103,7 @@ class DSLInterpreter:
         self._last_response: Any = None
 
     def execute(self, steps: list[DSLStep | dict]) -> list[StepResult]:
+        """逐条执行验证步骤，返回每步结果（dict 自动转 DSLStep）。"""
         results: list[StepResult] = []
         for raw in steps:
             step = raw if isinstance(raw, DSLStep) else DSLStep.model_validate(raw)

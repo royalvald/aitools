@@ -12,9 +12,12 @@ from .common import build_bug_block
 
 
 class PlanningStage:
+    """验证方案生成阶段。"""
+
     name = "planning"
 
     def run(self, ctx: TaskContext) -> StageResult:
+        """LLM 生成 DSL 结构化验证方案并落库；命中高风险模块则转人工确认。"""
         prompt = load_prompt("planning").format(bug_block=build_bug_block(ctx))
         # DSL 以 JSON Schema 约束输出，校验失败由 Gateway 自动重试（11.4）
         result = ctx.llm.analyze(prompt, PlanOutput,

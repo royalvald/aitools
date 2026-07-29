@@ -44,10 +44,12 @@ class MeteredFixChannel:
         self.gateway = gateway
 
     def create_fix_agent(self, tools: list[Any]) -> Any:
+        """透传给被包装的修复通道。"""
         return self.inner.create_fix_agent(tools)
 
     def run_fix_agent(self, agent: Any, prompt: str, *,
                       task_id: int | None = None, session: Session | None = None) -> str:
+        """执行修复前后做预算检查与计量记录，保持与 LangChain 通道一致的口径。"""
         self.gateway._check_budget(task_id, session)
         output = self.inner.run_fix_agent(agent, prompt, task_id=task_id, session=session)
         self.gateway._record_usage(task_id, "fixing", prompt, output, session)
@@ -94,9 +96,11 @@ class ScriptedFakeChatModel(BaseChatModel):
         return "scripted-fake-chat-model"
 
     def bind_tools(self, tools: Sequence[Any], **kwargs: Any) -> "ScriptedFakeChatModel":
+        """工具绑定直接返回自身（工具调用由脚本驱动）。"""
         return self  # 工具调用由脚本驱动，无需真实绑定
 
     def with_structured_output(self, schema: type[BaseModel], **kwargs: Any) -> Runnable:
+        """返回按 Schema 校验的结构化输出 Runnable。"""
         return _StructuredRunnable(self, schema)
 
     def _default_response(self, text: str) -> Any:
@@ -173,6 +177,7 @@ class LLMGateway:
     # ---- 模型 ----
 
     def _chat_model(self) -> BaseChatModel:
+        """按 llm_mode 构造聊天模型：anthropic 走真实 API，否则用脚本化 Fake 模型。"""
         if self.settings.llm_mode == "anthropic":
             from langchain_anthropic import ChatAnthropic
 
@@ -209,12 +214,14 @@ class LLMGateway:
     # ---- 修复 agent（create_agent + 工具） ----
 
     def create_fix_agent(self, tools: list[Any]) -> Any:
+        """用当前模型 + 工具集组装 LangChain 修复 agent。"""
         from langchain.agents import create_agent
 
         return create_agent(self._chat_model(), tools=tools)
 
     def run_fix_agent(self, agent: Any, prompt: str, *,
                       task_id: int | None, session: Session | None = None) -> str:
+        """执行修复 agent 并计量；返回最终消息内容。"""
         self._check_budget(task_id, session)
         result = agent.invoke({"messages": [{"role": "user", "content": prompt}]})
         final = result["messages"][-1]
@@ -230,6 +237,7 @@ class LLMGateway:
         return max(len(text) // 4, 1)
 
     def _check_budget(self, task_id: int | None, session: Session | None) -> None:
+        """调用前预算检查：累计 token 超单任务/日总量阈值则抛 BudgetExceededError。"""
         if self.session_factory is None:
             return
         own = session is None
@@ -254,6 +262,7 @@ class LLMGateway:
 
     def _record_usage(self, task_id: int | None, stage: str, prompt: str, output: str,
                       session: Session | None, tokens_in: int | None = None) -> None:
+        """写入一条 llm_usage 计量记录（估算 token）；无 session_factory 时跳过。"""
         if self.session_factory is None:
             return
         own = session is None

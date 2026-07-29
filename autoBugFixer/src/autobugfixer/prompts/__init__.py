@@ -26,4 +26,5 @@ def load_prompt(name: str) -> str:
 
 
 def prompt_version(name: str) -> str:
+    """返回模板的版本标识（如 "fixing:v1"），供审计留痕。"""
     return f"{name}:{PROMPT_VERSIONS[name]}"

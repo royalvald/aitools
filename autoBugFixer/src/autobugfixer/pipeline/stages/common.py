@@ -193,6 +193,7 @@ def make_workspace_tools(workspace: Path) -> list:
 
 
 def diff_hash(diff: str) -> str:
+    """计算 diff 文本的短哈希（sha256 前 16 位），用于变更指纹去重。"""
     return hashlib.sha256(diff.encode()).hexdigest()[:16]
 
 

@@ -27,6 +27,7 @@ router = APIRouter()
 
 @router.get("/tasks")
 def list_tasks(request: Request, state: str | None = None, page: int = 1, size: int = 20):
+    """任务看板分页查询（按优先级升序，可按状态过滤）。"""
     sf = request.app.state.session_factory
     with sf() as s:
         stmt = select(Task).order_by(Task.priority_score.asc().nulls_last(), Task.id)
@@ -41,6 +42,7 @@ def list_tasks(request: Request, state: str | None = None, page: int = 1, size: 
 
 @router.get("/tasks/{task_id}")
 def task_detail(request: Request, task_id: int):
+    """任务详情：评分明细、状态时间线、方案/修复/验证记录。"""
     sf = request.app.state.session_factory
     with sf() as s:
         task = s.get(Task, task_id)
@@ -98,6 +100,7 @@ def retry_task(request: Request, task_id: int):
 @router.get("/interventions")
 def list_interventions(request: Request, assignee: str | None = None,
                        status: str = "pending"):
+    """介入单列表查询（可按角色与状态过滤）。"""
     sf = request.app.state.session_factory
     with sf() as s:
         stmt = select(Intervention).where(Intervention.status == status)
@@ -240,6 +243,7 @@ def export_experiences(request: Request, format: str = "markdown"):
 
 @router.get("/experiences")
 def list_experiences(request: Request, category: str | None = None, q: str | None = None):
+    """经验库检索（按分类或关键词）。"""
     sf = request.app.state.session_factory
     with sf() as s:
         items = ExperienceService(s).search(category=category, q=q)

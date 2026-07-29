@@ -16,9 +16,12 @@ WEIGHT_VERSION = "v1"  # 权重配置版本，评分解释留痕用
 
 
 class ScoringStage:
+    """综合难度评分阶段。"""
+
     name = "scoring"
 
     def weighted_score(self, scores: ScoreOutput, ctx: TaskContext) -> float:
+        """按配置权重合成三维得分为综合分。"""
         s = ctx.settings
         return round(
             scores.fix_difficulty * s.score_weight_fix
@@ -26,6 +29,7 @@ class ScoringStage:
             + scores.change_scale * s.score_weight_change, 2)
 
     def run(self, ctx: TaskContext) -> StageResult:
+        """LLM 三维评分后按策略权重合成，超阈值转人工，否则入自动修复队列。"""
         plan_summary = str(ctx.data.get("plan_steps", ""))[:500]
         prompt = load_prompt("scoring").format(
             bug_block=build_bug_block(ctx), plan_summary=plan_summary or "见验证方案")

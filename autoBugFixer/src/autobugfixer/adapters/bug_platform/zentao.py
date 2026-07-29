@@ -70,6 +70,7 @@ class ZentaoBugPlatform:
     # ---- BugPlatformAdapter 契约 ----
 
     def list_bugs(self, since: datetime | None = None) -> list[BugTicketData]:
+        """分页拉取 Bug 列表（可选按编辑/打开时间增量过滤）。"""
         bugs: list[dict] = []
         for page in range(1, self.max_pages + 1):
             params: dict[str, Any] = {"limit": self.page_limit, "page": page}
@@ -89,12 +90,14 @@ class ZentaoBugPlatform:
         return [self._to_ticket(b) for b in bugs]
 
     def get_bug(self, bug_id: str) -> BugTicketData:
+        """按 Bug id 查询详情并转标准化数据对象。"""
         data = self._request("GET", f"/api.php/v1/bugs/{bug_id}").json()
         if isinstance(data, dict) and isinstance(data.get("bug"), dict):
             data = data["bug"]
         return self._to_ticket(data)
 
     def update_bug(self, bug_id: str, patch: BugPatch) -> None:
+        """回写：有状态映射走动作端点（带备注），否则 PUT 字段更新。"""
         body = dict(patch.fields)
         if patch.comment:
             body["comment"] = patch.comment
@@ -109,6 +112,7 @@ class ZentaoBugPlatform:
             self._request("PUT", f"/api.php/v1/bugs/{bug_id}", json=body)
 
     def close(self) -> None:
+        """关闭底层 httpx 连接池。"""
         self._client.close()
 
     # ---- 内部 ----
