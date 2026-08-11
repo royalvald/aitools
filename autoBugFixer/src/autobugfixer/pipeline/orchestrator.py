@@ -186,6 +186,19 @@ class Orchestrator:
                 logger.exception("task=%s stage=%s 异常", task_id, stage_name)
                 ctx.audit.log(action="stage_exception", target=f"task:{task_id}",
                               detail={"stage": stage_name, "error": str(exc)}, task_id=task_id)
+                # 异常路径兜底释放环境锁（Stage 未能释放时），避免环境被长期占用（11.1）
+                if task.environment_id is not None:
+                    try:
+                        released = ctx.env_locks.release(task.environment_id, task.id)
+                    except Exception:
+                        logger.exception("异常路径释放环境锁失败（将由租约回收兜底）")
+                    else:
+                        if released:
+                            ctx.audit.log(
+                                action="env_lock_release_on_error",
+                                target=f"env:{task.environment_id}",
+                                detail={"stage": stage_name, "error": str(exc)},
+                                task_id=task_id)
                 self._transition(ctx, TaskState.FAILED, stage_name, f"stage 异常: {exc}")
                 session.commit()
                 return StageResult(status="failed", next_state=TaskState.FAILED, message=str(exc))

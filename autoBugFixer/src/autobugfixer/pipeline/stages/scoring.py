@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
+import json
+
+from sqlalchemy import select
+
+from ...models import StrategyVersion, VerificationPlan
 from ...prompts import load_prompt, prompt_version
 from ..schemas import ScoreOutput
 from ..stage import StageResult, TaskContext
 from ..state import TaskState
 from .common import build_bug_block
-
-from sqlalchemy import select
-
-from ...models import StrategyVersion
 
 WEIGHT_VERSION = "v1"  # 权重配置版本，评分解释留痕用
 
@@ -20,17 +21,9 @@ class ScoringStage:
 
     name = "scoring"
 
-    def weighted_score(self, scores: ScoreOutput, ctx: TaskContext) -> float:
-        """按配置权重合成三维得分为综合分。"""
-        s = ctx.settings
-        return round(
-            scores.fix_difficulty * s.score_weight_fix
-            + scores.verify_difficulty * s.score_weight_verify
-            + scores.change_scale * s.score_weight_change, 2)
-
     def run(self, ctx: TaskContext) -> StageResult:
         """LLM 三维评分后按策略权重合成，超阈值转人工，否则入自动修复队列。"""
-        plan_summary = str(ctx.data.get("plan_steps", ""))[:500]
+        plan_summary = self._plan_summary(ctx)
         prompt = load_prompt("scoring").format(
             bug_block=build_bug_block(ctx), plan_summary=plan_summary or "见验证方案")
         result = ctx.llm.analyze(prompt, ScoreOutput,
@@ -79,6 +72,27 @@ class ScoringStage:
         return StageResult(status="success", next_state=TaskState.FIXING,
                            artifacts={"score": total},
                            message=f"综合分 {total} 准入自动修复队列")
+
+    @staticmethod
+    def _plan_summary(ctx: TaskContext) -> str:
+        """取最新验证方案的可读摘要，作为评分 prompt 的"验证方案摘要"输入。
+
+        跨阶段数据一律从库中读取（ctx.data 只在单次 stage.run 内有效，
+        不能用于 stage 间传递）。
+        """
+        plan = ctx.session.scalar(select(VerificationPlan).where(
+            VerificationPlan.task_id == ctx.task.id).order_by(
+            VerificationPlan.version.desc()))
+        if plan is None:
+            return ""
+        lines = [
+            s.get("desc") or f"{s.get('action')} {json.dumps(s.get('params', {}), ensure_ascii=False)}"
+            for s in (plan.steps or [])
+        ]
+        text = "\n".join(lines)[:500]
+        if plan.expected_results:
+            text = f"{text}\n预期: {'; '.join(plan.expected_results)}"[:500]
+        return text
 
 
 def _notice(title: str, detail: dict):

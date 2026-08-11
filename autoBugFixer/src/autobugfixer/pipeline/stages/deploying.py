@@ -85,6 +85,7 @@ class DeployingStage:
             deploy.status = "rolled_back"
             deploy.steps_log = steps_log
             ctx.session.flush()
+            self._release_lock(ctx, task)  # 部署失败立即释放环境锁（11.1）
             return StageResult(status="failed", next_state=TaskState.FAILED,
                                message=f"部署失败已回滚: {exc}")
 
@@ -102,6 +103,16 @@ class DeployingStage:
         if ctx.task.environment_id:
             return ctx.session.get(Environment, ctx.task.environment_id)
         return ctx.session.scalar(select(Environment).limit(1))
+
+    @staticmethod
+    def _release_lock(ctx: TaskContext, task) -> None:
+        """释放任务持有的环境锁（幂等；仅在实际释放成功时留痕）。"""
+        if task.environment_id is None:
+            return
+        if ctx.env_locks.release(task.environment_id, task.id):
+            ctx.audit.log(action="env_lock_release", target=f"env:{task.environment_id}",
+                          detail={"task_id": task.id, "reason": "deploy_failed"},
+                          task_id=task.id)
 
     @staticmethod
     def _workspace(ctx: TaskContext) -> Path:

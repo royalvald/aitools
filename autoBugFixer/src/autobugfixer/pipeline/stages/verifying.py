@@ -21,61 +21,65 @@ class VerifyingStage:
     name = "verifying"
 
     def run(self, ctx: TaskContext) -> StageResult:
-        """按验证方案执行 DSL 步骤，通过则进经验沉淀，未通过则按重试上限回修复或失败分支。"""
+        """按验证方案执行 DSL 步骤，通过则进经验沉淀，未通过则按重试上限回修复或失败分支。
+
+        环境锁在 finally 中统一释放：正常通过/失败/重试与异常路径都不会泄漏临界区（11.1）。
+        """
         task = ctx.task
-        plan = ctx.session.scalar(select(VerificationPlan).where(
-            VerificationPlan.task_id == task.id).order_by(VerificationPlan.version.desc()))
-        if plan is None:
-            return StageResult(status="failed", next_state=TaskState.FAILED,
-                               message="缺少验证方案，无法验证")
+        try:
+            plan = ctx.session.scalar(select(VerificationPlan).where(
+                VerificationPlan.task_id == task.id).order_by(VerificationPlan.version.desc()))
+            if plan is None:
+                return StageResult(status="failed", next_state=TaskState.FAILED,
+                                   message="缺少验证方案，无法验证")
 
-        executor = resolve_executor(ctx)  # 按 Environment 行解析（ssh/docker 走 registry）
-        interpreter = DSLInterpreter(executor)
-        results = interpreter.execute(plan.steps)
-        passed = all(r.passed for r in results)
-        step_results = [
-            {"action": r.action, "passed": r.passed, "detail": r.detail, "evidence": r.evidence}
-            for r in results
-        ]
+            executor = resolve_executor(ctx)  # 按 Environment 行解析（ssh/docker 走 registry）
+            interpreter = DSLInterpreter(executor)
+            results = interpreter.execute(plan.steps)
+            passed = all(r.passed for r in results)
+            step_results = [
+                {"action": r.action, "passed": r.passed, "detail": r.detail, "evidence": r.evidence}
+                for r in results
+            ]
 
-        # 感知（FR-FIX-02）：修复后对比快照，新增异常记为风险备注
-        risk_notes = self._capture_post_fix(ctx, plan)
+            # 感知（FR-FIX-02）：修复后对比快照，新增异常记为风险备注
+            risk_notes = self._capture_post_fix(ctx, plan)
 
-        record = VerifyRecord(
-            task_id=task.id, attempt=ctx.attempt, plan_version=plan.version,
-            conclusion="passed" if passed else "failed", step_results=step_results,
-            risk_notes=risk_notes,
-        )
-        ctx.session.add(record)
-        ctx.session.flush()
-        ctx.audit.log(action="verify", target=f"task:{task.id}",
-                      detail={"conclusion": record.conclusion, "plan_version": plan.version,
-                              "risk_notes": bool(risk_notes)},
-                      task_id=task.id)
+            record = VerifyRecord(
+                task_id=task.id, attempt=ctx.attempt, plan_version=plan.version,
+                conclusion="passed" if passed else "failed", step_results=step_results,
+                risk_notes=risk_notes,
+            )
+            ctx.session.add(record)
+            ctx.session.flush()
+            ctx.audit.log(action="verify", target=f"task:{task.id}",
+                          detail={"conclusion": record.conclusion, "plan_version": plan.version,
+                                  "risk_notes": bool(risk_notes)},
+                          task_id=task.id)
 
-        # 临界区结束：无论通过与否都释放环境锁（11.1）
-        if task.environment_id is not None:
-            ctx.env_locks.release(task.environment_id, task.id)
-            ctx.audit.log(action="env_lock_release", target=f"env:{task.environment_id}",
-                          detail={"task_id": task.id}, task_id=task.id)
+            if passed:
+                return StageResult(status="success", next_state=TaskState.LEARNING,
+                                   artifacts={"verify_record_id": record.id},
+                                   message="全部验证步骤通过")
 
-        if passed:
+            failed_steps = [s for s in step_results if not s["passed"]]
+            if task.retry_count < task.max_retry:
+                # 未达上限：回 FIXING 重试（携带失败证据，11.5 反馈回路）
+                return StageResult(status="retry", next_state=TaskState.FIXING,
+                                   artifacts={"verify_record_id": record.id,
+                                              "failed_steps": failed_steps},
+                                   message=f"验证未通过（{len(failed_steps)} 步失败），回修复重试")
+            # 达上限：进入本地记忆阶段失败分支（FR-REG-03 规则）
             return StageResult(status="success", next_state=TaskState.LEARNING,
-                               artifacts={"verify_record_id": record.id},
-                               message="全部验证步骤通过")
-
-        failed_steps = [s for s in step_results if not s["passed"]]
-        if task.retry_count < task.max_retry:
-            # 未达上限：回 FIXING 重试（携带失败证据，11.5 反馈回路）
-            return StageResult(status="retry", next_state=TaskState.FIXING,
                                artifacts={"verify_record_id": record.id,
                                           "failed_steps": failed_steps},
-                               message=f"验证未通过（{len(failed_steps)} 步失败），回修复重试")
-        # 达上限：进入本地记忆阶段失败分支（FR-REG-03 规则）
-        return StageResult(status="success", next_state=TaskState.LEARNING,
-                           artifacts={"verify_record_id": record.id,
-                                      "failed_steps": failed_steps},
-                           message=f"重试 {task.retry_count} 次仍未通过，进入失败分支")
+                               message=f"重试 {task.retry_count} 次仍未通过，进入失败分支")
+        finally:
+            # 临界区结束：无论通过/失败/异常都释放环境锁（11.1）
+            if task.environment_id is not None:
+                if ctx.env_locks.release(task.environment_id, task.id):
+                    ctx.audit.log(action="env_lock_release", target=f"env:{task.environment_id}",
+                                  detail={"task_id": task.id}, task_id=task.id)
 
     def _capture_post_fix(self, ctx: TaskContext, plan: VerificationPlan) -> str:
         """修复后采对比快照并与 pre_fix 基线比对；新增异常（introduced）返回风险备注。"""

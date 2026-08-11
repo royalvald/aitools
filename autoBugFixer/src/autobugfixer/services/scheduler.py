@@ -3,9 +3,11 @@
 单轮逻辑抽成 ``Scheduler.run_round``（可测）；``run_forever`` 循环 + 优雅停止。
 每轮执行：
 1. 轮询 Bug 平台拉新（标准化入库）；
-2. 按 priority_score 升序出队调度 SCORED 任务（先易后难，数量上限可配）；
-3. 回收租约过期的环境锁（worker 崩溃防死锁，11.1）；
-4. 介入 SLA 扫描：临期提醒 -> 超时标 timeout 并按配置升级/挂起。
+2. 推进预处理：轮询接入的新任务与平台侧更新唤醒的任务
+   （ANALYZING/PLANNING）完成完整性/方案/评分入队；
+3. 按 priority_score 升序出队调度 SCORED 任务（先易后难，数量上限可配）；
+4. 回收租约过期的环境锁（worker 崩溃防死锁，11.1）；
+5. 介入 SLA 扫描：临期提醒 -> 超时标 timeout 并按配置升级/挂起。
 """
 
 from __future__ import annotations
@@ -49,9 +51,10 @@ class Scheduler:
 
     def run_round(self) -> dict:
         """执行一轮调度，返回本轮统计。"""
-        stats = {"ingested": 0, "dispatched": [], "locks_reclaimed": 0,
+        stats = {"ingested": 0, "preprocessed": [], "dispatched": [], "locks_reclaimed": 0,
                  "sla_reminded": 0, "sla_timeout": 0}
         stats["ingested"] = self.poll_platform()
+        stats["preprocessed"] = self.preprocess_pending()
         stats["locks_reclaimed"] = len(self.orchestrator.reclaim_stale_env_locks())
         stats["dispatched"] = self.dispatch_scored()
         sla = self.scan_intervention_sla()
@@ -67,6 +70,24 @@ class Scheduler:
                 count += int(created)
             s.commit()
         return count
+
+    def preprocess_pending(self) -> list[int]:
+        """推进等待预处理的 ANALYZING/PLANNING 任务至评分入队。
+
+        平台轮询接入的新 Bug 与平台侧数据更新唤醒的任务都落在 ANALYZING，
+        本步让它们完成完整性/方案/评分；SCORED 不在此处理（避免重复评分），
+        由 dispatch_scored 统一按优先级出队。
+        """
+        with self.session_factory() as s:
+            task_ids = [t.id for t in s.scalars(select(Task).where(
+                Task.state.in_([TaskState.ANALYZING.value, TaskState.PLANNING.value])
+            ).order_by(Task.id)).all()]
+        for task_id in task_ids:
+            try:
+                self.orchestrator.run_preprocessing(task_id)
+            except Exception:
+                logger.exception("预处理任务 %s 异常", task_id)
+        return task_ids
 
     def dispatch_scored(self) -> list[int]:
         """按 priority_score 升序（先易后难）出队 SCORED 任务并推进流水线。

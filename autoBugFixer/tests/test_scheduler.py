@@ -17,12 +17,19 @@ def scheduler(make_orchestrator, session_factory, platform, settings):
                      session_factory, settings)
 
 
-def test_round_ingests_new_bugs(scheduler, session_factory):
+def test_round_ingests_and_advances_new_bugs(scheduler, session_factory, environment):
+    """轮询接入新 Bug 后自动推进预处理并出队（平台更新回流闭环）。"""
     stats = scheduler.run_round()
     assert stats["ingested"] == 1  # mock 平台中的 BUG-T001
-    assert stats["dispatched"] == []
-    # 第二轮幂等：不再重复接入
-    assert scheduler.run_round()["ingested"] == 0
+    assert stats["preprocessed"] == [1]
+    assert stats["dispatched"] == [1]
+    with session_factory() as s:
+        assert s.get(Task, 1).state == TaskState.CLOSED.value
+    # 第二轮幂等：不再重复接入/推进
+    stats2 = scheduler.run_round()
+    assert stats2["ingested"] == 0
+    assert stats2["preprocessed"] == []
+    assert stats2["dispatched"] == []
 
 
 def test_round_dispatches_scored_tasks(scheduler, make_orchestrator, task_id,

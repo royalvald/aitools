@@ -1,7 +1,14 @@
 """评分准入测试（FR-PRE-04）：低于阈值入队 / 高于阈值转人工；权重可配。"""
 
+from autobugfixer.adapters.notifier import LogNotifier
+from autobugfixer.models import BugTicket, Task, VerificationPlan
 from autobugfixer.pipeline.schemas import ScoreOutput
+from autobugfixer.pipeline.stage import TaskContext
+from autobugfixer.pipeline.stages.scoring import ScoringStage
 from autobugfixer.pipeline.state import TaskState
+from autobugfixer.services.audit import AuditService
+from autobugfixer.services.env_lock import EnvLockService
+from autobugfixer.services.intervention import InterventionService
 
 
 def _score_responses(fix: float, verify: float, change: float) -> list:
@@ -50,3 +57,44 @@ def test_weights_configurable(make_orchestrator, task_id, session_factory, setti
     orchestrator = make_orchestrator(_score_responses(70, 0, 0))  # 70*1.0=70 >= 60
     final = orchestrator.run_until_blocked(task_id)
     assert final == TaskState.MANUAL
+
+
+def test_scoring_prompt_includes_plan_summary(session_factory, settings, task_id, platform):
+    """评分 prompt 从库读取最新验证方案摘要（修复 ctx.data 跨阶段失效）。"""
+
+    class RecordingLLM:
+        def __init__(self):
+            self.prompts = []
+
+        def analyze(self, prompt, schema, *, task_id, stage, session=None):
+            self.prompts.append(prompt)
+            return schema(fix_difficulty=20, verify_difficulty=15,
+                          change_scale=10, rationale="测试评分")
+
+    with session_factory() as s:
+        s.add(VerificationPlan(task_id=task_id, steps=[
+            {"action": "call_api", "params": {"method": "GET", "path": "/health"},
+             "desc": "调用健康检查接口"},
+            {"action": "assert_response",
+             "params": {"json_path": "status", "expect": "ok"},
+             "desc": "断言 status 为 ok"},
+        ], expected_results=["status 为 ok"]))
+        s.commit()
+
+    with session_factory() as s:
+        task = s.get(Task, task_id)
+        bug = s.get(BugTicket, task.bug_ticket_id)
+        llm = RecordingLLM()
+        ctx = TaskContext(
+            task=task, bug=bug, session=s, settings=settings, llm=llm,
+            platform=platform, executor=None, notifier=LogNotifier(),
+            audit=AuditService(s), interventions=InterventionService(s),
+            env_locks=EnvLockService(s, lease_seconds=60),
+        )
+        result = ScoringStage().run(ctx)
+        assert result.status == "success"
+        prompt = llm.prompts[-1]
+        assert "验证方案摘要" in prompt
+        assert "调用健康检查接口" in prompt
+        assert "断言 status 为 ok" in prompt
+        assert "预期: status 为 ok" in prompt
