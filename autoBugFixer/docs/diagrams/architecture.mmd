@@ -1,0 +1,87 @@
+flowchart TB
+    subgraph L1["接入与展示层"]
+        WEB["Web 控制台<br/>看板 / 任务详情 / 介入待办 / 经验库"]
+        API["开放 API<br/>FastAPI /api"]
+        CLI["CLI<br/>import / scheduler / export"]
+        IM["IM 通知<br/>企业微信 / 钉钉 / log"]
+    end
+
+    subgraph L2["流程编排层（核心）"]
+        ORCH["Orchestrator<br/>状态机路由 / 断点续跑 / 四类结果"]
+        SCHED["Scheduler<br/>轮询拉新 / 优先级出队 / 锁回收 / SLA"]
+        DSL["DSL 解释器<br/>动作词表 / 只读 SQL"]
+        subgraph PIPE["7 个 Stage（插件化）"]
+            S1["① 完整性分析"] --> S2["② 方案生成"] --> S3["③ 难度评分"]
+            S3 --> S4["④ AI 修复"] --> S5["⑤ 部署"] --> S6["⑥ 验证"] --> S7["⑦ 经验沉淀"]
+        end
+        ORCH --> PIPE
+    end
+
+    subgraph L3["能力服务层"]
+        LLM["LLM Gateway<br/>fake/anthropic + 预算"]
+        HITL["介入服务 HITL<br/>信息补充/方案确认/失败讨论"]
+        LOCK["环境锁<br/>租约互斥"]
+        ING["接入服务<br/>幂等标准化"]
+        AUDIT["审计服务<br/>追加留痕"]
+        EXP["经验库<br/>检索复用/去重"]
+        OPT["自我优化<br/>策略版本化"]
+        WB["状态回写<br/>status_map"]
+    end
+
+    subgraph L4["适配器层（可插拔）"]
+        BP["缺陷平台<br/>Mock / Jira / 禅道"]
+        EX["环境执行器<br/>Local / SSH / Docker"]
+        FX["修复通道<br/>LangChain / Claude Code CLI"]
+        CSV["CSV 导入 / 通知器 / 白名单"]
+    end
+
+    subgraph L5["安全与横切"]
+        SEC1["提示词注入防护"]
+        SEC2["命令白名单 + 禁改路径"]
+        SEC3["Fernet 凭据 + 导出脱敏"]
+        PERC["三维感知<br/>页面/DB/接口（可选）"]
+    end
+
+    subgraph L6["基础设施"]
+        DB[("关系库<br/>SQLite / PostgreSQL")]
+        FS["文件存储<br/>工作区 / 快照 / 证据"]
+        CFG["配置<br/>AUTOBUGFIXER_ 前缀"]
+    end
+
+    WEB --> ORCH
+    API --> ORCH
+    CLI --> ORCH
+    SCHED --> ORCH
+    PIPE --> LLM
+    PIPE --> HITL
+    PIPE --> LOCK
+    ORCH --> ING
+    ORCH --> AUDIT
+    PIPE --> EXP
+    HITL --> OPT
+    ORCH --> WB
+    ING --> BP
+    LLM --> FX
+    LOCK --> EX
+    S5 --> EX
+    S6 --> EX
+    S7 --> EXP
+    WB --> BP
+    ORCH --> CFG
+    ORCH --> DB
+    EXP --> DB
+    AUDIT --> DB
+    PERC --> FS
+
+    classDef access fill:#eaf3fb,stroke:#0969da;
+    classDef pipe fill:#fff4e6,stroke:#b35900;
+    classDef svc fill:#ebf7ee,stroke:#1a7f37;
+    classDef ada fill:#f6effc,stroke:#8250df;
+    classDef sec fill:#fdeff0,stroke:#cf222e;
+    classDef inf fill:#f1f3f4,stroke:#6e7781;
+    class WEB,API,CLI,IM access;
+    class ORCH,SCHED,DSL,PIPE,S1,S2,S3,S4,S5,S6,S7 pipe;
+    class LLM,HITL,LOCK,ING,AUDIT,EXP,OPT,WB svc;
+    class BP,EX,FX,CSV ada;
+    class SEC1,SEC2,SEC3,PERC sec;
+    class DB,FS,CFG inf;

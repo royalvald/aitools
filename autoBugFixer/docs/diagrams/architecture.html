@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AutoBugFixer 功能架构设计图（当前系统）</title>
+<style>
+  :root {
+    --ink: #24292f;
+    --muted: #57606a;
+    --line: #d0d7de;
+    --blue: #0969da;
+    --orange: #b35900;
+    --green: #1a7f37;
+    --purple: #8250df;
+    --red: #cf222e;
+    --amber: #9a6700;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif;
+    background: #f7f8fa; color: var(--ink); margin: 28px auto; max-width: 1240px;
+    padding: 0 16px; line-height: 1.5;
+  }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 17px; margin: 28px 0 10px; padding-left: 10px; border-left: 4px solid var(--blue); }
+  .sub { color: var(--muted); font-size: 13px; margin: 0 0 18px; }
+  .callout {
+    background: #eef6ff; border: 1px solid #b8d4f0; border-radius: 10px;
+    padding: 10px 14px; font-size: 13px; color: #0a3069; margin-bottom: 8px;
+  }
+  .callout b { color: #0b5394; }
+
+  /* ---- 分层带 ---- */
+  .band { margin: 12px 0; border-radius: 12px; padding: 10px 14px 12px; }
+  .band-access { background: #eaf3fb; border: 1px solid #c3dbf1; }
+  .band-pipeline { background: #fff4e6; border: 1px solid #f0d9b8; }
+  .band-services { background: #ebf7ee; border: 1px solid #c5e5cf; }
+  .band-adapters { background: #f6effc; border: 1px solid #e0cdf3; }
+  .band-security { background: #fdeff0; border: 1px solid #f2cfd2; }
+  .band-infra { background: #f1f3f4; border: 1px solid #d7dcdf; }
+
+  .band-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+  .band-name { font-weight: 700; font-size: 15px; }
+  .band-name::before { content: ""; display: inline-block; width: 8px; height: 8px;
+    border-radius: 50%; margin-right: 7px; vertical-align: 1px; }
+  .band-access .band-name::before { background: var(--blue); }
+  .band-pipeline .band-name::before { background: var(--orange); }
+  .band-services .band-name::before { background: var(--green); }
+  .band-adapters .band-name::before { background: var(--purple); }
+  .band-security .band-name::before { background: var(--red); }
+  .band-infra .band-name::before { background: #6e7781; }
+  .band-desc { font-size: 12px; color: var(--muted); }
+
+  .band-body { display: flex; flex-wrap: wrap; gap: 10px; }
+  .box {
+    background: #fff; border: 1px solid var(--line); border-radius: 8px;
+    padding: 8px 12px; min-width: 175px; flex: 1 1 175px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.05);
+  }
+  .box h3 { margin: 0 0 4px; font-size: 13px; color: #0d1117; }
+  .box h3 .badge {
+    display: inline-block; min-width: 20px; text-align: center; font-size: 11px;
+    border-radius: 10px; padding: 0 6px; margin-right: 6px; color: #fff;
+    background: var(--blue); font-weight: 600;
+  }
+  .box ul { margin: 0; padding-left: 16px; font-size: 12px; color: #444; }
+  .box .note { margin-top: 5px; font-size: 11px; color: #8b949e; }
+
+  .flow-down { text-align: center; color: var(--muted); font-size: 11px; margin: 2px 0; }
+  .flow-down::before { content: "▼"; display: block; font-size: 13px; color: var(--blue); }
+
+  /* ---- 主流程管线（7 Stage） ---- */
+  .pipeline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px; }
+  .pstage {
+    flex: 1 1 138px; background: #fff; border: 1px solid var(--line); border-radius: 8px;
+    padding: 8px 10px; text-align: center; position: relative;
+  }
+  .pstage .idx {
+    display: block; width: 20px; height: 20px; line-height: 20px; margin: 0 auto 4px;
+    background: var(--orange); color: #fff; border-radius: 50%; font-size: 11px; font-weight: 700;
+  }
+  .pstage h3 { margin: 0 0 3px; font-size: 12.5px; }
+  .pstage p { margin: 0; font-size: 11px; color: #57606a; }
+  .p-arrow { color: var(--orange); font-weight: 700; font-size: 15px; }
+  .pipeline-side {
+    flex: 1 1 220px; background: #fff; border: 1px dashed #b8a17e; border-radius: 8px;
+    padding: 8px 12px; font-size: 12px; color: #6a4e1f;
+  }
+  .pipeline-side h3 { margin: 0 0 4px; font-size: 12.5px; color: #6a4e1f; }
+  .pipeline-side ul { margin: 0; padding-left: 16px; font-size: 11.5px; }
+
+  /* ---- 状态机 ---- */
+  .states { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+  .state {
+    padding: 7px 11px; border-radius: 8px; border: 1px solid; font-size: 12px;
+    font-weight: 600; background: #fff; white-space: nowrap;
+  }
+  .state.main { border-color: var(--blue); color: #0a4a8f; background: #eef6ff; }
+  .state.wait { border-style: dashed; border-color: #d4a72c; color: #7a5c00; background: #fff8e6; }
+  .state.term { border-color: #6e7781; color: #57606a; background: #f6f8fa; }
+  .state.fail { border-color: var(--red); color: #a40e26; background: #fff0f0; }
+  .s-arrow { color: #6e7781; font-size: 13px; }
+  .branch-row { margin: 7px 0 2px; display: flex; flex-wrap: wrap; gap: 8px 14px;
+    font-size: 11.5px; color: var(--muted); }
+  .branch-row .item { display: flex; align-items: center; gap: 5px; }
+  .branch-row .dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+  .dot.main { background: #eef6ff; border: 1px solid var(--blue); }
+  .dot.wait { background: #fff8e6; border: 1px dashed #d4a72c; }
+  .dot.term { background: #f6f8fa; border: 1px solid #6e7781; }
+  .dot.fail { background: #fff0f0; border: 1px solid var(--red); }
+
+  footer { margin-top: 26px; color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+  <h1>AutoBugFixer 功能架构设计图</h1>
+  <p class="sub">依据当前代码实现（src/autobugfixer）绘制 · 状态机驱动的单体流水线 · 默认 SQLite + Fake LLM 全链路可跑</p>
+
+  <div class="callout">
+    <b>数据流主线：</b>缺陷平台 / CSV / Webhook 接入 → 标准化入库（幂等）→
+    预处理（完整性分析 → 验证方案 → 难度评分）→ 调度器按优先级出队 →
+    AI 修复（受控工作区 + 经验复用）→ 部署（环境锁 + 健康检查 + 回滚）→
+    DSL 验证（证据链 + 重试环）→ 经验沉淀 → 平台状态回写关闭。
+  </div>
+
+  <!-- ================= 分层架构 ================= -->
+  <section class="band band-access">
+    <div class="band-head"><span class="band-name">接入与展示层</span>
+      <span class="band-desc">外部入口：人、平台、命令行、IM</span></div>
+    <div class="band-body">
+      <div class="box"><h3>Web 控制台</h3><ul>
+        <li>任务看板（按状态/优先级）</li>
+        <li>任务详情（时间线/方案/修复/验证）</li>
+        <li>介入待办处理</li><li>经验库浏览</li></ul></div>
+      <div class="box"><h3>开放 API（FastAPI）</h3><ul>
+        <li>/api/tasks · /api/interventions</li>
+        <li>/api/webhooks/{platform} 事件接入</li>
+        <li>/api/import/csv</li></ul></div>
+      <div class="box"><h3>CLI 工具</h3><ul>
+        <li>autobugfixer-import（CSV 导入+分析）</li>
+        <li>autobugfixer-scheduler（常驻/--once）</li>
+        <li>autobugfixer-export（知识库导出）</li></ul></div>
+      <div class="box"><h3>IM 通知</h3><ul>
+        <li>介入请求推送</li><li>部署失败告警</li>
+        <li>SLA 临期提醒 / 超时升级</li></ul>
+        <div class="note">log（默认）/ 企业微信 / 钉钉</div></div>
+    </div>
+  </section>
+
+  <div class="flow-down">HTTP / CLI / 事件 / 命令</div>
+
+  <section class="band band-pipeline">
+    <div class="band-head"><span class="band-name">流程编排层（核心）</span>
+      <span class="band-desc">状态机驱动 · Stage 插件化 · 断点续跑</span></div>
+    <div class="band-body">
+      <div class="box"><h3>Orchestrator 编排器</h3><ul>
+        <li>按当前状态路由到 Stage</li>
+        <li>处理四类结果（成功/介入/重试/失败）</li>
+        <li>状态历史 + 审计 + 平台回写钩子</li>
+        <li>异常兜底：FAILED + 环境锁释放</li></ul></div>
+      <div class="pipeline" style="flex: 3 1 720px;">
+        <div class="pstage"><span class="idx">1</span><h3>完整性分析</h3>
+          <p>规则快路径 + LLM 评估<br>不足 → WAIT_INFO</p></div>
+        <span class="p-arrow">→</span>
+        <div class="pstage"><span class="idx">2</span><h3>方案生成</h3>
+          <p>DSL 结构化步骤<br>高风险 → WAIT_PLAN</p></div>
+        <span class="p-arrow">→</span>
+        <div class="pstage"><span class="idx">3</span><h3>难度评分</h3>
+          <p>三维加权 + 准入阈值<br>超阈值 → MANUAL</p></div>
+        <span class="p-arrow">→</span>
+        <div class="pstage"><span class="idx">4</span><h3>AI 修复</h3>
+          <p>受控工作区 + 经验复用<br>出口禁改路径校验</p></div>
+        <span class="p-arrow">→</span>
+        <div class="pstage"><span class="idx">5</span><h3>部署</h3>
+          <p>环境锁临界区<br>健康检查 + 失败回滚</p></div>
+        <span class="p-arrow">→</span>
+        <div class="pstage"><span class="idx">6</span><h3>验证</h3>
+          <p>DSL 解释执行 + 证据链<br>未过 → 回修复重试</p></div>
+        <span class="p-arrow">→</span>
+        <div class="pstage"><span class="idx">7</span><h3>经验沉淀</h3>
+          <p>成功：经验入库 + 关闭<br>失败：WAIT_DISCUSS</p></div>
+      </div>
+      <div class="pipeline-side"><h3>调度器 Scheduler</h3><ul>
+        <li>轮询平台拉新（幂等接入）</li>
+        <li>推进预处理（完整性/方案/评分）</li>
+        <li>SCORED 按分升序出队（先易后难）</li>
+        <li>回收过期环境锁（防死锁）</li>
+        <li>介入 SLA：临期提醒 / 超时升级</li></ul>
+        <h3 style="margin-top:8px;">DSL 解释器</h3><ul>
+          <li>动作词表校验（页面/接口/DB/日志）</li>
+          <li>只读 SQL 白名单</li></ul></div>
+    </div>
+  </section>
+
+  <div class="flow-down">Stage 经 TaskContext 调用能力服务</div>
+
+  <section class="band band-services">
+    <div class="band-head"><span class="band-name">能力服务层</span>
+      <span class="band-desc">统一服务句柄，跨 Stage 复用</span></div>
+    <div class="band-body">
+      <div class="box"><h3>LLM Gateway</h3><ul>
+        <li>fake / anthropic 双模式</li>
+        <li>结构化输出 + Schema 校验重试</li>
+        <li>token 预算：单任务 + 日总量</li></ul></div>
+      <div class="box"><h3>介入服务（HITL）</h3><ul>
+        <li>信息补充 / 方案确认</li>
+        <li>失败讨论 / 优化评审</li>
+        <li>回写结果 → 任务续跑</li></ul></div>
+      <div class="box"><h3>环境锁</h3><ul>
+        <li>environment 粒度互斥</li>
+        <li>租约 + 超时回收</li>
+        <li>部署→验证临界区持有</li></ul></div>
+      <div class="box"><h3>接入服务</h3><ul>
+        <li>平台字段 → 标准 BugTicket</li>
+        <li>幂等去重 + WAIT_INFO 唤醒</li></ul></div>
+      <div class="box"><h3>审计服务</h3><ul>
+        <li>追加写，不落更新</li>
+        <li>状态迁移 / 命令 / 介入 / LLM 留痕</li></ul></div>
+      <div class="box"><h3>经验库</h3><ul>
+        <li>分类入库 + 比对去重</li>
+        <li>修复前检索 → 注入指令</li>
+        <li>命中计数 + Markdown 导出脱敏</li></ul></div>
+      <div class="box"><h3>自我优化</h3><ul>
+        <li>失败统计 → 策略建议</li>
+        <li>strategy_version 版本化生效/回退</li></ul></div>
+      <div class="box"><h3>状态回写</h3><ul>
+        <li>status_map 配置化映射</li>
+        <li>失败重试一次 + 告警不阻塞</li></ul></div>
+    </div>
+  </section>
+
+  <div class="flow-down">服务经适配器访问外部系统</div>
+
+  <section class="band band-adapters">
+    <div class="band-head"><span class="band-name">适配器层（可插拔）</span>
+      <span class="band-desc">注册表按名实例化 · 新增零改动核心代码</span></div>
+    <div class="band-body">
+      <div class="box"><h3>缺陷平台</h3><ul>
+        <li>Mock（本地/CI）</li><li>Jira</li><li>禅道</li></ul>
+        <div class="note">list / get / update 统一契约</div></div>
+      <div class="box"><h3>环境执行器</h3><ul>
+        <li>Local（目录仿真）</li><li>SSH（paramiko）</li>
+        <li>Docker（SDK）</li></ul>
+        <div class="note">exec/upload/health/快照回滚</div></div>
+      <div class="box"><h3>修复通道</h3><ul>
+        <li>LangChain Agent（默认）</li>
+        <li>Claude Code CLI（headless）</li></ul>
+        <div class="note">工作区工具：读/写/列目录/diff</div></div>
+      <div class="box"><h3>数据与通知</h3><ul>
+        <li>CSV 导入（utf-8-sig / GBK）</li>
+        <li>通知器：log / IM</li></ul></div>
+      <div class="box"><h3>命令白名单</h3><ul>
+        <li>模板匹配 + 危险字符拒绝</li>
+        <li>SSH/Docker/Local 执行前强制校验</li></ul></div>
+    </div>
+  </section>
+
+  <section class="band band-security">
+    <div class="band-head"><span class="band-name">安全与横切能力</span>
+      <span class="band-desc">输入侧 · 执行侧 · 出口侧 · 落盘侧</span></div>
+    <div class="band-body">
+      <div class="box"><h3>提示词注入防护</h3><ul>
+        <li>untrusted 边界包裹</li>
+        <li>注入模式检测 + 审计告警</li></ul></div>
+      <div class="box"><h3>命令与路径管控</h3><ul>
+        <li>命令白名单（模板占位）</li>
+        <li>禁改路径（.env / *.key / deploy）</li></ul></div>
+      <div class="box"><h3>凭据与脱敏</h3><ul>
+        <li>Fernet 加密（主密钥环境变量/KMS）</li>
+        <li>知识库导出前脱敏</li></ul></div>
+      <div class="box"><h3>三维感知（可选）</h3><ul>
+        <li>页面（Playwright）</li><li>DB（只读 SQL）</li>
+        <li>接口（回放断言）</li></ul>
+        <div class="note">修复前基线 / 修复后对比</div></div>
+    </div>
+  </section>
+
+  <div class="flow-down">持久化与配置</div>
+
+  <section class="band band-infra">
+    <div class="band-head"><span class="band-name">基础设施</span>
+      <span class="band-desc">默认 SQLite · 生产可切 PostgreSQL</span></div>
+    <div class="band-body">
+      <div class="box"><h3>关系库</h3><ul>
+        <li>bug_ticket / task / 状态历史</li>
+        <li>方案 / 修复 / 部署 / 验证记录</li>
+        <li>介入单 / 经验库 / 审计 / 环境锁</li>
+        <li>LLM 计量 / 策略版本 / 不适用场景</li></ul></div>
+      <div class="box"><h3>文件存储</h3><ul>
+        <li>修复工作区（git worktree / 快照）</li>
+        <li>基线快照 / 部署快照（回滚）</li>
+        <li>感知证据（截图 / HTML / JSON）</li></ul></div>
+      <div class="box"><h3>配置中心</h3><ul>
+        <li>pydantic-settings，前缀 AUTOBUGFIXER_</li>
+        <li>评分权重 / 阈值 / 重试 / 白名单集中可调</li></ul></div>
+    </div>
+  </section>
+
+  <!-- ================= 状态机 ================= -->
+  <h2>任务状态机与主流程（当前实现）</h2>
+  <div class="states">
+    <span class="state main">DISCOVERED</span><span class="s-arrow">→</span>
+    <span class="state main">ANALYZING</span><span class="s-arrow">⇄</span>
+    <span class="state wait">WAIT_INFO</span><span class="s-arrow">→</span>
+    <span class="state main">PLANNING</span><span class="s-arrow">⇄</span>
+    <span class="state wait">WAIT_PLAN</span><span class="s-arrow">→</span>
+    <span class="state main">SCORED</span><span class="s-arrow">⇢</span>
+    <span class="state term">MANUAL</span>
+  </div>
+  <div class="states" style="margin-top:8px;">
+    <span class="state main">SCORED</span><span class="s-arrow">→</span>
+    <span class="state main">FIXING</span><span class="s-arrow">→</span>
+    <span class="state main">DEPLOYING</span><span class="s-arrow">⇄</span>
+    <span class="state wait">WAIT_ENV</span><span class="s-arrow">→</span>
+    <span class="state main">VERIFYING</span><span class="s-arrow">⇄</span>
+    <span class="state main">FIXING（重试环）</span><span class="s-arrow">→</span>
+    <span class="state main">LEARNING</span><span class="s-arrow">→</span>
+    <span class="state term">CLOSED</span>
+  </div>
+  <div class="states" style="margin-top:8px;">
+    <span class="state main">LEARNING</span><span class="s-arrow">→</span>
+    <span class="state wait">WAIT_DISCUSS</span><span class="s-arrow">⇢</span>
+    <span class="state term">MANUAL / CLOSED / FIXING</span>
+  </div>
+  <div class="states" style="margin-top:8px;">
+    <span class="state fail">任意状态 → FAILED</span><span class="s-arrow">⇢</span>
+    <span class="state main">人工重新触发（断点续跑）</span><span class="s-arrow">/</span>
+    <span class="state term">CANCELLED（终态）</span>
+  </div>
+  <div class="branch-row" style="margin-top:12px;">
+    <span class="item"><span class="dot main"></span>自动流转状态</span>
+    <span class="item"><span class="dot wait"></span>阻塞态：等待人工/环境（Orchestrator 到点即停）</span>
+    <span class="item"><span class="dot term"></span>终态（MANUAL 可人工重新触发）</span>
+    <span class="item"><span class="dot fail"></span>失败态（可断点续跑）</span>
+  </div>
+
+  <footer>
+    说明：图中内容对应 src/autobugfixer 当前实现；FAKE LLM 模式无需 API Key 可跑通全链路；
+    调度器当前为数据库轮询（扩展期可换 Redis/RQ）；人工介入是流水线的“阻塞状态”而非旁路流程。
+  </footer>
+</body>
+</html>
