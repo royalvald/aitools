@@ -23,6 +23,21 @@ from ..services.intervention import InterventionService
 router = APIRouter()
 
 
+# ---------- 健康检查 ----------
+
+@router.get("/health")
+def health(request: Request):
+    """健康检查：服务存活 + LLM 预检状态（探测失败时 status=degraded，Spec 02 B0）。"""
+    report = getattr(request.app.state, "llm_preflight", None)
+    if report is None:
+        return {"status": "ok", "llm": {"mode": "unknown", "probe": "unknown"}}
+    return {
+        "status": "ok" if report.ok else "degraded",
+        "llm": {"mode": report.mode,
+                "probe": "ok" if not report.probe_error else report.probe_error},
+    }
+
+
 # ---------- 任务 ----------
 
 @router.get("/tasks")

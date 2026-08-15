@@ -13,7 +13,7 @@ from .config import Settings, get_settings
 from .db import init_db, make_engine, make_session_factory
 from .logging_setup import setup_logging
 from .pipeline.orchestrator import Orchestrator
-from .services.llm_gateway import LLMGateway
+from .services.llm_gateway import LLMGateway, LLMPreflightError
 from .services.scheduler import Scheduler
 
 
@@ -24,6 +24,9 @@ def build_scheduler(settings: Settings | None = None) -> Scheduler:
     init_db(engine)
     session_factory = make_session_factory(engine)
     llm = LLMGateway(settings, session_factory)
+    report = llm.preflight()  # LLM 预检（Spec 02 B0）：调度器依赖 LLM，配置错拒绝启动
+    if not report.ok:
+        raise LLMPreflightError(f"LLM 预检失败: {report.summary()}")
     executor = LocalExecutor(settings.env_root, CommandWhitelist(settings.cmd_whitelist))
     notifier = build_notifier(settings)
     platform = get_bug_platform(settings.bug_platform, settings.bug_platform_config)
@@ -43,7 +46,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--once", action="store_true", help="只跑一轮后退出（调试用）")
     args = parser.parse_args(argv)
     setup_logging()
-    scheduler = build_scheduler()
+    try:
+        scheduler = build_scheduler()
+    except LLMPreflightError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
     if args.once:
         print(scheduler.run_round())
         return 0

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from fastapi import FastAPI
 
 from ..adapters.bug_platform import BugPlatformAdapter
@@ -13,8 +15,10 @@ from ..config import Settings, get_settings
 from ..db import init_db, make_engine, make_session_factory
 from ..logging_setup import setup_logging
 from ..pipeline.orchestrator import Orchestrator
-from ..services.llm_gateway import LLMGateway, MeteredFixChannel
+from ..services.llm_gateway import LLMGateway, LLMPreflightError, MeteredFixChannel
 from .routes import router
+
+logger = logging.getLogger(__name__)
 
 
 def _build_fix_channel(settings: Settings, llm: LLMGateway):
@@ -61,6 +65,13 @@ def create_app(
     executor = LocalExecutor(settings.env_root, whitelist)
     notifier = build_notifier(settings)
     llm = LLMGateway(settings, session_factory)
+    # LLM 预检（Spec 02 B0）：静态配置错拒绝启动；探测失败降级运行（/health 暴露状态）
+    preflight = llm.preflight()
+    if not preflight.static_ok:
+        raise LLMPreflightError(f"LLM 预检失败: {preflight.summary()}")
+    if preflight.probe_error:
+        logger.error("LLM 连通预检失败，服务降级启动（详见 /api/health）: %s",
+                     preflight.probe_error)
     # 平台适配器：显式传入优先，否则按配置名从 registry 实例化
     platform = platform or get_bug_platform(settings.bug_platform,
                                             settings.bug_platform_config)
@@ -75,6 +86,7 @@ def create_app(
     app.state.settings = settings
     app.state.session_factory = session_factory
     app.state.orchestrator = orchestrator
+    app.state.llm_preflight = preflight
     app.include_router(router, prefix="/api")
 
     # Web 控制台（静态 SPA）：挂载在 API 路由之后

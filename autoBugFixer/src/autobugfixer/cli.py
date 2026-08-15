@@ -38,6 +38,12 @@ def main(argv: list[str] | None = None, settings: Settings | None = None) -> int
     setup_logging()
     settings = settings or get_settings()
 
+    if args.run_analysis:  # LLM 预检（Spec 02 B0）：配置错启动即拦，不白做导入
+        report = LLMGateway(settings).preflight()
+        if not report.ok:
+            print(f"LLM 预检失败: {report.summary()}", file=sys.stderr)
+            return 2
+
     csv_path = Path(args.csv_path)
     if not csv_path.is_file():
         print(f"文件不存在: {csv_path}", file=sys.stderr)

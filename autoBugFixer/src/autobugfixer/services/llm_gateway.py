@@ -13,6 +13,7 @@ import json
 import logging
 import re
 from collections.abc import Iterator, Sequence
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 
@@ -33,6 +34,34 @@ logger = logging.getLogger(__name__)
 
 class BudgetExceededError(RuntimeError):
     """LLM 预算超限（11.3：单任务/日总量）。"""
+
+
+class LLMPreflightError(RuntimeError):
+    """LLM 启动预检失败（静态配置错误，进程应快速退出而非带病运行）。"""
+
+
+@dataclass
+class PreflightReport:
+    """启动预检结果：静态校验错误 + 连通探测错误（Spec 02 B0）。"""
+
+    mode: str
+    static_errors: list[str] = field(default_factory=list)
+    probe_error: str | None = None
+
+    @property
+    def static_ok(self) -> bool:
+        return not self.static_errors
+
+    @property
+    def ok(self) -> bool:
+        return self.static_ok and self.probe_error is None
+
+    def summary(self) -> str:
+        """拼接全部错误信息（供日志/报错文案）。"""
+        parts = list(self.static_errors)
+        if self.probe_error:
+            parts.append(f"连通探测失败: {self.probe_error}")
+        return "; ".join(parts)
 
 
 class MeteredFixChannel:
@@ -173,6 +202,42 @@ class LLMGateway:
         self.settings = settings or get_settings()
         self.session_factory = session_factory
         self.fake_responses = list(fake_responses or [])
+
+    # ---- 启动预检（Spec 02 B0） ----
+
+    def preflight(self, probe: bool = True) -> PreflightReport:
+        """启动点预检：静态校验配置 + 可选连通探测（仅 anthropic 模式联网）。
+
+        fake 模式零依赖直接通过；探测调用不关联任务、不计预算（B0-3/B0-4）。
+        """
+        report = PreflightReport(mode=self.settings.llm_mode)
+        mode = self.settings.llm_mode
+        if mode not in ("fake", "anthropic"):
+            report.static_errors.append(f"llm_mode 非法: {mode!r}（可选 fake / anthropic）")
+            return report
+        if mode == "anthropic":
+            if not self.settings.anthropic_api_key:
+                report.static_errors.append(
+                    "llm_mode=anthropic 但未配置 ANTHROPIC_API_KEY")
+            if not self.settings.anthropic_model:
+                report.static_errors.append("llm_mode=anthropic 但未配置模型名")
+        if probe and report.static_ok and mode == "anthropic":
+            try:
+                self._probe_model().invoke("ping")
+            except Exception as exc:  # 网络/认证/模型名错误统一落到探测错误
+                report.probe_error = f"{type(exc).__name__}: {exc}"
+        return report
+
+    def _probe_model(self) -> BaseChatModel:
+        """探测专用模型：最小 token + 短超时，失败快速返回（测试可替换）。"""
+        from langchain_anthropic import ChatAnthropic
+
+        return ChatAnthropic(
+            model=self.settings.anthropic_model,
+            api_key=self.settings.anthropic_api_key,
+            max_tokens=1,
+            timeout=10,
+        )
 
     # ---- 模型 ----
 
