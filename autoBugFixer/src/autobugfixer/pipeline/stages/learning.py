@@ -39,25 +39,74 @@ class LearningStage:
     def _success_branch(self, ctx: TaskContext, verify: VerifyRecord) -> StageResult:
         fix = ctx.session.scalar(select(FixRecord).where(
             FixRecord.task_id == ctx.task.id).order_by(FixRecord.attempt.desc()))
-        category = self._classify(ctx)
+        digest = self._digest_experience(ctx, fix, verify)
+        category = digest.category or self._classify(ctx)
         # 比对去重：同 category + problem_signature 合并更新而非重复新增（FR-MEM-01）
         ExperienceService(ctx.session).upsert(
             category=category,
             problem_signature=ctx.bug.title,
             symptoms=ctx.bug.actual[:500],
-            root_cause_pattern="",  # P1：LLM 归因总结
+            root_cause_pattern=digest.root_cause_pattern[:500],  # LLM 归因（Spec 08 §7）
             fix_pattern=(fix.summary if fix else "")[:500],
             verification_points="; ".join(
                 s.get("desc") or s.get("action", "") for s in (verify.step_results or []))[:500],
             applicable_conditions=f"env={ctx.bug.env_version}",
             source_task_ids=[ctx.task.id],
         )
+        # 技能蒸馏（Spec 03 §8）：验证通过的提议技能入库沉淀（技能库 = 验证侧经验库）
+        self._distill_skills(ctx)
         # 平台状态回写由状态机迁移钩子统一处理（status_map，CLOSED->已关闭）
         ctx.notifier.send("tester", NoticeMessage(
             title=f"Bug {ctx.bug.platform_bug_id} 已自动修复关闭",
             content=f"任务 #{ctx.task.id} 验证通过", link=f"/tasks/{ctx.task.id}"))
         return StageResult(status="success", next_state=TaskState.CLOSED,
                            message="经验已沉淀，缺陷单已关闭")
+
+    def _digest_experience(self, ctx: TaskContext, fix, verify: VerifyRecord):
+        """LLM 归因与分类（Spec 08 §7 已知限制修复）：异常时回退空摘要（分类走
+        关键词规则、root_cause 不覆盖），成功分支绝不因 LLM 故障中断。
+        """
+        from ..schemas import ExperienceDigest
+
+        verification_points = "; ".join(
+            s.get("desc") or s.get("action", "") for s in (verify.step_results or []))[:300]
+        prompt = load_prompt("experience_digest").format(
+            bug_block=build_bug_block(ctx),
+            fix_pattern=(fix.summary if fix else "")[:500],
+            verification_points=verification_points)
+        try:
+            result = ctx.llm.analyze(prompt, ExperienceDigest,
+                                     task_id=ctx.task.id, stage=self.name,
+                                     session=ctx.session)
+            assert isinstance(result, ExperienceDigest)
+            return result
+        except Exception:
+            return ExperienceDigest()
+
+    def _distill_skills(self, ctx: TaskContext) -> None:
+        """验证通过后蒸馏提议技能（Spec 03 §8 入库沉淀：去重合并、upsert、
+        记录来源任务与使用统计）。
+        """
+        from ...models import VerificationPlan
+        from ...services.skill import SkillService
+
+        plan = ctx.session.scalar(select(VerificationPlan).where(
+            VerificationPlan.task_id == ctx.task.id).order_by(
+            VerificationPlan.version.desc()))
+        proposals = (plan.proposed_skills or []) if plan is not None else []
+        if not proposals:
+            return
+        service = SkillService(ctx.session)
+        for prop in proposals:
+            skill, created = service.upsert(
+                name=prop.get("name", ""), params=prop.get("params") or [],
+                desc=prop.get("desc", ""), template_steps=prop.get("steps") or [],
+                source_task_id=ctx.task.id)
+            ctx.audit.log(action="skill_distilled", target=f"skill:{skill.id}",
+                          detail={"name": skill.name, "created": created,
+                                  "version": skill.version,
+                                  "template_steps": len(prop.get("steps") or [])},
+                          task_id=ctx.task.id)
 
     # ---- 失败分支：LLM 汇总不适用场景 + 人工讨论议题（FR-MEM-02） ----
 
@@ -109,7 +158,7 @@ class LearningStage:
 
     @staticmethod
     def _classify(ctx: TaskContext) -> str:
-        """简化分类：按 Bug 文本关键词归类（P1 改 LLM 分类，类目可配置扩展）。"""
+        """关键词五级规则分类（LLM 归因调用的回退路径，Spec 08 §7）。"""
         text = f"{ctx.bug.title} {ctx.bug.description}"
         if any(k in text for k in ("接口", "api", "API", "请求")):
             return "接口类"

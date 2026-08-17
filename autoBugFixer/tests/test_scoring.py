@@ -12,12 +12,15 @@ from autobugfixer.services.intervention import InterventionService
 
 
 def _score_responses(fix: float, verify: float, change: float) -> list:
-    """按调用顺序编排 fake 应答：完整性 -> 方案 -> 评分。"""
+    """按调用顺序编排 fake 应答：完整性 -> 方案 -> 评分（四段式合法方案）。"""
     return [
         {"complete": True, "missing": [], "suggestions": []},
         {"env_requirements": "本地仿真环境",
-         "steps": [{"action": "call_api", "params": {"method": "GET", "path": "/health"}},
-                   {"action": "assert_response", "params": {"json_path": "status", "expect": "ok"}}],
+         "steps": [{"action": "input", "params": {"selector": "#env", "value": "v1"},
+                    "desc": "确认环境版本"},
+                   {"action": "call_api", "params": {"method": "GET", "path": "/health"}},
+                   {"action": "assert_response",
+                    "params": {"json_path": "status", "expect": "ok"}}],
          "expected_results": ["ok"], "function_points": ["健康检查"], "regression_scope": "接口"},
         {"fix_difficulty": fix, "verify_difficulty": verify, "change_scale": change,
          "rationale": "测试用评分"},

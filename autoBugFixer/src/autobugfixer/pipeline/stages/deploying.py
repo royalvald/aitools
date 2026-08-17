@@ -15,6 +15,8 @@ from ..stage import StageResult, TaskContext
 from ..state import TaskState
 from .common import resolve_executor
 
+from ...adapters.env_executor import validate_environment
+
 
 class DeployingStage:
     """部署阶段（环境锁临界区 + 声明式部署 + 失败回滚）。"""
@@ -29,6 +31,19 @@ class DeployingStage:
             return StageResult(status="failed", next_state=TaskState.FAILED,
                                message="无可用测试环境配置")
         task.environment_id = env.id
+
+        # 环境配置预检（Spec 06 §2.1 P1）：必败配置在取锁前暴露，不再静默降级/零步通过
+        errors, warnings = validate_environment(
+            env, global_whitelist=ctx.settings.cmd_whitelist)
+        for warning in warnings:
+            ctx.audit.log(action="env_config_warning", target=f"env:{env.id}",
+                          detail={"warning": warning}, task_id=task.id)
+        if errors:
+            ctx.audit.log(action="env_config_rejected", target=f"env:{env.id}",
+                          detail={"errors": errors}, task_id=task.id)
+            return StageResult(status="failed", next_state=TaskState.FAILED,
+                               message=f"环境配置预检失败: {'; '.join(errors)}")
+
         executor = resolve_executor(ctx)  # ssh/docker 走 registry 构建
 
         # 11.1：进入临界区前取环境锁，未取到则挂起排队

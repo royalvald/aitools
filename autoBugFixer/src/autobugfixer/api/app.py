@@ -7,6 +7,7 @@ import logging
 from fastapi import FastAPI
 
 from ..adapters.bug_platform import BugPlatformAdapter
+from ..adapters.codex_cli import CodexCLI, codex_preflight
 from ..adapters.env_executor import LocalExecutor
 from ..adapters.notifier_im import build_notifier
 from ..adapters.registry import get_bug_platform
@@ -15,21 +16,15 @@ from ..config import Settings, get_settings
 from ..db import init_db, make_engine, make_session_factory
 from ..logging_setup import setup_logging
 from ..pipeline.orchestrator import Orchestrator
-from ..services.llm_gateway import LLMGateway, LLMPreflightError, MeteredFixChannel
+from ..services.llm_gateway import LLMGateway, LLMPreflightError
 from .routes import router
 
 logger = logging.getLogger(__name__)
 
 
-def _build_fix_channel(settings: Settings, llm: LLMGateway):
-    """按配置构建修复通道：claude_code_cli 时包一层 llm_usage 计量。"""
-    if settings.fix_channel == "claude_code_cli":
-        from ..adapters.claude_code_cli import ClaudeCodeFixChannel
-
-        channel = ClaudeCodeFixChannel(executable=settings.claude_executable,
-                                       timeout=settings.claude_timeout)
-        return MeteredFixChannel(channel, llm)
-    return None  # langchain：直接用 LLMGateway 自带通道
+def _build_codex(settings: Settings):
+    """按配置构建 codex 修复通道（Spec 05：唯一修复驱动）。"""
+    return CodexCLI.from_settings(settings)
 
 
 def _build_perception(settings: Settings, session_factory, executor):
@@ -50,8 +45,12 @@ def _build_perception(settings: Settings, session_factory, executor):
 def create_app(
     settings: Settings | None = None,
     platform: BugPlatformAdapter | None = None,
+    codex=None,
 ) -> FastAPI:
-    """组装 FastAPI 应用：建库、装配适配器与编排器、挂载路由与 Web 控制台。"""
+    """组装 FastAPI 应用：建库、装配适配器与编排器、挂载路由与 Web 控制台。
+
+    codex：测试可注入 ScriptedCodexCLI 桩；缺省按配置构建真实 CodexCLI。
+    """
     settings = settings or get_settings()
     engine = make_engine(settings.database_url)
     init_db(engine)
@@ -72,13 +71,19 @@ def create_app(
     if preflight.probe_error:
         logger.error("LLM 连通预检失败，服务降级启动（详见 /api/health）: %s",
                      preflight.probe_error)
+    # codex 修复通道预检（Spec 05 §2.2）：失败降级运行并在 /api/health 暴露
+    # （查询/介入回写等非修复功能不受影响；修复任务将在 FIXING 显式 FAILED）
+    codex_errors = codex_preflight(settings)
+    if codex_errors:
+        logger.error("codex 修复通道预检失败（修复任务将失败，详见 /api/health）: %s",
+                     "; ".join(codex_errors))
     # 平台适配器：显式传入优先，否则按配置名从 registry 实例化
     platform = platform or get_bug_platform(settings.bug_platform,
                                             settings.bug_platform_config)
     orchestrator = Orchestrator(
         session_factory, llm=llm, platform=platform,
         executor=executor, notifier=notifier, settings=settings,
-        fix_channel=_build_fix_channel(settings, llm),
+        codex=codex if codex is not None else _build_codex(settings),
         perception=_build_perception(settings, session_factory, executor),
     )
 
@@ -87,6 +92,7 @@ def create_app(
     app.state.session_factory = session_factory
     app.state.orchestrator = orchestrator
     app.state.llm_preflight = preflight
+    app.state.codex_preflight = codex_errors
     app.include_router(router, prefix="/api")
 
     # Web 控制台（静态 SPA）：挂载在 API 路由之后

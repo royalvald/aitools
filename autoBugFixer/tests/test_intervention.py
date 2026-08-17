@@ -8,12 +8,12 @@ from autobugfixer.services.intervention import InterventionService
 from sqlalchemy import select
 
 
-def _ingest_incomplete_bug(session_factory, platform, settings) -> int:
+def _ingest_incomplete_bug(session_factory, platform, settings, repo) -> int:
     data = BugTicketData(
         platform_bug_id="BUG-T002",
         title="页面白屏",
         description="用户反馈打开首页白屏。",  # 缺复现步骤/期望/实际/环境
-        repo_url="",
+        repo_url=str(repo),  # 仓库可用：本用例聚焦信息补充介入
         affected_modules=["web"],
     )
     platform._bugs[data.platform_bug_id] = data
@@ -24,8 +24,8 @@ def _ingest_incomplete_bug(session_factory, platform, settings) -> int:
 
 
 def test_intervention_resolve_resumes_task(make_orchestrator, session_factory,
-                                           platform, settings, environment):
-    task_id = _ingest_incomplete_bug(session_factory, platform, settings)
+                                           platform, settings, environment, repo):
+    task_id = _ingest_incomplete_bug(session_factory, platform, settings, repo)
     orchestrator = make_orchestrator()
 
     # 1) 完整性分析判定信息不足 -> WAIT_INFO 阻塞 + 介入单创建
@@ -63,10 +63,10 @@ def test_intervention_resolve_resumes_task(make_orchestrator, session_factory,
 
 
 def test_info_rounds_exhausted_to_manual(make_orchestrator, session_factory,
-                                         platform, settings, environment):
+                                         platform, settings, environment, repo):
     """防死循环：补充往返超上限仍未完整 -> 直接转 MANUAL（4.1.2）。"""
     settings.max_info_rounds = 1
-    task_id = _ingest_incomplete_bug(session_factory, platform, settings)
+    task_id = _ingest_incomplete_bug(session_factory, platform, settings, repo)
     orchestrator = make_orchestrator()
     assert orchestrator.run_until_blocked(task_id) == TaskState.WAIT_INFO
 

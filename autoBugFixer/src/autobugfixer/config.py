@@ -30,11 +30,19 @@ class Settings(BaseSettings):
     daily_token_budget: int = 1_000_000  # 日总量预算
     stage_max_retry: int = 2  # 单 Stage LLM 调用重试次数
 
-    # 评分（FR-PRE-04）：三维权重 + 准入阈值
+    # 评分（FR-PRE-04）：三维权重 + 准入阈值（v1 引擎，默认）
     score_weight_fix: float = 0.4  # 解决难度
     score_weight_verify: float = 0.3  # 回归验证难度
     score_weight_change: float = 0.3  # 改动项规模
     admission_threshold: float = 60.0  # 综合分 < 阈值进入自动流程
+
+    # 评分 v2 引擎（Spec 04 §8：rubric + AI 判定表单 + 本地映射）
+    scoring_engine: str = "v1"  # v1（LLM 直接打分，as-built）/ v2（尺子在本地）
+    # v2 四维权重（定位/修改/验证/波及，建议起点 0.3/0.3/0.2/0.2，经评审定）
+    score_v2_weight_locate: float = 0.3
+    score_v2_weight_fix: float = 0.3
+    score_v2_weight_verify: float = 0.2
+    score_v2_weight_blast: float = 0.2
 
     # 重试（11.5）
     max_retry: int = 3
@@ -73,10 +81,11 @@ class Settings(BaseSettings):
     bug_platform: str = "mock"  # mock / jira / zentao（csv 走导入通道）
     bug_platform_config: dict = Field(default_factory=dict)
 
-    # 修复通道：langchain（create_agent）/ claude_code_cli（headless CLI）
-    fix_channel: str = "langchain"
-    claude_executable: str = "claude"
-    claude_timeout: float = 600.0
+    # 修复驱动（Spec 05）：codex exec 子进程（唯一通道）
+    codex_executable: str = "codex"
+    codex_model: str | None = None  # 未配置时用 codex CLI 默认模型
+    codex_timeout: float = 600.0
+    codex_sandbox: str = "workspace-write"  # 进程只能写工作区内文件，网络默认禁用
 
     # 三维感知（FR-FIX-02，P1）：默认关闭保持轻量
     perception_enabled: bool = False

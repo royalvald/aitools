@@ -27,14 +27,18 @@ router = APIRouter()
 
 @router.get("/health")
 def health(request: Request):
-    """健康检查：服务存活 + LLM 预检状态（探测失败时 status=degraded，Spec 02 B0）。"""
+    """健康检查：服务存活 + LLM/codex 预检状态（失败时 status=degraded，Spec 02 B0 / Spec 05）。"""
     report = getattr(request.app.state, "llm_preflight", None)
+    codex_errors = getattr(request.app.state, "codex_preflight", None)
     if report is None:
-        return {"status": "ok", "llm": {"mode": "unknown", "probe": "unknown"}}
+        return {"status": "ok", "llm": {"mode": "unknown", "probe": "unknown"},
+                "codex": {"status": "unknown"}}
     return {
         "status": "ok" if report.ok else "degraded",
         "llm": {"mode": report.mode,
                 "probe": "ok" if not report.probe_error else report.probe_error},
+        "codex": {"status": "ok" if not codex_errors else "error",
+                  "detail": codex_errors or []},
     }
 
 

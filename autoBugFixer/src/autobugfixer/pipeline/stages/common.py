@@ -1,4 +1,8 @@
-"""Stage 公共辅助：Bug 文本块（注入防护）、修复工作区与 agent 工具、diff 与禁改校验。"""
+"""Stage 公共辅助：Bug 文本块（注入防护）、修复工作区、diff 与禁改校验。
+
+修复 agent 工具集（make_workspace_tools）已随 langchain 修复通道移除
+（Spec 05 §6）：沙箱职责移交 codex workspace-write。
+"""
 
 from __future__ import annotations
 
@@ -10,7 +14,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from langchain_core.tools import tool
+from sqlalchemy import select
 
 from ...security.injection import detect_injection, wrap_untrusted
 from ..stage import TaskContext
@@ -50,46 +54,47 @@ def _is_git_repo(path: Path) -> bool:
 
 
 def prepare_workspace(ctx: TaskContext) -> Path:
-    """按 Bug 关联仓库创建独立工作区。
+    """按 Bug 关联仓库创建独立工作区（Spec 01 §9.5）。
 
-    优先 git 受控分支（use_git_worktree 开启且仓库为 git 时：`git worktree add`
-    + `autofix/<bug-id>` 分支）；仓库非 git 或 git 不可用时回退目录快照方案。
+    - 前置条件：关联仓库 >=1 且全部可用（接入层已校验；修复前不复检，
+      接入后目录被删等异常在此显式失败兜底，不再静默建空工作区）；
+    - 单仓库：扁平布局（工作区根 = 仓库内容，向后兼容）；
+    - 多仓库：``workspace/<仓库名>/`` 子目录布局（git 仓库逐个 worktree）；
+    - 优先 git 受控分支（use_git_worktree 开启且仓库为 git 时：
+      ``git worktree add`` + ``autofix/<bug-id>`` 分支）；
+      非 git 或 git 不可用时回退目录快照方案。
     """
+    from ...models import BugRepo
+
+    repos = list(ctx.session.scalars(select(BugRepo).where(
+        BugRepo.bug_ticket_id == ctx.bug.id).order_by(BugRepo.seq)).all())
+    unavailable = [r for r in repos if r.status != "available"]
+    if not repos:
+        raise RuntimeError(
+            "任务缺少关联仓库（Spec 01 §9：接入层应已拦截，请检查 bug_repo 数据）")
+    if unavailable:
+        raise RuntimeError("关联仓库不可用: "
+                            + "; ".join(f"{r.path}({r.fail_reason})" for r in unavailable))
+
     workspace = Path(ctx.settings.workspace_root) / f"task-{ctx.task.id}"
     if workspace.exists():
         shutil.rmtree(workspace)
     branch = f"autofix/{ctx.bug.platform_bug_id}"
-    src = Path(ctx.bug.repo_url) if ctx.bug.repo_url and Path(ctx.bug.repo_url).is_dir() else None
 
-    if ctx.settings.use_git_worktree and src is not None and _is_git_repo(src):
-        try:
-            # 重试场景：清理同名 worktree 与分支残留（best-effort）
-            subprocess.run(["git", "-C", str(src), "worktree", "remove", "--force",
-                            str(workspace)], capture_output=True, timeout=60)
-            subprocess.run(["git", "-C", str(src), "branch", "-D", branch],
-                           capture_output=True, timeout=60)
-            if workspace.exists():
-                shutil.rmtree(workspace)
-            _run_git(["-C", str(src), "worktree", "add", str(workspace),
-                      "-b", branch, ctx.bug.repo_branch or "HEAD"])
-            return workspace  # git 工作区用 git diff，无需 baseline 快照
-        except Exception as exc:
-            logger.warning("git worktree 创建失败，回退目录快照: %s", exc)
-            if workspace.exists():
-                shutil.rmtree(workspace)
+    single = len(repos) == 1
+    for repo in repos:
+        src = Path(repo.path)
+        if not src.is_dir():  # 接入后被删除：显式失败兜底
+            raise RuntimeError(f"关联仓库目录不存在: {repo.path}")
+        target = workspace if single else workspace / _repo_dir_name(repo.path)
+        _prepare_repo_workspace(src, target, branch, repo.branch,
+                                use_git_worktree=ctx.settings.use_git_worktree)
 
-    workspace.mkdir(parents=True)
-    if src is not None:
-        for item in src.iterdir():
-            if item.name == ".git":
-                continue  # 快照方案不复制 git 元数据
-            if item.is_dir():
-                shutil.copytree(item, workspace / item.name)
-            else:
-                shutil.copy2(item, workspace)
-    # 基线快照供 diff 比对
+    if single and (workspace / ".git").exists():
+        return workspace  # git 工作区用 git diff，无需 baseline 快照
+    # 基线快照供 diff 比对（覆盖单仓库扁平与多仓库子目录两种布局）
     baseline = workspace / BASELINE_DIR
-    baseline.mkdir()
+    baseline.mkdir(parents=True, exist_ok=True)
     for item in workspace.iterdir():
         if item.name == BASELINE_DIR:
             continue
@@ -98,6 +103,40 @@ def prepare_workspace(ctx: TaskContext) -> Path:
         else:
             shutil.copy2(item, baseline)
     return workspace
+
+
+def _repo_dir_name(path: str) -> str:
+    """多仓库子目录名：取仓库路径末段（重名时由先到后覆盖，接入数据应避免）。"""
+    name = Path(path).name or Path(path).anchor.replace(":", "").replace("\\", "")
+    return name or "repo"
+
+
+def _prepare_repo_workspace(src: Path, target: Path, branch: str, repo_branch: str,
+                            *, use_git_worktree: bool = False) -> None:
+    """单个关联仓库的工作区落位：开关开启且为 git 仓库时用 worktree，
+    失败/非 git/开关关回退目录快照。"""
+    if use_git_worktree and _is_git_repo(src):
+        try:
+            # 重试场景：清理同名 worktree 与分支残留（best-effort）
+            subprocess.run(["git", "-C", str(src), "worktree", "remove", "--force",
+                            str(target)], capture_output=True, timeout=60)
+            subprocess.run(["git", "-C", str(src), "branch", "-D", branch],
+                           capture_output=True, timeout=60)
+            _run_git(["-C", str(src), "worktree", "add", str(target),
+                      "-b", branch, repo_branch or "HEAD"])
+            return  # git 工作区用 git diff
+        except Exception as exc:
+            logger.warning("git worktree 创建失败，回退目录快照: %s", exc)
+            if target.exists():
+                shutil.rmtree(target)
+    target.mkdir(parents=True, exist_ok=True)
+    for item in src.iterdir():
+        if item.name == ".git":
+            continue  # 快照方案不复制 git 元数据
+        if item.is_dir():
+            shutil.copytree(item, target / item.name)
+        else:
+            shutil.copy2(item, target)
 
 
 def _git_diff(workspace: Path) -> tuple[list[str], str]:
@@ -148,48 +187,6 @@ def check_forbidden(changed_files: list[str], forbidden: list[str]) -> list[str]
                 violations.append(f)
                 break
     return violations
-
-
-def make_workspace_tools(workspace: Path) -> list:
-    """修复 agent 工具集：读写限定工作区内（11.2 执行侧权限收敛）。"""
-
-    def resolve(path: str) -> Path:
-        target = (workspace / path).resolve()
-        if not str(target).startswith(str(workspace.resolve())):
-            raise ValueError(f"路径越出工作区: {path}")
-        return target
-
-    @tool
-    def read_file(path: str) -> str:
-        """读取工作区内文件内容。"""
-        target = resolve(path)
-        if not target.is_file():
-            return f"文件不存在: {path}"
-        return target.read_text(encoding="utf-8")
-
-    @tool
-    def write_file(path: str, content: str) -> str:
-        """写入/修改工作区内文件。"""
-        target = resolve(path)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(content, encoding="utf-8")
-        return f"已写入 {path}"
-
-    @tool
-    def list_dir(path: str = ".") -> str:
-        """查看工作区目录结构。"""
-        target = resolve(path)
-        if not target.is_dir():
-            return f"目录不存在: {path}"
-        return "\n".join(sorted(p.name + ("/" if p.is_dir() else "") for p in target.iterdir()))
-
-    @tool
-    def git_diff() -> str:
-        """查看当前修改相对基线的差异。"""
-        _, diff = compute_diff(workspace)
-        return diff or "(无变更)"
-
-    return [read_file, write_file, list_dir, git_diff]
 
 
 def diff_hash(diff: str) -> str:

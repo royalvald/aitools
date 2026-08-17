@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .db import Base
@@ -39,6 +39,25 @@ class BugTicket(Base):
     missing_fields: Mapped[list] = mapped_column(JSON, default=list)
     raw_payload: Mapped[dict] = mapped_column(JSON, default=dict)
     synced_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class BugRepo(Base):
+    """Bug 关联代码仓库（Spec 01 §9：多仓库全量前置 + 接入时可用性校验结果持久化）。
+
+    接入层只校验可用性，不裁剪、不判定相关性（相关仓库由 LLM 在全部关联仓库内定位）。
+    """
+
+    __tablename__ = "bug_repo"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    bug_ticket_id: Mapped[int] = mapped_column(ForeignKey("bug_ticket.id"), index=True)
+    seq: Mapped[int] = mapped_column(Integer, default=0)  # 保持给定顺序
+    path: Mapped[str] = mapped_column(String(500), default="")
+    branch: Mapped[str] = mapped_column(String(200), default="main")
+    is_git: Mapped[bool] = mapped_column(Boolean, default=False)
+    status: Mapped[str] = mapped_column(String(20), default="unavailable")  # available/unavailable
+    fail_reason: Mapped[str] = mapped_column(String(500), default="")
+    checked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class Task(Base):
@@ -89,6 +108,8 @@ class VerificationPlan(Base):
     expected_results: Mapped[list] = mapped_column(JSON, default=list)
     function_points: Mapped[list] = mapped_column(JSON, default=list)
     regression_scope: Mapped[str] = mapped_column(Text, default="")
+    fix_approach: Mapped[dict] = mapped_column(JSON, default=dict)  # 修复思路大纲（Spec 03 §9.4）
+    proposed_skills: Mapped[list] = mapped_column(JSON, default=list)  # 提议技能快照（Spec 03 §8）
     risk_level: Mapped[str] = mapped_column(String(20), default="low")
     confirmed_by: Mapped[str | None] = mapped_column(String(100), nullable=True)
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -169,6 +190,12 @@ class Experience(Base):
     """修复经验库（FR-MEM-01）。"""
 
     __tablename__ = "experience"
+    # 活跃条目去重唯一索引（Spec 08 §7：防并发重复插入；仅约束 status='active' 行，
+    # 退役条目不受限）。upsert 查询键与此对齐。
+    __table_args__ = (
+        Index("ux_experience_active_dedup", "category", "problem_signature",
+              unique=True, sqlite_where=text("status = 'active'")),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     category: Mapped[str] = mapped_column(String(50), index=True)
@@ -267,3 +294,26 @@ class StrategyVersion(Base):
     source_intervention_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     note: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class VerificationSkill(Base):
+    """验证技能库（Spec 03 §8：AI 自主技能沉淀——验证侧经验库）。
+
+    技能 = 命名 + 参数签名 + 步骤模板（仅 9 基础动作组合，支持 {param} 占位）；
+    提议技能首次仅内联展开落库，验证通过后由学习阶段蒸馏入库；引用技能的方案
+    保存时展开为原始步骤——执行与技能库后续变更完全解耦。
+    """
+
+    __tablename__ = "verification_skill"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), unique=True, index=True)
+    params_signature: Mapped[str] = mapped_column(String(200), default="")  # 逗号分隔形参
+    desc: Mapped[str] = mapped_column(Text, default="")
+    template_steps: Mapped[list] = mapped_column(JSON, default=list)  # 带 {param} 占位的步骤模板
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    use_count: Mapped[int] = mapped_column(Integer, default=0)
+    status: Mapped[str] = mapped_column(String(20), default="active")  # active/disabled
+    source_task_ids: Mapped[list] = mapped_column(JSON, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)

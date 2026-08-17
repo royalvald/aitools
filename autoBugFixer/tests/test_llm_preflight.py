@@ -118,9 +118,11 @@ def test_api_probe_error_degrades_and_health_exposes(tmp_path, monkeypatch):
 
 
 def test_api_health_ok_in_fake_mode(settings, session_factory, platform):
-    """B0-3：fake 模式 /api/health 全绿。"""
+    """B0-3：fake 模式 /api/health LLM 全绿（codex 通道独立暴露）。"""
     from autobugfixer.api.app import create_app
 
     app = create_app(settings, platform=platform)
     body = TestClient(app).get("/api/health").json()
-    assert body == {"status": "ok", "llm": {"mode": "fake", "probe": "ok"}}
+    assert body["status"] == "ok"
+    assert body["llm"] == {"mode": "fake", "probe": "ok"}
+    assert "codex" in body  # codex 预检独立暴露（本机未装 codex 时为 error，不影响 LLM 状态）

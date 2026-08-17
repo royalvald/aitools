@@ -39,10 +39,11 @@ def test_end_to_end_full_pipeline(make_orchestrator, task_id, session_factory,
                          "FIXING", "DEPLOYING", "VERIFYING", "LEARNING", "CLOSED"]:
             assert expected in states, f"缺少状态: {expected}"
 
-        # 验证方案是 DSL 结构化输出
+        # 验证方案是 DSL 结构化输出（四段式：input 前置 -> call_api 触发 -> 断言）
         plan = s.scalar(select(VerificationPlan).where(VerificationPlan.task_id == task_id))
         assert plan.dsl_version == "1.0"
-        assert plan.steps[0]["action"] == "call_api"
+        assert plan.steps[0]["action"] == "input"
+        assert any(step["action"] == "call_api" for step in plan.steps)
 
         # 修复留痕：受控分支 + diff + prompt 快照
         fix = s.scalar(select(FixRecord).where(FixRecord.task_id == task_id))

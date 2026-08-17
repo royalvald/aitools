@@ -76,11 +76,26 @@ class DockerExecutor:
     # ---- EnvExecutor 契约 ----
 
     def exec(self, cmd: str) -> ExecResult:
-        """白名单校验后在容器内以 sh -c 执行命令。"""
+        """白名单校验后在容器内以 sh -c 执行命令（exec_timeout 超时生效）。
+
+        docker SDK 的 exec_run 不接受超时参数，此处用线程包装等待：
+        超时后放弃等待（不 join 挂死线程）并按 124（超时约定退出码）返回。
+        """
+        from concurrent.futures import ThreadPoolExecutor
+        from concurrent.futures import TimeoutError as FuturesTimeoutError
+
         self.whitelist.assert_allowed(cmd)  # 越权直接拒绝
-        returncode, output = self._container().exec_run(
-            ["/bin/sh", "-c", cmd], workdir=self.workdir, demux=True
-        )
+        pool = ThreadPoolExecutor(max_workers=1)
+        try:
+            future = pool.submit(self._container().exec_run,
+                                 ["/bin/sh", "-c", cmd], workdir=self.workdir, demux=True)
+            try:
+                returncode, output = future.result(timeout=self.exec_timeout)
+            except FuturesTimeoutError:
+                return ExecResult(cmd=cmd, returncode=124,
+                                  stderr=f"容器命令超时（{self.exec_timeout}s）: {cmd}")
+        finally:
+            pool.shutdown(wait=False, cancel_futures=True)  # 不等挂死线程
         out, err = output if isinstance(output, tuple) else (output, b"")
         return ExecResult(
             cmd=cmd, returncode=returncode, stdout=_decode(out).strip(), stderr=_decode(err).strip()

@@ -12,6 +12,8 @@ FAILING_PLAN_RESPONSES = [
     {"complete": True, "missing": [], "suggestions": []},
     {"env_requirements": "env",
      "steps": [
+         {"action": "input", "params": {"selector": "#env", "value": "v1"},
+          "desc": "确认环境版本"},
          {"action": "call_api", "params": {"method": "GET", "path": "/health"}},
          {"action": "assert_response",
           "params": {"json_path": "status", "expect": "never-match"}},
@@ -58,7 +60,30 @@ def test_discussion_close(failed_task, session_factory):
             Intervention.task_id == failed_task))
         task = InterventionService(s).resolve(intervention.id, {"action": "close"})
         assert TaskState(task.state) == TaskState.CLOSED
+        assert task.closed_at is not None  # Spec 08 §3.5：人工关闭同样写 closed_at
         s.commit()
+
+
+def test_learning_without_verify_record_goes_failure_branch(
+        make_orchestrator, session_factory, settings, task_id):
+    """无任何 VerifyRecord 进入 LEARNING（相同 diff 提前终止路径）-> 失败分支不抛错。"""
+    orchestrator = make_orchestrator()
+    assert orchestrator.run_preprocessing(task_id) == TaskState.SCORED
+    with session_factory() as s:
+        task = s.get(Task, task_id)
+        task.state = TaskState.FIXING.value  # 直接置于 FIXING/LEARNING 构造无验证记录场景
+        task.state = TaskState.LEARNING.value
+        s.commit()
+    final = orchestrator.run_task(task_id)
+    assert final.status == "need_intervention"
+    with session_factory() as s:
+        case = s.scalar(select(InapplicableCase).where(
+            InapplicableCase.task_id == task_id))
+        assert case is not None and case.reason  # 规则模板兜底（重试 0 次仍...)
+        intervention = s.scalar(select(Intervention).where(
+            Intervention.task_id == task_id, Intervention.type == "discussion"))
+        assert intervention is not None
+        assert TaskState(s.get(Task, task_id).state) == TaskState.WAIT_DISCUSS
 
 
 def test_discussion_manual_fix(failed_task, session_factory):

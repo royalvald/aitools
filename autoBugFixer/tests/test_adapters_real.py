@@ -1,17 +1,16 @@
 """真实外部系统适配器的离线测试（设计文档 6.2）。
 
 - Jira / 禅道：httpx MockTransport 构造典型响应；
-- SSH / Docker：monkeypatch sys.modules 注入 fake paramiko / docker 模块；
-- Claude Code CLI：monkeypatch subprocess.run 模拟 headless 输出。
+- SSH / Docker：monkeypatch sys.modules 注入 fake paramiko / docker 模块。
 
-全部离线可跑，不触网、不依赖 paramiko/docker/claude 真实安装。
+全部离线可跑，不触网、不依赖 paramiko/docker 真实安装。
+（Claude Code CLI 通道已随 Spec 05 codex 化移除，其测试见 test_codex_cli.py。）
 """
 
 from __future__ import annotations
 
 import io
 import json
-import subprocess
 import sys
 import tarfile
 from datetime import datetime, timezone
@@ -20,17 +19,10 @@ from types import SimpleNamespace
 
 import httpx
 import pytest
-from pydantic import BaseModel
 
 from autobugfixer.adapters.bug_platform import BugPatch, BugTicketData, MockBugPlatform
 from autobugfixer.adapters.bug_platform.jira import JiraBugPlatform
 from autobugfixer.adapters.bug_platform.zentao import ZentaoBugPlatform
-from autobugfixer.adapters.claude_code_cli import (
-    ClaudeCodeCLI,
-    ClaudeCodeError,
-    ClaudeCodeFixChannel,
-    FixResult,
-)
 from autobugfixer.adapters.env_executor.docker_executor import DockerExecutor
 from autobugfixer.adapters.env_executor.ssh_executor import SSHExecutor
 from autobugfixer.adapters.registry import (
@@ -518,121 +510,6 @@ def test_docker_missing_sdk_hint(monkeypatch):
     ex = _docker()
     with pytest.raises(RuntimeError, match="pip install docker"):
         ex.health_check()
-
-
-# ---------------------------------------------------------------- Claude Code CLI
-
-
-def _claude_payload(summary: str = "已修复 health.json") -> str:
-    return json.dumps({
-        "type": "result", "subtype": "success", "is_error": False,
-        "result": summary, "session_id": "s-1", "total_cost_usd": 0.01,
-    }, ensure_ascii=False)
-
-
-@pytest.fixture()
-def fake_claude_run(monkeypatch):
-    calls: list = []
-
-    def fake_run(cmd, cwd=None, capture_output=None, text=None, timeout=None):
-        calls.append({"cmd": cmd, "cwd": cwd, "timeout": timeout})
-        return SimpleNamespace(returncode=0, stdout=_claude_payload(), stderr="")
-
-    monkeypatch.setattr(
-        "autobugfixer.adapters.claude_code_cli.subprocess.run", fake_run)
-    return calls
-
-
-def _workspace_with_baseline(tmp_path: Path) -> Path:
-    ws = tmp_path / "ws"
-    (ws / ".baseline" / "api").mkdir(parents=True)
-    (ws / "api").mkdir(parents=True)
-    (ws / ".baseline" / "api" / "health.json").write_text(
-        '{"status": "fail"}', encoding="utf-8")
-    (ws / "api" / "health.json").write_text('{"status": "ok"}', encoding="utf-8")
-    return ws
-
-
-def test_claude_fix_parses_result_and_computes_diff(fake_claude_run, tmp_path):
-    ws = _workspace_with_baseline(tmp_path)
-    result = ClaudeCodeCLI(timeout=120).fix(ws, "修复 health 接口")
-    assert isinstance(result, FixResult)
-    assert result.summary == "已修复 health.json"
-    assert result.changed_files == ["api/health.json"]
-    assert '-{"status": "fail"}' in result.diff and '+{"status": "ok"}' in result.diff
-
-    call = fake_claude_run[0]
-    # 参数列表形式（无 shell 拼接），工作区为 cwd，含 headless JSON 输出参数
-    assert call["cmd"][0] == "claude"
-    assert call["cmd"][1:3] == ["-p", "修复 health 接口"]
-    assert "--output-format" in call["cmd"] and "json" in call["cmd"]
-    assert call["cwd"] == str(ws)
-    assert call["timeout"] == 120
-
-
-def test_claude_cli_missing_raises_clear_error(monkeypatch, tmp_path):
-    def not_found(cmd, **kwargs):
-        raise FileNotFoundError(cmd[0])
-
-    monkeypatch.setattr(
-        "autobugfixer.adapters.claude_code_cli.subprocess.run", not_found)
-    with pytest.raises(ClaudeCodeError, match="未找到 Claude Code CLI"):
-        ClaudeCodeCLI().fix(tmp_path, "p")
-
-
-def test_claude_cli_nonzero_exit_and_timeout(monkeypatch, tmp_path):
-    monkeypatch.setattr(
-        "autobugfixer.adapters.claude_code_cli.subprocess.run",
-        lambda cmd, **kw: SimpleNamespace(returncode=2, stdout="", stderr="boom"),
-    )
-    with pytest.raises(ClaudeCodeError, match="退出码 2"):
-        ClaudeCodeCLI().fix(tmp_path, "p")
-
-    def hang(cmd, **kw):
-        raise subprocess.TimeoutExpired(cmd, 1)
-
-    monkeypatch.setattr(
-        "autobugfixer.adapters.claude_code_cli.subprocess.run", hang)
-    with pytest.raises(ClaudeCodeError, match="超时"):
-        ClaudeCodeCLI(timeout=1).fix(tmp_path, "p")
-
-
-def test_claude_cli_is_error_flag(monkeypatch, tmp_path):
-    monkeypatch.setattr(
-        "autobugfixer.adapters.claude_code_cli.subprocess.run",
-        lambda cmd, **kw: SimpleNamespace(
-            returncode=0,
-            stdout=json.dumps({"is_error": True, "result": "模型拒绝执行"}),
-            stderr=""),
-    )
-    with pytest.raises(ClaudeCodeError, match="模型拒绝执行"):
-        ClaudeCodeCLI().fix(tmp_path, "p")
-
-
-def test_claude_analyze_validates_schema(monkeypatch):
-    class Score(BaseModel):
-        fix_difficulty: int
-
-    payload = json.dumps({"type": "result", "is_error": False,
-                          "result": '{"fix_difficulty": 20}'})
-    monkeypatch.setattr(
-        "autobugfixer.adapters.claude_code_cli.subprocess.run",
-        lambda cmd, **kw: SimpleNamespace(returncode=0, stdout=payload, stderr=""),
-    )
-    result = ClaudeCodeCLI().analyze("给 Bug 打分", Score)
-    assert result.fix_difficulty == 20
-
-
-def test_fix_channel_interchangeable_with_langchain_channel(fake_claude_run, tmp_path):
-    """与 LLMGateway 修复通道同签名：create_fix_agent(tools) + run_fix_agent。"""
-    from autobugfixer.pipeline.stages.common import make_workspace_tools
-
-    ws = _workspace_with_baseline(tmp_path)
-    channel = ClaudeCodeFixChannel()
-    agent = channel.create_fix_agent(make_workspace_tools(ws))  # 从工具闭包解析工作区
-    summary = channel.run_fix_agent(agent, "修复 health 接口", task_id=1, session=None)
-    assert summary == "已修复 health.json"
-    assert fake_claude_run[0]["cwd"] == str(ws)
 
 
 # ---------------------------------------------------------------- 注册表

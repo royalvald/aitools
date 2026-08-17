@@ -67,17 +67,19 @@ def analyze_tasks(orchestrator: Orchestrator,
                 VerificationPlan.task_id == task_id).order_by(
                 VerificationPlan.version.desc()))
             score_detail = task.score_detail or {}
+            if any(k in score_detail for k in ("fix_difficulty", "verify_difficulty", "change_scale")):
+                scores = {k: score_detail.get(k) for k in
+                          ("fix_difficulty", "verify_difficulty", "change_scale")}
+            else:  # 评分 v2 四维（Spec 04 §8.4：定位/修改/验证/波及）
+                scores = {k: score_detail.get(k) for k in
+                          ("locate", "fix", "verify", "blast")}
             summaries.append({
                 "task_id": task_id,
                 "bug_id": bug.platform_bug_id,
                 "title": bug.title,
                 "complete": final != TaskState.WAIT_INFO,
                 "risk_level": plan.risk_level if plan else None,
-                "scores": {
-                    "fix_difficulty": score_detail.get("fix_difficulty"),
-                    "verify_difficulty": score_detail.get("verify_difficulty"),
-                    "change_scale": score_detail.get("change_scale"),
-                } if score_detail else None,
+                "scores": scores if score_detail else None,
                 "priority_score": task.priority_score,
                 "state": final.value,
                 "admission": ADMISSION_LABELS.get(final, final.value),

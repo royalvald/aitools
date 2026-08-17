@@ -2,10 +2,12 @@
 
 LocalExecutor：以本机目录模拟部署环境，供本地开发与 CI；
 SSH/Docker/K8s 执行器按环境类型注册接入（首期不实现）。
+validate_environment：环境配置预检（Spec 06 §2.1 P1，部署前暴露必败配置）。
 """
 
 from __future__ import annotations
 
+import json
 import shlex
 import shutil
 import sqlite3
@@ -16,6 +18,70 @@ from typing import Protocol
 from pydantic import BaseModel
 
 from .whitelist import CommandWhitelist
+
+# 环境类型合法值（Spec 06 §2.1 预检规则 ①：k8s 明确拒绝）
+ENV_TYPES = {"local", "ssh", "docker"}
+
+
+def validate_environment(env, *, global_whitelist: list[str] | None = None,
+                         vault=None) -> tuple[list[str], list[str]]:
+    """环境配置预检（Spec 06 §2.1 P1）：返回 (errors, warnings)。
+
+    规则：
+    ① type 枚举校验（local/ssh/docker；拼错或 k8s 等预留值报错，
+      不再静默降级 local）；
+    ② ssh 必填 conn_config.host，credential_ref 非空时须可解密为 JSON；
+    ③ docker 必填 conn_config.container；
+    ④ deploy_script 非空且逐条命中该环境生效的白名单
+      （local 用全局配置，ssh/docker 用环境行 cmd_whitelist，与运行期一致）；
+    ⑤ local 类型提示 conn_config/cmd_whitelist 字段不生效（警告不报错）。
+    """
+    errors: list[str] = []
+    warnings: list[str] = []
+    env_type = (getattr(env, "type", "") or "").strip()
+    conn = dict(getattr(env, "conn_config", None) or {})
+
+    if env_type not in ENV_TYPES:
+        errors.append(f"type 非法: {env_type!r}（可选 {sorted(ENV_TYPES)}）")
+        return errors, warnings
+
+    if env_type == "local":
+        if conn:
+            warnings.append("local 类型忽略 conn_config（env_root 取全局配置）")
+        if getattr(env, "cmd_whitelist", None):
+            warnings.append("local 类型忽略环境行 cmd_whitelist（生效的是全局配置）")
+
+    if env_type == "ssh":
+        if not (conn.get("host") or "").strip():
+            errors.append("ssh 环境缺少 conn_config.host")
+        ref = (getattr(env, "credential_ref", "") or "").strip()
+        if ref:
+            try:
+                from ..security.credentials import CredentialVault
+
+                plain = (vault or CredentialVault()).decrypt(ref)
+                if not isinstance(json.loads(plain), dict):
+                    raise ValueError("非 JSON 对象")
+            except Exception as exc:
+                errors.append(f"credential_ref 解密失败: {exc}")
+
+    if env_type == "docker":
+        if not (conn.get("container") or "").strip():
+            errors.append("docker 环境缺少 conn_config.container")
+
+    script = list(getattr(env, "deploy_script", None) or [])
+    if not script:
+        errors.append("deploy_script 为空（零条命令的部署无意义）")
+    else:
+        effective = (list(getattr(env, "cmd_whitelist", None) or [])
+                     if env_type in ("ssh", "docker")
+                     else list(global_whitelist or []))
+        checker = CommandWhitelist(effective)
+        for cmd in script:
+            if not checker.is_allowed(cmd):
+                errors.append(f"部署命令未命中白名单: {cmd}")
+
+    return errors, warnings
 
 
 class ExecResult(BaseModel):

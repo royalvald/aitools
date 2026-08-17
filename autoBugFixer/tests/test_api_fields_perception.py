@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from autobugfixer.adapters.bug_platform import MockBugPlatform
+from autobugfixer.adapters.codex_cli import ScriptedCodexCLI
 from autobugfixer.api.app import create_app
 from autobugfixer.models import AuditLog, Environment, VerifyRecord
 from autobugfixer.pipeline.state import TaskState
@@ -19,7 +20,8 @@ def api_client(settings, session_factory, platform, repo):
         s.add(Environment(name="local-test", type="local",
                           deploy_script=["echo deploying"]))
         s.commit()
-    return TestClient(create_app(settings, platform=platform))
+    return TestClient(create_app(settings, platform=platform,
+                                 codex=ScriptedCodexCLI()))
 
 
 def _ingest(client, repo):

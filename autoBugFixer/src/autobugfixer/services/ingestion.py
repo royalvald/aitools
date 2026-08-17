@@ -16,6 +16,7 @@ from ..adapters.bug_platform import BugTicketData
 from ..models import BugTicket, Intervention, Task, TaskStateHistory
 from ..pipeline.state import TaskState, assert_transition
 from .audit import AuditService
+from .repo_check import repo_check_summary, sync_bug_repos
 
 
 def ingest_bug(session: Session, data: BugTicketData, max_retry: int = 3) -> tuple[Task, bool]:
@@ -23,7 +24,10 @@ def ingest_bug(session: Session, data: BugTicketData, max_retry: int = 3) -> tup
 
     - 新 Bug：创建 BugTicket + 任务实例（DISCOVERED -> ANALYZING）；
     - 已存在：刷新字段；若任务正处 WAIT_INFO 且数据有变化，唤醒重新分析；
-    - 脏数据兜底：存在 BugTicket 但缺任务时补建任务，避免返回 None。
+    - 脏数据兜底：存在 BugTicket 但缺任务时补建任务，避免返回 None；
+    - 仓库校验（Spec 01 §9）：入库前逐仓库纯本地校验并持久化 bug_repo 行，
+      task_ingest 审计携带 repo_check 摘要；不可用任务由完整性阶段拦下
+      （进入分析前停 WAIT_INFO，0 次 LLM 调用）。
     """
     audit = AuditService(session)
     existing = session.scalar(select(BugTicket).where(
@@ -31,6 +35,7 @@ def ingest_bug(session: Session, data: BugTicketData, max_retry: int = 3) -> tup
         BugTicket.platform_bug_id == data.platform_bug_id))
     if existing is not None:
         changed = _refresh_bug(existing, data)
+        sync_bug_repos(session, existing, data)  # 重导复检（Spec 01 §9.4）
         task = session.scalar(select(Task).where(Task.bug_ticket_id == existing.id))
         if task is None:
             # 脏数据兜底：补建任务实例
@@ -51,10 +56,13 @@ def ingest_bug(session: Session, data: BugTicketData, max_retry: int = 3) -> tup
     )
     session.add(bug)
     session.flush()
+    repo_rows = sync_bug_repos(session, bug, data)  # 接入时校验一次（Spec 01 §9.3）
     task = _create_task(session, bug, max_retry)
     audit.log(action="task_ingest", target=f"task:{task.id}",
               detail={"platform": data.platform, "bug_id": data.platform_bug_id,
-                      "missing_fields": data.missing_fields}, task_id=task.id)
+                      "missing_fields": data.missing_fields,
+                      "repo_check": repo_check_summary(repo_rows)},
+              task_id=task.id)
     session.flush()
     return task, True
 
@@ -120,7 +128,7 @@ def _wake_wait_info(session: Session, task: Task, audit: AuditService) -> None:
         stage="ingest", message="平台侧数据更新，重新进入完整性分析"))
     for it in session.scalars(select(Intervention).where(
             Intervention.task_id == task.id,
-            Intervention.type == "info_supplement",
+            Intervention.type.in_(["info_supplement", "repo_supplement"]),
             Intervention.status == "pending")).all():
         it.status = "resolved"
         it.result = {"note": "平台侧数据已更新，系统自动唤醒任务", "fields": "platform_sync"}

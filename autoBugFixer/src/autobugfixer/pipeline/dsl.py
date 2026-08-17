@@ -211,11 +211,18 @@ class DSLInterpreter:
 
     # ---- 日志类 ----
 
-    def _do_check_log(self, service: str, pattern: str, since: str = "") -> StepResult:
+    def _do_check_log(self, service: str, pattern: str, since: str = "",
+                      absent: bool = False) -> StepResult:
+        """检查日志命中：absent=false 命中数>0 才过；absent=true 反转为命中数==0（否定断言）。
+
+        since 参数当前仅收不校（无时间窗过滤，Spec 07 §10 已知限制）。
+        """
         content = self.runtime.read_text(f"logs/{service}.log")
         if content is None:
             return StepResult("check_log", False, f"日志不存在: {service}")
         matched = re.findall(pattern, content)
-        ok = len(matched) > 0
-        return StepResult("check_log", ok, f"pattern={pattern} 命中 {len(matched)} 次",
+        ok = (len(matched) == 0) if absent else (len(matched) > 0)
+        mode = "不出现" if absent else "出现"
+        return StepResult("check_log", ok,
+                          f"pattern={pattern} {mode}（命中 {len(matched)} 次）",
                           evidence=content[:200])

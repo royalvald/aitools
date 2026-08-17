@@ -1,7 +1,7 @@
 """LLM Gateway（设计文档 11.3 成本治理 + 11.6 Fake 模式）。
 
-- 所有 LLM 调用统一入口：结构化分析走 with_structured_output(Schema)，
-  修复 agent 走 langchain.agents.create_agent；
+- 分析类 LLM 调用统一入口：结构化分析走 with_structured_output(Schema)；
+  修复驱动已统一为 codex exec 子进程（Spec 05），其事件流用量经本网关计量；
 - llm_mode=fake 时使用 ScriptedFakeChatModel，无需 API Key 即可跑通全流程（CI/本地开发）；
 - llm_mode=anthropic 时走 langchain-anthropic；
 - 每次调用计量 token 写 llm_usage，并在调用前做预算检查（超限抛 BudgetExceededError）。
@@ -12,14 +12,14 @@ from __future__ import annotations
 import json
 import logging
 import re
-from collections.abc import Iterator, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 
 from langchain_core.callbacks import CallbackManagerForLLMRun
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
+from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
 from langchain_core.runnables import Runnable
 from pydantic import BaseModel
@@ -64,27 +64,6 @@ class PreflightReport:
         return "; ".join(parts)
 
 
-class MeteredFixChannel:
-    """修复通道计量包装：claude_code_cli 通道本身不写 llm_usage，
-    用本类包一层保持预算治理口径一致（11.3）。"""
-
-    def __init__(self, inner: Any, gateway: "LLMGateway") -> None:
-        self.inner = inner
-        self.gateway = gateway
-
-    def create_fix_agent(self, tools: list[Any]) -> Any:
-        """透传给被包装的修复通道。"""
-        return self.inner.create_fix_agent(tools)
-
-    def run_fix_agent(self, agent: Any, prompt: str, *,
-                      task_id: int | None = None, session: Session | None = None) -> str:
-        """执行修复前后做预算检查与计量记录，保持与 LangChain 通道一致的口径。"""
-        self.gateway._check_budget(task_id, session)
-        output = self.inner.run_fix_agent(agent, prompt, task_id=task_id, session=session)
-        self.gateway._record_usage(task_id, "fixing", prompt, output, session)
-        return output
-
-
 def _extract_json(text: str) -> str:
     """从模型输出中提取 JSON（容忍 ```json 围栏与前后杂文本）。"""
     m = re.search(r"```(?:json)?\s*(\{.*\}|\[.*\])\s*```", text, re.DOTALL)
@@ -112,10 +91,10 @@ class _StructuredRunnable(Runnable):
 class ScriptedFakeChatModel(BaseChatModel):
     """可编排的 Fake ChatModel（Fake 模式核心，无需 API Key）。
 
-    - responses 队列：字符串 -> 作为 content 返回；
-      {"tool_calls": [{name, args}, ...]} -> 返回带工具调用的 AIMessage（供修复 agent 执行）；
+    - responses 队列：字符串/字典 -> 按内容返回（分析类结构化输出用）；
     - 队列耗尽后按提示词关键字给出默认应答，保证任意顺序都能跑通；
-    - 收到 ToolMessage（工具已执行）后直接输出修复说明，结束 agent 循环。
+    - 修复驱动的 Fake 兜底已随 langchain 修复通道一并移除（Spec 05 §6），
+      修复链路由 CodexCLI/ScriptedCodexCLI 承接。
     """
 
     responses: list[Any] = []
@@ -124,34 +103,52 @@ class ScriptedFakeChatModel(BaseChatModel):
     def _llm_type(self) -> str:
         return "scripted-fake-chat-model"
 
-    def bind_tools(self, tools: Sequence[Any], **kwargs: Any) -> "ScriptedFakeChatModel":
-        """工具绑定直接返回自身（工具调用由脚本驱动）。"""
-        return self  # 工具调用由脚本驱动，无需真实绑定
-
     def with_structured_output(self, schema: type[BaseModel], **kwargs: Any) -> Runnable:
         """返回按 Schema 校验的结构化输出 Runnable。"""
         return _StructuredRunnable(self, schema)
 
     def _default_response(self, text: str) -> Any:
         """按提示词模板标题路由的兜底应答（队列耗尽时使用）。"""
-        if "# Bug 修复指令" in text:
-            return {"tool_calls": [{"name": "write_file", "args": {
-                "path": "api/health.json", "content": '{"status": "ok"}'}}]}
         if "# Bug 完整性评估" in text:
             return {"complete": True, "missing": [], "suggestions": []}
         if "# 回归验证方案生成" in text:
+            # 四段式五步方案（Spec 03 §9.5：Fake 应答同步升级，保证新校验下可落库）
             return {
                 "env_requirements": "本地仿真环境",
                 "steps": [
+                    {"action": "input", "params": {"selector": "#env", "value": "v1.0.0"},
+                     "desc": "确认环境版本"},
                     {"action": "call_api", "params": {"method": "GET", "path": "/health"},
                      "desc": "调用健康检查接口"},
-                    {"action": "assert_response", "params": {"json_path": "status", "expect": "ok"},
+                    {"action": "assert_response",
+                     "params": {"json_path": "status", "expect": "ok"},
                      "desc": "断言 status 为 ok"},
+                    {"action": "click", "params": {"selector": "#recheck"},
+                     "desc": "复测触发健康检查"},
+                    {"action": "assert_response",
+                     "params": {"json_path": "status", "expect": "ok"},
+                     "desc": "复测断言 status 为 ok"},
                 ],
                 "expected_results": ["status 为 ok"],
                 "function_points": ["健康检查"],
                 "regression_scope": "接口回归",
+                "fix_approach": {
+                    "locate_hints": ["/health 接口返回 status=fail"],
+                    "change_files": ["api/health.json"],
+                    "strategy": "将健康检查返回的 status 修正为 ok",
+                },
             }
+        if "# 代码实证" in text:
+            # 评分 v2 复杂类型第二次调用（Spec 04 §8.6）
+            return {"triggered": True, "suspected_files": ["api/health.py"],
+                    "change_scale_estimate": "单文件小改动（fake 应答）"}
+        if "# 综合难度评分" in text and "scoring v2" in text:
+            # 评分 v2 判定表单（Spec 04 §8.5：只判定，不打分）
+            return {"bug_type": "single_logic", "type_evidence": "fake 判定：单函数内逻辑错误",
+                    "factors_hit": ["repro_executable"],
+                    "factor_evidence": {"repro_executable": "复现步骤给出具体操作序列"},
+                    "locate_signals": {"has_stack": False, "has_location_desc": True},
+                    "code_evidence": {"triggered": False}}
         if "# 综合难度评分" in text:
             return {"fix_difficulty": 20, "verify_difficulty": 15, "change_scale": 10,
                     "rationale": "fake 模式默认低难度"}
@@ -159,6 +156,10 @@ class ScriptedFakeChatModel(BaseChatModel):
             return {"condition_desc": "fake 模式默认不适用场景：超出自动修复能力边界",
                     "reason": "多次重试验证仍未通过（fake 应答）",
                     "discussion_topic": "请评审失败原因并决定人工接手方案"}
+        if "# 修复经验归因" in text:
+            # 成功分支经验归因（Spec 08 §7）
+            return {"category": "接口类",
+                    "root_cause_pattern": "fake 归因：status 字段在校验分支被误判为 fail"}
         return "{}"
 
     def _next_response(self, messages: list[BaseMessage]) -> Any:
@@ -174,24 +175,13 @@ class ScriptedFakeChatModel(BaseChatModel):
         run_manager: CallbackManagerForLLMRun | None = None,
         **kwargs: Any,
     ) -> ChatResult:
-        # 工具已执行过 -> 输出修复说明，终止 agent 工具循环
-        if any(isinstance(m, ToolMessage) for m in messages):
-            return ChatResult(generations=[ChatGeneration(
-                message=AIMessage(content="修复完成：已将 status 修正为 ok。"))])
         canned = self._next_response(messages)
-        if isinstance(canned, dict) and "tool_calls" in canned:
-            tool_calls = [
-                {"name": tc["name"], "args": tc["args"], "id": f"call_{i}", "type": "tool_call"}
-                for i, tc in enumerate(canned["tool_calls"])
-            ]
-            return ChatResult(generations=[ChatGeneration(
-                message=AIMessage(content="", tool_calls=tool_calls))])
         content = canned if isinstance(canned, str) else json.dumps(canned, ensure_ascii=False)
         return ChatResult(generations=[ChatGeneration(message=AIMessage(content=content))])
 
 
 class LLMGateway:
-    """统一 LLM 入口：结构化分析 + 修复 agent + 计量 + 预算。"""
+    """统一 LLM 入口：结构化分析 + 计量 + 预算（修复通道的预算/计量入口见公开方法）。"""
 
     def __init__(
         self,
@@ -276,24 +266,34 @@ class LLMGateway:
                 logger.warning("LLM 结构化输出校验失败，重试: %s", exc)
         raise ValueError(f"LLM 结构化输出多次校验失败: {last_error}")
 
-    # ---- 修复 agent（create_agent + 工具） ----
+    # ---- 修复通道的预算与计量入口（Spec 05：codex 事件流用量统一走本网关） ----
 
-    def create_fix_agent(self, tools: list[Any]) -> Any:
-        """用当前模型 + 工具集组装 LangChain 修复 agent。"""
-        from langchain.agents import create_agent
-
-        return create_agent(self._chat_model(), tools=tools)
-
-    def run_fix_agent(self, agent: Any, prompt: str, *,
-                      task_id: int | None, session: Session | None = None) -> str:
-        """执行修复 agent 并计量；返回最终消息内容。"""
+    def check_budget(self, task_id: int | None, session: Session | None = None) -> None:
+        """调用前预算检查（公开入口，修复通道复用；超限抛 BudgetExceededError）。"""
         self._check_budget(task_id, session)
-        result = agent.invoke({"messages": [{"role": "user", "content": prompt}]})
-        final = result["messages"][-1]
-        content = final.content if isinstance(final.content, str) else str(final.content)
-        total_in = sum(len(str(m.content)) for m in result["messages"]) // 4
-        self._record_usage(task_id, "fixing", prompt, content, session, tokens_in=max(total_in, 1))
-        return content
+
+    def record_usage(self, task_id: int | None, stage: str, *,
+                     tokens_in: int, tokens_out: int,
+                     session: Session | None = None, model: str = "") -> None:
+        """写入一条 llm_usage 计量记录（公开入口，token 数由调用方提供）。"""
+        if self.session_factory is None:
+            return
+        usage = LLMUsage(
+            task_id=task_id, stage=stage,
+            model=model or f"{self.settings.llm_mode}:{self.settings.anthropic_model}",
+            tokens_in=tokens_in, tokens_out=tokens_out, cost_est=0.0,
+        )
+        own = session is None
+        s = session or self.session_factory()
+        try:
+            s.add(usage)
+            if own:
+                s.commit()
+            else:
+                s.flush()
+        finally:
+            if own:
+                s.close()
 
     # ---- 计量与预算（11.3） ----
 

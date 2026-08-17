@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import argparse
+import sys
 
+from .adapters.codex_cli import CodexPreflightError, CodexCLI, codex_preflight
 from .adapters.notifier_im import build_notifier
 from .adapters.registry import get_bug_platform
 from .adapters.env_executor import LocalExecutor
 from .adapters.whitelist import CommandWhitelist
-from .api.app import _build_fix_channel, _build_perception
+from .api.app import _build_perception
 from .config import Settings, get_settings
 from .db import init_db, make_engine, make_session_factory
 from .logging_setup import setup_logging
@@ -17,8 +19,11 @@ from .services.llm_gateway import LLMGateway, LLMPreflightError
 from .services.scheduler import Scheduler
 
 
-def build_scheduler(settings: Settings | None = None) -> Scheduler:
-    """组装调度器（测试可直接驱动 run_round，不跑死循环）。"""
+def build_scheduler(settings: Settings | None = None, *, codex=None) -> Scheduler:
+    """组装调度器（测试可直接驱动 run_round，不跑死循环）。
+
+    codex：测试可注入 ScriptedCodexCLI 桩；缺省按配置构建真实 CodexCLI。
+    """
     settings = settings or get_settings()
     engine = make_engine(settings.database_url)
     init_db(engine)
@@ -27,13 +32,17 @@ def build_scheduler(settings: Settings | None = None) -> Scheduler:
     report = llm.preflight()  # LLM 预检（Spec 02 B0）：调度器依赖 LLM，配置错拒绝启动
     if not report.ok:
         raise LLMPreflightError(f"LLM 预检失败: {report.summary()}")
+    # codex 预检（Spec 05 §2.2）：调度器会派发修复任务，通道不可用拒绝启动
+    codex_errors = codex_preflight(settings)
+    if codex_errors:
+        raise CodexPreflightError(f"codex 预检失败: {'; '.join(codex_errors)}")
     executor = LocalExecutor(settings.env_root, CommandWhitelist(settings.cmd_whitelist))
     notifier = build_notifier(settings)
     platform = get_bug_platform(settings.bug_platform, settings.bug_platform_config)
     orchestrator = Orchestrator(
         session_factory, llm=llm, platform=platform, executor=executor,
         notifier=notifier, settings=settings,
-        fix_channel=_build_fix_channel(settings, llm),
+        codex=codex if codex is not None else CodexCLI.from_settings(settings),
         perception=_build_perception(settings, session_factory, executor),
     )
     return Scheduler(orchestrator, platform, notifier, session_factory, settings)
@@ -48,7 +57,7 @@ def main(argv: list[str] | None = None) -> int:
     setup_logging()
     try:
         scheduler = build_scheduler()
-    except LLMPreflightError as exc:
+    except (LLMPreflightError, CodexPreflightError) as exc:
         print(str(exc), file=sys.stderr)
         return 2
     if args.once:

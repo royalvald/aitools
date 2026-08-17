@@ -41,10 +41,11 @@ def test_ingest_refreshes_existing_bug(session_factory, settings):
 
 
 def test_ingest_wakes_wait_info_task(make_orchestrator, session_factory,
-                                     settings, environment):
+                                     settings, environment, repo):
     """平台侧补全信息 -> 轮询接入刷新字段并唤醒 WAIT_INFO 任务，直至闭环。"""
     incomplete = BugTicketData(platform_bug_id="BUG-RE2", title="页面白屏",
-                               description="白屏", affected_modules=["web"])
+                               description="白屏", repo_url=str(repo),
+                               affected_modules=["web"])
     task_id = _ingest(session_factory, incomplete, settings)
     orchestrator = make_orchestrator()
     assert orchestrator.run_until_blocked(task_id) == TaskState.WAIT_INFO
@@ -53,7 +54,7 @@ def test_ingest_wakes_wait_info_task(make_orchestrator, session_factory,
     complete = BugTicketData(
         platform_bug_id="BUG-RE2", title="页面白屏", description="白屏",
         repro_steps="1. 打开首页", expected="页面正常渲染", actual="白屏",
-        env_version="v1.0.0", affected_modules=["web"])
+        env_version="v1.0.0", repo_url=str(repo), affected_modules=["web"])
     with session_factory() as s:
         task, created = ingest_bug(s, complete, max_retry=settings.max_retry)
         s.commit()

@@ -65,8 +65,8 @@ class TaskContext:
     interventions: "InterventionService"
     env_locks: "EnvLockService"
     data: dict[str, Any] = field(default_factory=dict)  # 阶段间临时传递的小对象
-    # 可选接线：修复通道（默认 None 走 ctx.llm 的 LangChain 通道）、三维感知服务
-    fix_channel: Any = None
+    # 可选接线：codex 修复通道（默认 None 时 FixingStage 用 CodexCLI.from_settings）、三维感知服务
+    codex: Any = None
     perception: Any = None
 
     @property

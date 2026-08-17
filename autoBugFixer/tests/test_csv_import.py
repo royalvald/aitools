@@ -115,21 +115,36 @@ def test_import_result_structure_and_dedup(settings, session_factory):
 
 # ---------- 导入 + 预处理分析端到端 ----------
 
-def test_import_and_analysis_end_to_end(settings, session_factory):
-    """示例 CSV：完整 Bug 停在 SCORED（入队不修复），信息不完整停在 WAIT_INFO。"""
-    parsed = parse_csv(EXAMPLE_CSV.read_bytes())
-    assert len(parsed.rows) == 4
+def _mk_repo(tmp_path, name: str = "repo-a") -> Path:
+    """构造可用的本地关联仓库（非 git 非空目录，Spec 01 §9 B9-5b）。"""
+    repo = tmp_path / name
+    repo.mkdir(parents=True, exist_ok=True)
+    (repo / "api").mkdir(exist_ok=True)
+    (repo / "api" / "health.json").write_text('{"status": "fail"}', encoding="utf-8")
+    return repo
+
+
+def test_import_and_analysis_end_to_end(settings, session_factory, tmp_path):
+    """完整 Bug（含可用仓库）停在 SCORED；信息不完整/缺仓库分别停在 WAIT_INFO。"""
+    repo = _mk_repo(tmp_path)
+    content = (
+        f"{HEADER}\n"
+        f"BUG-2001,健康检查接口返回 fail,描述,步骤,期望,实际,v1,,{repo},\n"
+        f"BUG-2002,首页打开白屏,用户反馈白屏,,,,,screenshot.png;,{repo},\n"
+        f"BUG-2003,列表页分页报错,描述,步骤,期望,实际,v2,,,\n"
+    ).encode("utf-8-sig")
+    parsed = parse_csv(content)
+    assert len(parsed.rows) == 3
     with session_factory() as s:
-        result = import_bug_rows(s, parsed, source=str(EXAMPLE_CSV))
+        result = import_bug_rows(s, parsed, source="inline.csv")
         s.commit()
     orchestrator = _make_orchestrator(settings, session_factory)
     summaries = analyze_tasks(orchestrator, session_factory, result["task_ids"])
 
-    assert len(summaries) == 4
     states = {item["bug_id"]: item["state"] for item in summaries}
-    assert states["BUG-2002"] == "WAIT_INFO"           # 信息不完整
-    for bug_id in ("BUG-2001", "BUG-2003", "BUG-2004"):
-        assert states[bug_id] == "SCORED"              # 准入入队，未进入 FIXING
+    assert states["BUG-2002"] == "WAIT_INFO"           # 信息不完整（仓库可用）
+    assert states["BUG-2003"] == "WAIT_INFO"           # 未关联仓库（Spec 01 §9 B9-6）
+    assert states["BUG-2001"] == "SCORED"              # 准入入队，未进入 FIXING
     for item in summaries:
         assert item["state"] in {"SCORED", "MANUAL", "WAIT_INFO", "WAIT_PLAN"}
         if item["state"] == "SCORED":
@@ -138,18 +153,29 @@ def test_import_and_analysis_end_to_end(settings, session_factory):
             assert 0 <= item["priority_score"] < 60
             assert item["admission"] == "入队"
 
-    # 方案与评分落库
+    # 方案与评分落库（仅放行任务）；缺仓库任务 0 次 LLM 调用
     with session_factory() as s:
         plans = s.scalars(select(VerificationPlan)).all()
-        assert len(plans) == 3  # WAIT_INFO 的 Bug 未生成方案
-        scored = s.scalars(select(Task).where(Task.state == "SCORED")).all()
-        assert len(scored) == 3
-        assert all(t.score_detail.get("rationale") for t in scored)
+        assert len(plans) == 1  # 两个 WAIT_INFO 的 Bug 未生成方案
+        from autobugfixer.models import BugRepo, LLMUsage
+
+        repos = s.scalars(select(BugRepo).order_by(BugRepo.seq)).all()
+        assert [(r.path, r.branch, r.status) for r in repos] == [
+            (str(repo), "main", "available"),   # BUG-2001
+            (str(repo), "main", "available"),   # BUG-2002
+        ]  # BUG-2003 无关联仓库行
+        # 门禁拦截的两个 WAIT_INFO 任务 0 次 LLM 调用（Spec 01 R6：不消耗 LLM 成本）
+        blocked_task_ids = [t.id for t in s.scalars(select(Task).where(
+            Task.state == "WAIT_INFO")).all()]
+        used_task_ids = {u.task_id for u in s.scalars(select(LLMUsage)).all()}
+        assert used_task_ids and used_task_ids.isdisjoint(blocked_task_ids)
 
 
-def test_analysis_high_score_to_manual(settings, session_factory):
+def test_analysis_high_score_to_manual(settings, session_factory, tmp_path):
     """评分超阈值 -> MANUAL（用 fake_responses 队列注入高分）。"""
-    content = f"{HEADER}\nBUG-20,复杂缺陷,描述,步骤,期望,实际,v1,,,\n".encode("utf-8-sig")
+    repo = _mk_repo(tmp_path)
+    content = (f"{HEADER}\nBUG-20,复杂缺陷,描述,步骤,期望,实际,v1,,{repo},\n"
+               ).encode("utf-8-sig")
     parsed = parse_csv(content)
     with session_factory() as s:
         result = import_bug_rows(s, parsed)
@@ -157,7 +183,10 @@ def test_analysis_high_score_to_manual(settings, session_factory):
     fake_responses = [
         {"complete": True, "missing": [], "suggestions": []},
         {"env_requirements": "env", "steps": [
-            {"action": "check_log", "params": {"service": "app", "pattern": "ok"}}],
+            {"action": "open_page", "params": {"url": "/index"}},
+            {"action": "call_api", "params": {"method": "GET", "path": "/health"}},
+            {"action": "assert_response",
+             "params": {"json_path": "status", "expect": "never-match"}}],
          "expected_results": [], "function_points": [], "regression_scope": ""},
         {"fix_difficulty": 95, "verify_difficulty": 90, "change_scale": 92,
          "rationale": "核心链路复杂缺陷"},
@@ -176,11 +205,12 @@ def api_client(settings):
     return TestClient(create_app(settings, platform=MockBugPlatform([])))
 
 
-def test_api_import_csv(api_client):
+def test_api_import_csv(api_client, tmp_path):
+    repo = _mk_repo(tmp_path)
     content = (
         f"{HEADER}\n"
-        "BUG-30,接口超时,描述,步骤,期望,实际,v1,,,\n"
-        "BUG-31,标题缺失信息,,,,,,,,\n"
+        f"BUG-30,接口超时,描述,步骤,期望,实际,v1,,{repo},\n"
+        f"BUG-31,标题缺失信息,,,,,,,,\n"
     ).encode("utf-8-sig")
     resp = api_client.post(
         "/api/import/csv",
@@ -206,9 +236,10 @@ def test_api_import_csv_bad_format(api_client):
 # ---------- CLI ----------
 
 def test_cli_import_with_analysis(settings, tmp_path, capsys):
+    repo = _mk_repo(tmp_path)
     csv_path = tmp_path / "bugs.csv"
     csv_path.write_bytes(
-        f"{HEADER}\nBUG-40,CLI导入,描述,步骤,期望,实际,v1,,,\n".encode("utf-8-sig"))
+        f"{HEADER}\nBUG-40,CLI导入,描述,步骤,期望,实际,v1,,{repo},\n".encode("utf-8-sig"))
     rc = cli_main([str(csv_path), "--run-analysis"], settings=settings)
     assert rc == 0
     out = capsys.readouterr().out

@@ -1,5 +1,6 @@
 """经验复用回路测试（FR-MEM-01 闭环）：检索注入 + 命中计数 + 沉淀去重。"""
 
+import pytest
 from sqlalchemy import select
 
 from autobugfixer.adapters.bug_platform import BugTicketData
@@ -57,3 +58,15 @@ def test_experience_upsert_dedup(make_orchestrator, session_factory, platform,
         assert len(entries) == 1
         assert entries[0].version == 2  # 第二次合并更新
         assert len(entries[0].source_task_ids) == 2
+
+
+def test_experience_active_unique_constraint(session_factory):
+    """Spec 08 §7：活跃条目 (category, problem_signature) 唯一索引防并发重复插入。"""
+    from sqlalchemy.exc import IntegrityError
+
+    with session_factory() as s:
+        ExperienceService(s).save(category="接口类", problem_signature="重复入账")
+        s.commit()
+        with pytest.raises(IntegrityError):
+            ExperienceService(s).save(category="接口类", problem_signature="重复入账")
+            s.commit()

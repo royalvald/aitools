@@ -1,8 +1,9 @@
-"""Bug 修复阶段（FR-FIX-01 + 11.5 重试反馈回路 + 11.2 出口侧静态校验）。
+"""Bug 修复阶段（FR-FIX-01 + 11.5 重试反馈回路 + 11.2 出口侧静态校验，Spec 05）。
 
 流程：准备工作区 -> （可选）修复前三维感知基线 -> 经验库检索复用 ->
-组装修复指令（重试时注入失败反馈）-> 修复通道执行（LangChain agent / Claude Code CLI）
--> diff 与禁改路径校验 -> 相同 diff 提前终止 -> 留痕入库。
+组装修复指令（首轮含修复思路大纲，重试轮含失败反馈）-> codex exec 子进程
+（workspace-write 沙箱）-> 独立 compute_diff 验收（不信任 CLI 自述）->
+禁改路径 / 零变更 / 相同 diff 出口校验 -> 留痕入库（FixRecord + llm_usage）。
 """
 
 from __future__ import annotations
@@ -12,6 +13,7 @@ import logging
 
 from sqlalchemy import select
 
+from ...adapters.codex_cli import CodexCLI, CodexError
 from ...models import FixRecord, VerificationPlan, VerifyRecord
 from ...prompts import load_prompt, prompt_version
 from ...services.experience import ExperienceService
@@ -22,7 +24,6 @@ from .common import (
     check_forbidden,
     compute_diff,
     diff_hash,
-    make_workspace_tools,
     prepare_workspace,
 )
 
@@ -30,12 +31,12 @@ logger = logging.getLogger(__name__)
 
 
 class FixingStage:
-    """AI 修复阶段（含经验复用、重试反馈、出口校验）。"""
+    """AI 修复阶段（codex exec 驱动 + 经验复用、重试反馈、出口校验）。"""
 
     name = "fixing"
 
     def run(self, ctx: TaskContext) -> StageResult:
-        """准备工作区并执行修复，校验变更后产出 FixRecord，决定下一步状态。"""
+        """准备工作区并以 codex exec 执行修复，校验变更后产出 FixRecord，决定下一步状态。"""
         task = ctx.task
         attempt = ctx.attempt
         branch = f"autofix/{ctx.bug.platform_bug_id}"
@@ -47,10 +48,20 @@ class FixingStage:
         prompt_name = "fixing" if attempt == 1 else "fixing_retry"
         prompt, experience_hit = self._build_prompt(ctx, prompt_name, attempt, perception_note)
 
-        # 修复通道：默认 LangChain agent；配置 fix_channel=claude_code_cli 时走 CLI 通道
-        channel = ctx.fix_channel or ctx.llm
-        agent = channel.create_fix_agent(make_workspace_tools(workspace))
-        summary = channel.run_fix_agent(agent, prompt, task_id=task.id, session=ctx.session)
+        # 修复驱动（Spec 05）：codex exec 唯一通道；预算调用前拦截（超限 -> FAILED）
+        cli = ctx.codex or CodexCLI.from_settings(ctx.settings)
+        ctx.llm.check_budget(task.id, ctx.session)
+        try:
+            result = cli.run(prompt, workspace)
+        except CodexError as exc:
+            logger.error("codex exec 失败（task=%s）: %s", task.id, exc)
+            return StageResult(status="failed", next_state=TaskState.FAILED,
+                               message=f"修复通道调用失败: {exc}")
+        # 事件流用量计量（解析失败已记 0，不阻断；模型名按 codex 配置留痕）
+        ctx.llm.record_usage(
+            task.id, "fixing", tokens_in=result.tokens_in, tokens_out=result.tokens_out,
+            session=ctx.session, model=f"codex:{getattr(cli, 'model', None) or 'default'}")
+        summary = result.summary
 
         changed_files, diff = compute_diff(workspace)
         current_hash = diff_hash(diff)
@@ -61,7 +72,7 @@ class FixingStage:
             task_id=task.id, attempt=attempt, branch=branch, worktree=str(workspace),
             prompt_version=prompt_version(prompt_name), prompt_snapshot=prompt,
             changed_files=changed_files, diff=diff, diff_hash=current_hash, summary=summary,
-            experience_hit=experience_hit,
+            raw_log=result.raw_log, experience_hit=experience_hit,
         )
         ctx.session.add(record)
         ctx.session.flush()
@@ -130,7 +141,9 @@ class FixingStage:
         bug_block = build_bug_block(ctx)
         acceptance = self._acceptance_points(ctx)
         experience_block, experience_hit = self._experience_block(ctx)
-        extras = "\n\n".join(part for part in (experience_block, perception_note) if part)
+        extras = "\n\n".join(part for part in (
+            self._fix_approach_block(ctx) if prompt_name == "fixing" else "",
+            experience_block, perception_note) if part)
         if extras:
             acceptance = f"{acceptance}\n\n{extras}"
         if prompt_name == "fixing":
@@ -152,6 +165,26 @@ class FixingStage:
             attempt=attempt, bug_block=bug_block, acceptance=acceptance,
             previous_attempts=json.dumps(previous, ensure_ascii=False, indent=1),
             failure_evidence=json.dumps(evidence, ensure_ascii=False, indent=1)), experience_hit
+
+    def _fix_approach_block(self, ctx: TaskContext) -> str:
+        """修复思路大纲注入（Spec 03 §9.4，仅首轮）：从最新方案读取，提示而非约束。"""
+        plan = ctx.session.scalar(select(VerificationPlan).where(
+            VerificationPlan.task_id == ctx.task.id).order_by(
+            VerificationPlan.version.desc()))
+        approach = getattr(plan, "fix_approach", None) if plan is not None else None
+        if not approach:
+            return ""
+        locate = "; ".join(approach.get("locate_hints") or [])
+        files = "; ".join(approach.get("change_files") or [])
+        strategy = approach.get("strategy") or ""
+        lines = ["修复思路大纲（来自验证方案，提示而非约束，可依实际代码偏离）："]
+        if locate:
+            lines.append(f"- 定位线索: {locate}")
+        if files:
+            lines.append(f"- 拟改动文件: {files}")
+        if strategy:
+            lines.append(f"- 策略: {strategy}")
+        return "\n".join(lines) if len(lines) > 1 else ""
 
     def _experience_block(self, ctx: TaskContext) -> tuple[str, bool]:
         """经验复用回路（FR-MEM-01）：检索命中条目摘要注入修复指令并累计命中次数。"""

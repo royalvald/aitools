@@ -61,7 +61,7 @@ class Orchestrator:
         notifier: Notifier | None = None,
         settings: Settings | None = None,
         stages: dict[str, Stage] | None = None,
-        fix_channel=None,
+        codex=None,
         perception=None,
     ) -> None:
         self.session_factory = session_factory
@@ -70,8 +70,9 @@ class Orchestrator:
         self.platform = platform
         self.executor = executor
         self.notifier = notifier or LogNotifier()
-        # 修复通道（None 走 LLMGateway 的 LangChain 通道）与三维感知服务（可选）
-        self.fix_channel = fix_channel
+        # codex 修复通道（None 时按配置构建 CodexCLI；测试注入 ScriptedCodexCLI 桩）
+        # 与三维感知服务（可选）
+        self.codex = codex
         self.perception = perception
         # Stage 插件注册表：新增阶段在此挂载即可（FR-SYS-01）
         self.stages: dict[str, Stage] = stages or {
@@ -109,7 +110,7 @@ class Orchestrator:
             audit=AuditService(session),
             interventions=InterventionService(session, self.notifier, writeback=_writeback),
             env_locks=EnvLockService(session, lease_seconds=self.settings.env_lock_lease_seconds),
-            fix_channel=self.fix_channel,
+            codex=self.codex,
             perception=self.perception,
         )
 

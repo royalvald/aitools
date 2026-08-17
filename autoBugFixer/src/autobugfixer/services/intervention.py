@@ -20,6 +20,7 @@ from .audit import AuditService
 # 介入类型 -> 默认处理角色
 TYPE_TO_ROLE = {
     "info_supplement": "tester",
+    "repo_supplement": "tester",
     "plan_confirm": "tech_lead",
     "discussion": "developer",
     "optimization": "tech_lead",
@@ -61,10 +62,18 @@ class InterventionService:
         return intervention
 
     def _transition_task(self, task: Task, to_state: TaskState, message: str) -> None:
-        """介入回写引发的任务状态迁移（走状态机校验 + 历史 + 审计）。"""
+        """介入回写引发的任务状态迁移（走状态机校验 + 历史 + 审计）。
+
+        CLOSED 时同步写 closed_at（Spec 08 §3.5：与 Orchestrator._transition
+        口径对齐，报表按 closed_at 统计不漏人工关闭任务）。
+        """
+        from datetime import datetime, timezone
+
         from_state = TaskState(task.state)
         assert_transition(from_state, to_state)
         task.state = to_state.value
+        if to_state == TaskState.CLOSED:
+            task.closed_at = datetime.now(timezone.utc)
         self.session.add(TaskStateHistory(
             task_id=task.id, from_state=from_state.value, to_state=to_state.value,
             stage="intervention", message=message,
@@ -80,6 +89,7 @@ class InterventionService:
 
         result 约定：
         - info_supplement: {"fields": {bug 字段补充}}
+        - repo_supplement: {"fields": {"repo_url": "...", "repo_branch": "..."}}（Spec 01 §9）
         - plan_confirm:    {"approved": bool, "steps"?: [调整后的 DSL 步骤]}
         - discussion:      {"action": "manual_fix" | "close" | "retry"}
         """
@@ -106,6 +116,19 @@ class InterventionService:
                     setattr(bug, key, value)
             task.info_rounds += 1
             self._transition_task(task, TaskState.ANALYZING, "信息已补充，重新进入完整性分析")
+
+        elif intervention.type == "repo_supplement":
+            # 仓库补充回写（Spec 01 §9.4）：合并字段 -> 复检 -> 回 ANALYZING 由阶段门禁放行
+            assert task is not None, "仓库补充介入单缺少关联任务"
+            bug = self.session.get(BugTicket, task.bug_ticket_id)
+            for key, value in result.get("fields", {}).items():
+                if hasattr(bug, key):
+                    setattr(bug, key, value)
+            from .repo_check import sync_bug_repos
+
+            sync_bug_repos(self.session, bug, bug_data_of(bug))
+            task.info_rounds += 1
+            self._transition_task(task, TaskState.ANALYZING, "仓库信息已补充，重新校验")
 
         elif intervention.type == "plan_confirm":
             assert task is not None, "方案确认介入单缺少关联任务"
@@ -152,3 +175,11 @@ class InterventionService:
         if assignee:
             stmt = stmt.where(Intervention.assignee_role == assignee)
         return list(self.session.scalars(stmt).all())
+
+
+def bug_data_of(bug: BugTicket):
+    """从 BugTicket 构造仓库复检所需的 DTO（repo_check 统一切分约定）。"""
+    from ..adapters.bug_platform import BugTicketData
+
+    return BugTicketData(platform=bug.platform, platform_bug_id=bug.platform_bug_id,
+                         repo_url=bug.repo_url, repo_branch=bug.repo_branch)

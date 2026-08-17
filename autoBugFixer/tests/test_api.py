@@ -5,6 +5,7 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
+from autobugfixer.adapters.codex_cli import ScriptedCodexCLI
 from autobugfixer.api.app import create_app
 from autobugfixer.models import Environment
 
@@ -15,7 +16,7 @@ def client(settings, session_factory, platform, tmp_path):
         s.add(Environment(name="local-test", type="local",
                           deploy_script=["echo deploying"]))
         s.commit()
-    app = create_app(settings, platform=platform)
+    app = create_app(settings, platform=platform, codex=ScriptedCodexCLI())
     return TestClient(app)
 
 
@@ -52,7 +53,7 @@ def test_tasks_list_and_detail(client, repo):
     detail = client.get(f"/api/tasks/{task_id}").json()
     assert detail["state"] == "CLOSED"
     assert len(detail["timeline"]) >= 8
-    assert detail["plans"][0]["steps"][0]["action"] == "call_api"
+    assert detail["plans"][0]["steps"][0]["action"] == "input"
     assert detail["verify_records"][0]["conclusion"] == "passed"
 
 
@@ -60,11 +61,12 @@ def test_task_detail_404(client):
     assert client.get("/api/tasks/999").status_code == 404
 
 
-def test_intervention_list_and_resolve(client):
-    # 信息不完整的 Bug -> WAIT_INFO 介入
+def test_intervention_list_and_resolve(client, repo):
+    # 信息不完整（仓库可用）的 Bug -> WAIT_INFO 介入
     resp = client.post("/api/webhooks/mock", json={
         "platform_bug_id": "BUG-API02", "title": "页面白屏",
-        "description": "用户反馈白屏", "affected_modules": ["web"],
+        "description": "用户反馈白屏", "repo_url": str(repo),
+        "affected_modules": ["web"],
     })
     assert resp.json()["state"] == "WAIT_INFO"
 

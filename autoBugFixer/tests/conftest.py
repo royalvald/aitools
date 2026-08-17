@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from autobugfixer.adapters.bug_platform import BugTicketData, MockBugPlatform
+from autobugfixer.adapters.codex_cli import ScriptedCodexCLI
 from autobugfixer.adapters.env_executor import LocalExecutor
 from autobugfixer.adapters.notifier import LogNotifier
 from autobugfixer.adapters.whitelist import CommandWhitelist
@@ -26,6 +27,7 @@ def settings(tmp_path) -> Settings:
         llm_mode="fake",
         workspace_root=str(tmp_path / "workspaces"),
         env_root=str(tmp_path / "testenv"),
+        perception_evidence_root=str(tmp_path / "evidence"),
         cmd_whitelist=["echo {text}"],
     )
 
@@ -80,15 +82,16 @@ def environment(session_factory) -> Environment:
 
 @pytest.fixture()
 def make_orchestrator(settings, session_factory, platform):
-    """编排器工厂：可注入 fake_responses 控制 LLM 输出，可附加 Orchestrator 参数。"""
+    """编排器工厂：可注入 fake_responses 控制 LLM 输出，可附加/覆盖 Orchestrator 参数。"""
 
     def _make(fake_responses: list | None = None, **orch_kwargs) -> Orchestrator:
         llm = LLMGateway(settings, session_factory, fake_responses=fake_responses)
         executor = LocalExecutor(settings.env_root, CommandWhitelist(settings.cmd_whitelist))
-        return Orchestrator(
-            session_factory, llm=llm, platform=platform, executor=executor,
-            notifier=LogNotifier(), settings=settings, **orch_kwargs,
-        )
+        defaults = dict(session_factory=session_factory, llm=llm, platform=platform,
+                        executor=executor, notifier=LogNotifier(), settings=settings,
+                        codex=ScriptedCodexCLI())  # 修复通道桩（Spec 05 §2.5）
+        defaults.update(orch_kwargs)
+        return Orchestrator(**defaults)
 
     return _make
 
