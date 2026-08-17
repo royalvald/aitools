@@ -29,7 +29,7 @@ S1 环境解析        deploying.py:27,101-105
    ├─ 无环境行 → OUT-4 FAILED（"无可用测试环境配置"，未取锁）
    └─ 成功 → 回写 task.environment_id
 
-S2 执行器解析      common.py:200-215
+S2 执行器解析      common.py:200-215（配置消费与缺配行为见 §2.1）
    env.type ∈ {ssh, docker} → registry 构建（ssh 附带 Fernet 凭据解密）
    其余（local 等）→ Orchestrator 注入的默认执行器
 
@@ -76,6 +76,22 @@ OUT-3 VERIFYING（S5-S9 全过）：deploy.status="success"；**锁保持持有*
 OUT-4 FAILED（无环境行，未取锁）
 进程崩溃残留锁 → 租约 1800s 过期 → 调度器每轮 reclaim（§3.3）
 ```
+
+### 2.1 环境配置的解析与检查（as-built：无显式预检，靠运行期失败暴露 + 三个静默陷阱）
+
+`environment` 行七字段在部署链路的消费点与缺配行为——**代码没有任何配置预检步骤**，问题要么运行期炸出（→ FAILED），要么静默通过：
+
+| 字段 | 消费点 | 缺失/非法时 as-built 行为 |
+|---|---|---|
+| `type` | resolve_executor（common.py:210-212） | 只认 `ssh`/`docker` 走 registry；**其他任何值（拼错 "ssh2"、预留 "k8s"、空串）一律落默认 local 执行器，无任何告警——陷阱 ①** |
+| `conn_config` | ssh：from_env_model 取 host/port/workdir/health_cmd（ssh_executor.py:78）；docker：取 container/workdir/health_cmd/base_url | ssh 缺 `host` → `cls(**cfg)` TypeError → S2 异常 → Stage 兜底 FAILED；**local 类型完全忽略该字段**（env_root 来自全局 `settings.env_root`，启动点构造：cli.py:73 / api/app.py:65 / scheduler_cli.py:30） |
+| `credential_ref` | 仅 ssh：Fernet 解密 JSON（username/password 或 key_filename）合并连接参数 | 解密失败/密文损坏 → S2 异常 FAILED；**空串 = 不注入凭据**（paramiko 回退系统 ~/.ssh 与当前用户）；local/docker 忽略 |
+| `cmd_whitelist` | ssh/docker 经 registry 注入执行器（registry.py:83-86） | **对 local 无效**——local 执行器白名单取全局 `settings.cmd_whitelist`（启动点构造），环境行配了也不生效——陷阱 ② |
+| `deploy_script` | S7 逐条执行 | **空列表 = 零条命令静默通过**（部署"成功"），只剩健康检查兜底——陷阱 ③；首条命令不命中白名单 → S7 CommandRejectedError → 失败分支（运行期才暴露） |
+| `name` | DB 层唯一约束 | 重复插入直接 DB 报错 |
+| （local）env_root | LocalExecutor 构造时 `mkdir(parents=True, exist_ok=True)`（env_executor.py:72） | **目录自动创建**——S5/S9 健康检查对 local 是存在性弱检查，基本恒过 |
+
+**P1 目标预检规则（待实现）**：环境配置录入或部署前显式校验——① `type` 枚举（local/ssh/docker，k8s 明确拒绝）；② ssh 必填 `host` 且 `credential_ref` 可解密；③ docker 必填 `container`；④ `deploy_script` 非空且**逐条命中该环境生效的白名单**（把"必败配置"提前到部署前暴露）；⑤ local 类型提示 `conn_config`/`cmd_whitelist` 字段不生效。
 
 ## 3. 环境锁机制（DB 行实现，带租约）
 
@@ -172,6 +188,7 @@ OUT-4 FAILED（无环境行，未取锁）
 
 ## 10. 已知限制
 
+- **环境配置零预检**：三个静默陷阱（type 拼错静默降级 local / local 忽略 conn_config 与 cmd_whitelist / 空 deploy_script 零步通过）见 §2.1，P1 预检规则待实现；
 - **ssh/docker 无回滚能力**：失败后远程环境停留在半部署状态（§6 两级降级第一条）——生产启用远程执行器前必须补远程快照方案；
 - `renew` 未接线：超 30 分钟的临界区锁会被回收，存在双任务同环境风险；
 - 无 environment_id 时取库中第一条环境（多环境时选择不可控）；

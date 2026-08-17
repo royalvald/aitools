@@ -23,7 +23,8 @@
 ## 2. 验证执行全过程时序（主线）
 
 ```
-IN  task.state=VERIFYING（部署 OUT-3 进入，环境锁仍持有）
+IN  task.state=VERIFYING（部署 OUT-3 进入；同一环境行 + 环境锁仍持有 + 修复产物已在环境内，
+    交接细节见 §3.1）
 
 S1 取最新版方案     verifying.py:30-34
    select(VerificationPlan).where(task_id).order_by(version.desc()) 取第一条
@@ -78,7 +79,21 @@ OUT-4  FAILED（Stage 异常，如 DSLStep 校验错；锁先被 finally 释放�
 
 ## 3. DSL 执行语义（dsl.py 逐动作 as-built）
 
-### 3.1 运行时上下文：本地仿真文件映射
+### 3.1 环境复用与仿真文件映射（验证的就是部署产物）
+
+**与 Spec 06 的三项交接（本阶段不重建环境，直接复用）**：
+
+1. **同一环境行**：部署 S1 把 `task.environment_id` 写库（deploying.py:31）；验证 S2 用**同一行**解析执行器（verifying.py:36 → common.py:200-215）——local 得到同一个 `env_root` 目录、ssh 连同一主机同一 `workdir`、docker 进同一容器；
+2. **环境锁不重取**：临界区从部署 S3 取锁开始持续持有，验证阶段**不再 acquire**，用完在 finally 释放（§6）；重试环回 FIXING→DEPLOYING 时因锁已释放而重新走取锁流程；
+3. **被测对象 = 部署产物，不是修复工作区**：验证阶段读的文件就是部署 S8 上传进环境的内容。完整链条（BUG-T001）：
+
+```
+修复 agent 写 workspace/api/health.json（fail→ok，Spec 05 §2.4）
+  → 部署 S8 upload → env_root/api/health.json（Spec 06 §2 S8）
+  → 验证 call_api GET /health → DSL 映射读 api/health.json（下表）→ 断言 status==ok
+```
+
+即"验证通过的"是"部署到环境里的"——部署漏传/传错文件会直接表现为对应步骤失败，这正是部署与验证构成同一临界区的原因。远程环境同理：部署 S8 上传到远程 `workdir`，`read_text` 经 SFTP（ssh_executor.py:151）/容器（docker_executor.py:132）读同一目录树。
 
 `DSLInterpreter(executor)` 只依赖 `DSLRuntime` 协议两个能力：`read_text(rel_path)` 与 `query_db(sql)`（dsl.py:69-78），由环境执行器提供。LocalExecutor 以 `env_root` 目录仿真被测系统（env_executor.py:67-89,172-182）：
 
