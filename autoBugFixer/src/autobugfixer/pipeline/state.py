@@ -35,7 +35,8 @@ LEGAL_TRANSITIONS: dict[TaskState, set[TaskState]] = {
     TaskState.ANALYZING: {TaskState.WAIT_INFO, TaskState.PLANNING, TaskState.MANUAL, TaskState.FAILED, TaskState.CANCELLED},
     TaskState.WAIT_INFO: {TaskState.ANALYZING, TaskState.CANCELLED},  # 补充完成重新分析
     TaskState.PLANNING: {TaskState.WAIT_PLAN, TaskState.SCORED, TaskState.FAILED, TaskState.CANCELLED},
-    TaskState.WAIT_PLAN: {TaskState.PLANNING, TaskState.SCORED, TaskState.CANCELLED},  # 确认/调整后继续
+    # 确认/调整后继续；拒绝（approved=false）转人工（Spec 03 B6-3 缺陷修复）
+    TaskState.WAIT_PLAN: {TaskState.PLANNING, TaskState.SCORED, TaskState.MANUAL, TaskState.CANCELLED},
     TaskState.SCORED: {TaskState.MANUAL, TaskState.FIXING, TaskState.FAILED, TaskState.CANCELLED},
     TaskState.MANUAL: {TaskState.ANALYZING, TaskState.FIXING, TaskState.CANCELLED},  # 人工重新触发
     TaskState.FIXING: {TaskState.DEPLOYING, TaskState.FAILED, TaskState.MANUAL, TaskState.LEARNING, TaskState.CANCELLED},

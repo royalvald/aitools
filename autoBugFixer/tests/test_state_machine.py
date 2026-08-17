@@ -16,6 +16,7 @@ from autobugfixer.pipeline.state import (
     (TaskState.WAIT_INFO, TaskState.ANALYZING),      # 补充完成重新分析
     (TaskState.PLANNING, TaskState.WAIT_PLAN),
     (TaskState.WAIT_PLAN, TaskState.SCORED),          # 方案确认后进入评分
+    (TaskState.WAIT_PLAN, TaskState.MANUAL),          # 方案被拒绝转人工（Spec 03 B6-3 修复）
     (TaskState.SCORED, TaskState.FIXING),
     (TaskState.SCORED, TaskState.MANUAL),             # 超阈值转人工
     (TaskState.FIXING, TaskState.DEPLOYING),
