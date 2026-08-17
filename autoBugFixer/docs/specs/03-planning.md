@@ -137,15 +137,14 @@
 | B6-2 | `approved=true` 且 steps **非空** | 在 B6-1 基础上：`plan.steps = result["steps"]`、`plan.version += 1`（人工调整留版本痕迹）；验证阶段按新版本执行 |
 | B6-3 | `approved=false` | ⚠️ **已知缺陷，当前必然失败**，详见下框 |
 
-> ### ⚠️ 已知缺陷（2025-06 走查发现，未修复）
+> ### ⚠️ 已知缺陷（2025-06 走查发现，**已修复**）
 >
 > **B6-3 拒绝分支（approved=false）无法完成**：
 >
 > - 代码意图（`intervention.py`）：`WAIT_PLAN → MANUAL`（"方案未获确认，转人工处理"）；
 > - 状态机表（`state.py`）：`WAIT_PLAN` 合法迁移集为 `{PLANNING, SCORED, CANCELLED}`，**不含 MANUAL**；
 > - 后果：`assert_transition` 抛 `IllegalTransitionError` → 回写 API 500、事务回滚 → **介入单结不了案、任务永久卡在 WAIT_PLAN，拒绝操作无法完成**；
-> - 旁证：同类阻塞态均支持转人工（`WAIT_DISCUSS → MANUAL`、`ANALYZING → MANUAL`），本条为状态机表遗漏；
-> - 修复方向（待排期）：`LEGAL_TRANSITIONS[WAIT_PLAN]` 补 `MANUAL`，并补拒绝分支测试。
+> - 修复（已完成）：`LEGAL_TRANSITIONS[WAIT_PLAN]` 已补 `MANUAL`，拒绝分支测试见 `tests/test_plan_confirm.py::test_plan_rejected_goes_manual`。
 
 **回写口径补充**（B6-4）：回写**不校验** steps 内容（`plan.steps` 直接赋值）——人工调整若含非法动作/缺参，落库成功但在验证阶段执行时才报错（`FAILED`）。人工调整的 steps 应视为可信输入，但无 Schema 防线是客观事实，见 §8。
 
@@ -209,9 +208,11 @@
 | B6-3 拒绝回写 | 无 | **被缺陷阻断**，修复后补 A6 |
 | 空步骤方案（§5） | 无 | 可补：steps=[] 断言空真通过（固化现状或先加约束） |
 
-## 8. DSL 扩展机制（P1 演进设计：AI 自主技能扩展）
+## 8. DSL 扩展机制（AI 自主技能扩展 · 已实现）
 
 **定位**：验证能力随使用自我增长——AI 在方案生成中把有价值的组合校验沉淀为可复用**技能**（命名 + 参数化的步骤模板），后续方案直接引用。全部技能由 9 基础动作组合而成，**不引入新原子动作**，既有安全防线完整保留。
+
+> 实现落点：`models.py::VerificationSkill`（技能库表）、`services/skill.py`（upsert/清单渲染/结构匹配计量）、`pipeline/schemas.py::ProposedSkill` + `PlanOutput.proposed_skills`、`planning_v3` 模板（`{skill_library}` 动态段）、planning 阶段 `skill_proposed`/`skill_used` 审计、learning 成功分支 `skill_distilled` 蒸馏。落库口径：引用技能的方案以展开后的原始步骤存入 `verification_plan`（LLM 按模板拷贝生成实参步骤，执行与技能库演化解耦）；结构匹配（动作序列 + 参数键集合一致）判定引用并 `use_count+1`。
 
 | 环节 | 设计 |
 |---|---|
@@ -236,9 +237,9 @@
 - 新**原子**动作注册——需 `DSL_ACTIONS` 运行时注册表、解释器 handler 插件化、plan 落库词表指纹三处联动，且引入用户代码进执行链的安全面；待出现基础动作真正表达不了的动作需求再付此成本；
 - 配置文件 / API 人工注册通道——与"AI 自主沉淀"定位不符；人工维护的固定套路由数据源模板或后续控制台管理承接。
 
-## 9. 方案深度要求（P1 目标规格 · 待实现）
+## 9. 方案深度要求（P1 目标规格 · 已实现）
 
-> 状态：**目标规格，当前未实现**。由走查确认：as-built 对"方案要多详细"零要求（见 B1 注记），单动作/一句话方案可合格落库。本节定义方案的目标形态：**四段式操作执行流程 + 修复思路大纲**。
+> 状态：**已实现**（`pipeline/schemas.py::PlanOutput` 四段式硬校验、`fix_approach` 字段、`planning_v2` 模板、`dsl.py` check_log `absent` 参数、Fake 应答五步方案同步升级）。
 
 ### 9.1 要求总则
 
@@ -327,7 +328,7 @@ P1：增加可选参数 `absent`（bool，缺省 `false`）——`absent=true` �
 
 ## 10. 已知缺陷与范围外（演进项）
 
-**待修复缺陷**：B6-3 拒绝回写 `IllegalTransitionError`（修复方向见 §3 框注；建议与 A3-A6 测试缺口一并处理）。
+**已修复缺陷**：B6-3 拒绝回写 `IllegalTransitionError`（`LEGAL_TRANSITIONS[WAIT_PLAN]` 已补 `MANUAL`，A3-A6 测试见 `tests/test_plan_confirm.py`）。
 
 范围外：
 

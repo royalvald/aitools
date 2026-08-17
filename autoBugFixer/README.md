@@ -41,9 +41,12 @@ python -m venv .venv
 |---|---|---|
 | `DATABASE_URL` | `sqlite:///./autobugfixer.db` | 数据库连接 |
 | `LLM_MODE` | `fake` | `fake` / `anthropic`（后者需 `ANTHROPIC_API_KEY`） |
-| `FIX_CHANNEL` | `langchain` | `langchain` / `claude_code_cli`（headless CLI 修复） |
+| `CODEX_EXECUTABLE` / `CODEX_MODEL` | `codex` / — | codex exec 修复通道（需 `OPENAI_API_KEY` 或 `codex login`） |
+| `CODEX_TIMEOUT` / `CODEX_SANDBOX` | `600` / `workspace-write` | codex 调用超时与沙箱（只能写工作区，禁网） |
 | `BUG_PLATFORM` | `mock` | `mock` / `jira` / `zentao`（CSV 走导入通道） |
 | `ADMISSION_THRESHOLD` | `60` | 综合评分准入阈值（低于入队，否则转人工） |
+| `SCORING_ENGINE` | `v1` | `v1`（LLM 直接打分）/ `v2`（rubric 判定表单 + 本地映射四维分，Spec 04 §8） |
+| `SCORE_V2_WEIGHT_LOCATE/FIX/VERIFY/BLAST` | `0.3/0.3/0.2/0.2` | v2 四维权重（定位/修改/验证/波及） |
 | `SCORE_WEIGHT_FIX/VERIFY/CHANGE` | `0.4/0.3/0.3` | 三维评分权重 |
 | `MAX_RETRY` | `3` | 修复-验证重试上限 |
 | `PERCEPTION_ENABLED` | `false` | 三维感知（页面/DB/接口快照对比）开关 |
@@ -63,11 +66,11 @@ src/autobugfixer/
 ├── pipeline/                         # 状态机、Orchestrator、DSL 解释器、7 个 Stage
 ├── adapters/                         # bug_platform(mock/jira/zentao)、env_executor
 │                                     #   (local/ssh/docker)、csv_import、registry、
-│                                     #   claude_code_cli、notifier(_im)、whitelist
+│                                     #   codex_cli(codex exec 修复通道)、notifier(_im)、whitelist
 ├── perception/                       # 三维感知（FR-FIX-02）
 ├── services/                         # llm_gateway(fake/anthropic+计量预算)、intervention、
 │                                     #   env_lock、scheduler、optimization、experience、
-│                                     #   export、importer、ingestion、audit、writeback
+│                                     #   export、importer、ingestion、repo_check、audit、writeback
 ├── security/                         # Fernet 凭据、注入防护、脱敏
 ├── prompts/                          # 版本化提示词模板
 ├── api/ + web/                       # FastAPI 对内接口 + 静态控制台

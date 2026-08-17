@@ -3,7 +3,7 @@
 | 项 | 值 |
 |---|---|
 | 涉及状态 | `FIXING`（执行态）；出口 `{DEPLOYING, MANUAL, FAILED, LEARNING}` |
-| 修复驱动 | **`codex exec`（唯一通道，本 spec 为目标规格）**——headless 子进程，OpenAI Codex CLI |
+| 修复驱动 | **`codex exec`（唯一通道，本 spec 已实现）**——headless 子进程，OpenAI Codex CLI |
 | 源码 | `pipeline/stages/fixing.py`、`pipeline/stages/common.py`、`adapters/codex_cli.py`（新增）；遗留移除清单见 §6 |
 | 提示词 | `prompts/templates/fixing_v1.md`、`fixing_retry_v1.md`（内容不变，codex 对格式无感） |
 | 上游 / 下游 | 评分准入（Spec 04）、验证重试环（Spec 07）→ 部署（Spec 06）、失败经验（Spec 08） |

@@ -172,14 +172,12 @@ Stage 级未捕获异常 → Orchestrator 兜底（orchestrator.py:185-204）：
 - 成功 → 审计 `platform_writeback`（detail 含 to_state/mapped）；两次均败 → 审计 `platform_writeback_failed` + notify ops（通知发送自身异常再吞掉）；
 - 全函数**绝不向调用方抛异常**——回写失败不影响任务状态迁移（R5）。
 
-### 3.5 CLOSED 的两条路（as-built 不一致）
+### 3.5 CLOSED 的两条路（已对齐）
 
 | 路径 | 迁移实现 | 写 closed_at | 平台回写 |
 |---|---|---|---|
 | learning 成功分支 | `Orchestrator._transition`（orchestrator.py:123-124） | ✅ `datetime.now(timezone.utc)` | CLOSED→已关闭 |
-| 讨论 close 回写 | `InterventionService._transition_task`（intervention.py:63-76） | ❌ 不写 | 经注入钩子同样回写已关闭 |
-
-两套迁移行为不一致，如实记录为已知问题（§6）。
+| 讨论 close 回写 | `InterventionService._transition_task`（intervention.py） | ✅ 已补写（Spec 08 §7 已知问题修复） | 经注入钩子同样回写已关闭 |
 
 ### 3.6 经验复用闭环（跨阶段语义，本 spec 收口）
 
@@ -232,9 +230,9 @@ Stage 级未捕获异常 → Orchestrator 兜底（orchestrator.py:185-204）：
 
 ## 7. 已知限制
 
-- **两套 CLOSED 迁移不一致**：讨论 close 路径不写 `task.closed_at`（§3.5），报表按 closed_at 统计会漏掉人工关闭的任务；修复方向是抽公共迁移函数；
-- **upsert 无 DB 唯一约束**：纯查询去重，并发下极小概率重复条目（P1 加唯一索引）；
-- `root_cause_pattern` 恒空串：无根因沉淀能力（P1 由 LLM 归因总结填充）；
-- 分类为关键词五级规则，"接口"命中即短路，无多类目归因（P1 改 LLM 分类，类目可配置）；
+- ~~**两套 CLOSED 迁移不一致**~~（已修复：`_transition_task` 在 CLOSED 时同步写 `task.closed_at`）；
+- ~~**upsert 无 DB 唯一约束**~~（已修复：`experience` 表增加活跃条目部分唯一索引 `ux_experience_active_dedup`）；
+- ~~`root_cause_pattern` 恒空串~~（已实现：成功分支 LLM 归因总结填充，`experience_digest_v1` 模板，异常回退留空）；
+- ~~分类为关键词五级规则~~（已实现 LLM 分类优先、关键词规则回退）；
 - 环境选择：无 environment_id 时取库中第一条 Environment（Spec 06 §10 同条），applicable_conditions 记录的 env_version 来自 Bug 字段而非实际部署环境；
 - 不适用场景仅入库展示（status=open 无人更新），未反向阻断后续同类任务准入（P2：评分阶段消费 InapplicableCase 抬高难度分）。

@@ -91,7 +91,7 @@ OUT-4 FAILED（无环境行，未取锁）
 | `name` | DB 层唯一约束 | 重复插入直接 DB 报错 |
 | （local）env_root | LocalExecutor 构造时 `mkdir(parents=True, exist_ok=True)`（env_executor.py:72） | **目录自动创建**——S5/S9 健康检查对 local 是存在性弱检查，基本恒过 |
 
-**P1 目标预检规则（待实现）**：环境配置录入或部署前显式校验——① `type` 枚举（local/ssh/docker，k8s 明确拒绝）；② ssh 必填 `host` 且 `credential_ref` 可解密；③ docker 必填 `container`；④ `deploy_script` 非空且**逐条命中该环境生效的白名单**（把"必败配置"提前到部署前暴露）；⑤ local 类型提示 `conn_config`/`cmd_whitelist` 字段不生效。
+**P1 预检规则（已实现）**：`adapters/env_executor.py::validate_environment`（部署前在取锁前执行，`DeployingStage` S1.5 调用，必败配置提前暴露并审计 `env_config_rejected`）——① `type` 枚举（local/ssh/docker，k8s 明确拒绝）；② ssh 必填 `host` 且 `credential_ref` 可解密；③ docker 必填 `container`；④ `deploy_script` 非空且**逐条命中该环境生效的白名单**；⑤ local 类型 `conn_config`/`cmd_whitelist` 不生效记 `env_config_warning` 警告。
 
 ## 3. 环境锁机制（DB 行实现，带租约）
 
@@ -106,7 +106,7 @@ OUT-4 FAILED（无环境行，未取锁）
 ### 3.2 租约与续期
 
 - 默认 `lease_seconds=1800`（配置 `env_lock_lease_seconds`，30 分钟）；
-- `renew(env_id, task_id)`：仅持锁人可续，续一个租约周期——**全流水线无任何调用点**（仅测试覆盖），即长临界区不做续期，超过 30 分钟的部署+验证可能被回收重入。
+- `renew(env_id, task_id)`：仅持锁人可续，续一个租约周期——**已接线**：验证阶段起点对任务持有的锁续期并审计 `env_lock_renew`（部署耗时消耗大半租约后再续一个周期，降低超 30 分钟临界区被回收重入的风险）。
 
 ### 3.3 回收与四个释放时机
 
@@ -188,10 +188,10 @@ OUT-4 FAILED（无环境行，未取锁）
 
 ## 10. 已知限制
 
-- **环境配置零预检**：三个静默陷阱（type 拼错静默降级 local / local 忽略 conn_config 与 cmd_whitelist / 空 deploy_script 零步通过）见 §2.1，P1 预检规则待实现；
+- ~~**环境配置零预检**~~（已实现 `validate_environment`，见 §2.1）：type 拼错/空 deploy_script/白名单外命令在部署前即 FAILED；local 忽略 conn_config 与 cmd_whitelist 仍为事实行为但会记警告审计；
 - **ssh/docker 无回滚能力**：失败后远程环境停留在半部署状态（§6 两级降级第一条）——生产启用远程执行器前必须补远程快照方案；
-- `renew` 未接线：超 30 分钟的临界区锁会被回收，存在双任务同环境风险；
+- ~~`renew` 未接线~~（已接线：验证起点续期，见 §3.2）；
 - 无 environment_id 时取库中第一条环境（多环境时选择不可控）；
-- Docker `exec_timeout` 参数未传入 exec_run（不生效）；
+- ~~Docker `exec_timeout` 参数未传入 exec_run（不生效）~~（已修复：exec 以线程包装等待，超时按退出码 124 返回）；
 - steps_log 失败命令无独立条目（stderr 只在异常消息里）、上传失败无条目；
 - k8s 执行器仅枚举预留，代码完全不存在。

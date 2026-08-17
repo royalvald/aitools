@@ -183,7 +183,7 @@ VERIFYING 未过 且 retry_count < max_retry
 
 ## 8. 数据与配置（真实字段名，环境变量加 `AUTOBUGFIXER_` 前缀）
 
-- 写：`verify_record`（task_id、attempt、plan_version、conclusion: passed/failed、step_results JSON、risk_notes Text、evidence_uris JSON——**当前无写入点，恒空列表**，models.py:133-145）、`task_state_history`、`env_lock`（删行）、`audit_log`（verify / perception_compare / env_lock_release）；
+- 写：`verify_record`（task_id、attempt、plan_version、conclusion: passed/failed、step_results JSON、risk_notes Text、evidence_uris JSON——逐步骤证据落盘 `evidence_root/verify/task-{id}-attempt-{n}.json` 后写回 URI，无证据时为空列表）、`task_state_history`、`env_lock`（删行）、`audit_log`（verify / perception_compare / env_lock_release / env_lock_renew）；
 - 读：`verification_plan`（steps、version）、`environment`（经 resolve_executor）、历史 `VerifyRecord`（重试时被 fixing 读取）、历史 `FixRecord`；
 - 配置：`max_retry=3`、`perception_enabled=false`、`perception_evidence_root=./var/evidence`、`env_root=./var/testenv`（仿真环境根）。
 
@@ -211,4 +211,4 @@ VERIFYING 未过 且 retry_count < max_retry
 - `_last_response` 被 query_db 与接口断言共享，方案步骤顺序不当会断言错对象（§3.2）；
 - ssh/docker 执行器无 `query_db`，DSL 数据类动作在远程环境必败；
 - 空步骤方案空真通过（`all([])`）——零验收点等于免检，P1 由 Spec 03 §9.2（方案最少步骤数校验）解决；
-- `evidence_uris` 字段存在但无写入点，大证据走文件存储为 P1 方向。
+- ~~`evidence_uris` 字段存在但无写入点~~（已实现证据落盘：含证据步骤的验证写 JSON 证据文件并回填 URI）；
