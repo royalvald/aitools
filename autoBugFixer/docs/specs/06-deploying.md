@@ -2,116 +2,179 @@
 
 | 项 | 值 |
 |---|---|
-| 涉及状态 | `DEPLOYING`（执行态）⇄ `WAIT_ENV`（阻塞态）；成功 → `VERIFYING` |
-| 源码 | `src/autobugfixer/pipeline/stages/deploying.py`、`services/env_lock.py`、`adapters/env_executor/*` |
-| 需求 | FR-REG-01（部署动作白名单）、FR-REG-02（失败自动回滚）、11.1（环境锁） |
-| 上游 | AI 修复（Spec 05） |
-| 下游 | 回归验证（Spec 07，共享同一临界区） |
-| 环境执行器 | `local`（默认仿真）/ `ssh` / `docker`（registry 构建，凭据 Fernet 解密注入） |
+| 涉及状态 | `DEPLOYING`（执行态）⇄ `WAIT_ENV`（阻塞态）；出口 `{VERIFYING, WAIT_ENV, FAILED}` |
+| 源码 | `pipeline/stages/deploying.py`、`services/env_lock.py`、`adapters/env_executor.py`（local）、`adapters/env_executor/{ssh_executor,docker_executor}.py`、`adapters/whitelist.py`、`services/writeback.py` |
+| 需求 | FR-REG-01（部署白名单）、FR-REG-02（失败自动回滚）、11.1（环境锁） |
+| 上游 / 下游 | AI 修复（Spec 05）→ 回归验证（Spec 07，共享同一临界区） |
 
-## 1. 目标与职责
+## 1. 目标
 
-把修复产物安全地部署到测试环境，是**部署+验证临界区的入口**：
+把修复产物安全部署到测试环境，是**部署+验证临界区的入口**：拿环境锁 → 健康检查 → 快照 → 白名单脚本 → 上传产物 → 健康检查 → 交验证；任一步失败回滚+释放锁+告警。本 spec 以**部署全过程时序**为主线（§2），锁/执行器/白名单/回滚四套内部机制在后。
 
-1. 解析目标环境与执行器；
-2. 获取环境锁（拿不到则排队 `WAIT_ENV`）；
-3. 部署前健康检查 → 版本快照 → 白名单部署脚本 → 产物上传 → 部署后健康检查；
-4. 任一步失败自动回滚到快照、释放锁、告警；
-5. 全程步骤留痕（DeployRecord.steps_log + 审计）。
-
-## 2. 输入与前置条件
-
-- 任务状态 `DEPLOYING`；`attempt = retry_count + 1`；
-- 环境解析（`_resolve_env`）：优先 `task.environment_id` 关联的 `environment` 行，否则取库中第一条；**无环境配置 → `FAILED`**；
-- 部署脚本来源：`environment.deploy_script`（声明式命令列表）；
-- 修复产物：最新 `fix_record.worktree` 指向的工作区（缺失 → 异常 → `FAILED`）。
-
-## 3. 处理流程
-
-```
-1. env 解析；task.environment_id = env.id
-2. executor = resolve_executor(ctx)
-   · environment.type ∈ {ssh, docker} → registry 按环境行构建
-     （conn_config + CredentialVault 解密 credential_ref 注入凭据）
-   · 其余（local 仿真）→ 注入的默认执行器
-3. 取环境锁：ctx.env_locks.acquire(env.id, task.id)
-   ├─ 失败（他人有效持有）→ 审计 env_lock_wait → success → WAIT_ENV（排队）
-   └─ 成功 → 审计 env_lock_acquire，进入临界区
-4. snap_tag = "task-{id}-attempt-{attempt}"；创建 DeployRecord
-5. 部署序列（任一步异常 → 走 §4 失败分支）：
-   a. executor.health_check() —— 部署前健康检查，不 ok 即失败
-   b. executor.snapshot(snap_tag) —— 版本快照（执行器支持时）
-   c. 逐条执行 env.deploy_script：
-      · executor.exec(cmd) 内建白名单校验（越权直接拒绝）
-      · 每条审计 cmd_exec（命令 + 返回码），steps_log 记录（stdout 截 200 字）
-      · returncode != 0 → 失败
-   d. 产物上传：遍历工作区（跳过 .baseline / .git）executor.upload(item, name)
-   e. executor.health_check() —— 部署后健康检查
-6. 全部通过：deploy.status="success" → success → VERIFYING（锁继续持有）
-```
-
-### 3.1 环境锁语义（11.1）
-
-- 粒度：`environment_id` 互斥（DB 唯一行），**部署+验证为同一临界区**：DEPLOYING 起持锁，VERIFYING 结束释放；
-- 租约：`ENV_LOCK_LEASE_SECONDS`（默认 1800s）；到期锁视为失效，调度器每轮 `reclaim_stale_env_locks()` 回收；
-- 可重入：同一 task 重复 acquire 幂等成功（Stage 重入安全）；
-- 释放规则：仅持锁人可释放（`release(env_id, task_id)`）。
-
-## 4. 输出与状态迁移
-
-| 分支 | 结果 | 迁移 | 锁 |
-|---|---|---|---|
-| 未取到锁 | `success` | `DEPLOYING → WAIT_ENV` | 不持有 |
-| 部署成功 | `success` | `DEPLOYING → VERIFYING` | **保持持有**（临界区延续） |
-| 任一步失败 | `failed` | `DEPLOYING → FAILED` | 回滚后**立即释放**（审计 reason=deploy_failed） |
-| 无环境配置 | `failed` | `DEPLOYING → FAILED` | — |
-| Stage 异常 | `failed`（兜底） | `→ FAILED` | Orchestrator 兜底释放 + 租约回收兜底 |
-
-失败分支动作序列：`executor.restore(snap_tag)` 回滚 → `deploy.status="rolled_back"` → 通知 `ops`（审计 `deploy_rollback`）→ 释放锁 → `FAILED`。
-
-### 4.1 WAIT_ENV 唤醒
-
-迁移表 `WAIT_ENV → DEPLOYING`（锁释放后被唤醒）。当前实现由人工触发：API `POST /tasks/{id}/retry` 将 `WAIT_ENV → DEPLOYING` 后 `run_until_blocked` 重新抢锁（锁已被释放或租约到期即可成功）。
-
-## 5. 数据模型
-
-- 写：`deploy_record`（attempt、prev_version=snap_tag、status: pending/success/failed/rolled_back、steps_log）、`task`（environment_id、状态）、`env_lock`、`task_state_history`、`audit_log`；
-- 读：`environment`、`fix_record`。
-
-## 6. 配置项
-
-| 配置 | 默认 | 说明 |
+| # | 预期 | 验证方式 |
 |---|---|---|
-| `ENV_LOCK_LEASE_SECONDS` | `1800` | 锁租约（防死锁） |
-| `CMD_WHITELIST` | `echo/systemctl/tail` 模板 | 执行器命令白名单（FR-REG-01） |
-| `ENV_ROOT` | `./var/testenv` | local 仿真环境根目录 |
+| R1 | 环境互斥：同一 environment 同时只有一个任务在临界区内（DB 行锁 + 租约） | `env_lock` 表 UNIQUE(env_id) + 审计 |
+| R2 | 部署命令全部过白名单，越权命令在执行前被拒 | `CommandRejectedError` + cmd_exec 审计 |
+| R3 | 任一步失败：回滚至快照（执行器支持时）→ `rolled_back` 留痕 → ops 告警 → 锁释放 → `FAILED` | DeployRecord.steps_log + 审计链 |
+| R4 | 拿不到锁不失败：排队 `WAIT_ENV`，人工唤醒后重入 | `env_lock_wait` 审计 + 状态历史 |
+| R5 | 全部步骤留痕（steps_log 逐条 cmd/returncode/stdout） | DeployRecord.steps_log |
 
-## 7. 异常与失败处理
+## 2. 部署全过程时序（主线）
 
-- 部署命令失败/健康检查失败/上传异常 → 统一回滚 + 释放锁 + `FAILED`（幂等可重入，人工重新触发或断点续跑）；
-- 回滚本身失败（快照缺失等）：steps_log 记录 stderr，仍走失败分支并告警；
-- worker 崩溃持锁泄漏 → 租约到期由调度器回收，任务重跑。
+```
+IN  task.state=DEPLOYING（attempt = retry_count + 1，snap_tag = task-{id}-attempt-{n}）
 
-## 8. 人工介入点
+S1 环境解析        deploying.py:27,101-105
+   task.environment_id 有值 → session.get(Environment)；无值 → 库中第一条 Environment
+   ├─ 无环境行 → OUT-4 FAILED（"无可用测试环境配置"，未取锁）
+   └─ 成功 → 回写 task.environment_id
 
-无介入单。`WAIT_ENV` 排队依赖人工唤醒（或等待其他任务释放后手动 retry）；部署失败告警发给 `ops`。
+S2 执行器解析      common.py:200-215
+   env.type ∈ {ssh, docker} → registry 构建（ssh 附带 Fernet 凭据解密）
+   其余（local 等）→ Orchestrator 注入的默认执行器
 
-## 9. 安全约束
+S3 取环境锁        deploying.py:35-41（算法见 §3）
+   ├─ False（他人有效持有）→ 审计 env_lock_wait → OUT-1 WAIT_ENV
+   └─ True（含重入/过期回收后新取）→ 审计 env_lock_acquire → 进临界区
 
-- 命令白名单内建于 `executor.exec`（先校验后执行，越权拒绝）；`systemctl restart {service}` 等支持 `{param}` 占位模板；
-- ssh/docker 凭据全程密文（Fernet），仅执行器构建时解密注入；
-- 上传产物明确跳过 `.baseline/.git`，不泄漏工作区元数据。
+S4 建 DeployRecord（attempt、prev_version=snap_tag，status 待定）
 
-## 10. 验收标准
+S5 部署前健康检查   executor.health_check()（三实现见 §4）
+   not ok → 抛 RuntimeError → F 失败分支
 
-- 成功路径：健康检查 → 脚本执行 → 上传 → 二次健康检查全过，`deploy_record.status=success`，任务进 `VERIFYING` 且**锁仍持有**（`tests/test_e2e.py`）；
-- 脚本命令失败 → 回滚 + `deploy_record.status=rolled_back` + 通知 ops + 锁释放 + `FAILED`（`test_failure_branch.py`）；
-- 环境被占 → `WAIT_ENV` + `env_lock_wait` 审计；唤醒后重入成功（`test_env_lock.py`）；
-- 白名单外命令被拒绝（`test_whitelist.py`）；
-- 租约过期锁被调度器回收（`test_scheduler.py`）。
+S6 版本快照        hasattr(executor, "snapshot") 才执行（§4 能力矩阵）
+   Local：整目录拷贝至 {env_root.parent}/{env名}.snapshots/{snap_tag}/
+   SSH/Docker：无此方法 → 静默跳过（后续失败将无快照可还原，见 §6）
 
-## 11. 已知限制与演进
+S7 逐条执行部署脚本  for cmd in env.deploy_script:
+     executor.exec(cmd)（白名单断言 → 执行，§5）
+     审计 cmd_exec(cmd, returncode)；steps_log += {cmd, returncode, stdout[:200]}
+     returncode≠0 → RuntimeError(含 stderr) → F
+   （注意：失败命令的 stderr 只进异常消息，steps_log 无该条记录）
 
-- 环境选择策略简单（无 environment_id 时取第一条），未按方案 `env_requirements` 匹配；
-- 部署为同步阻塞执行，长部署需调整执行器超时；k8s 执行器为占位；
-- WAIT_ENV 自动唤醒（锁释放事件驱动）为 P1 方向。
+S8 产物上传        deploying.py:71-76
+   workspace = 最新 attempt 的 FixRecord.worktree（无 FixRecord → RuntimeError → F）
+   for item in sorted(workspace.iterdir())，跳过 .baseline / .git：
+     executor.upload(item, item.name)（三实现见 §4；任一异常 → F，此步失败不写 steps_log 条目）
+   steps_log += {"cmd": "upload <ws>", "returncode": 0}
+
+S9 部署后健康检查   not ok → RuntimeError → F
+
+F  失败分支（S5-S9 任一异常）deploying.py:82-90
+   1) _rollback（§6）：有 restore 能力则还原；审计 deploy_rollback；notify ops（content=detail[:500]）
+   2) deploy.status="rolled_back"；steps_log 落库
+   3) _release_lock：release() 返回 True 才审计 env_lock_release(reason=deploy_failed)
+   → OUT-2 FAILED
+
+E  Stage 级异常兜底  orchestrator.py:185-204
+   审计 stage_exception → 尝试释放锁（成功审计 env_lock_release_on_error）→ FAILED
+
+出口：
+OUT-1 WAIT_ENV（锁被占，S3）→ 人工 POST /tasks/{id}/retry → WAIT_ENV→DEPLOYING（routes.py:103-107）→ 回 S3 重抢
+OUT-2 FAILED（失败已回滚，锁已释放）→ retry 时 FAILED→ANALYZING（回分析重跑整链，不是回 DEPLOYING）
+OUT-3 VERIFYING（S5-S9 全过）：deploy.status="success"；**锁保持持有**，由 Spec 07 的 finally 释放
+OUT-4 FAILED（无环境行，未取锁）
+进程崩溃残留锁 → 租约 1800s 过期 → 调度器每轮 reclaim（§3.3）
+```
+
+## 3. 环境锁机制（DB 行实现，带租约）
+
+### 3.1 acquire 算法（env_lock.py:36-56）
+
+1. 查 env_lock 行（互斥靠 `env_id` UNIQUE 约束）；
+2. 行存在且 `holder_task_id == task_id` → **True（重入幂等）**；
+3. 行存在且未过期（他人有效持有）→ False；
+4. 行存在且已过期 → delete + flush 后走插入；
+5. 插入新行（`expires_at = now + lease_seconds`）→ True；并发冲突（IntegrityError）→ rollback → False。
+
+### 3.2 租约与续期
+
+- 默认 `lease_seconds=1800`（配置 `env_lock_lease_seconds`，30 分钟）；
+- `renew(env_id, task_id)`：仅持锁人可续，续一个租约周期——**全流水线无任何调用点**（仅测试覆盖），即长临界区不做续期，超过 30 分钟的部署+验证可能被回收重入。
+
+### 3.3 回收与四个释放时机
+
+- 过期批量回收：`release_expired()` 遍历全部锁删过期行；调度器每轮 `run_round` 调用（scheduler.py:58）。
+- 释放时机对比（各自的审计动作名不同）：
+
+| 时机 | 位置 | 审计动作 |
+|---|---|---|
+| 部署失败 | deploying.py:107-115 | `env_lock_release`（detail.reason=**deploy_failed**） |
+| 验证收口（正常/重试/异常 finally） | verifying.py:77-82 | `env_lock_release`（无 reason） |
+| Orchestrator 兜底 | orchestrator.py:185-204 | `env_lock_release_on_error`（独立动作名） |
+| 租约过期回收 | env_lock.py:76-85 | 无逐锁审计（调度器计数 locks_reclaimed） |
+
+## 4. 执行器体系
+
+### 4.1 分派规则（common.py:200-215）
+
+仅 `env.type ∈ {ssh, docker}` 走 registry 构建（ssh 附 `CredentialVault(fernet_key)` 解密 `credential_ref`，明文凭据仅驻内存、不进异常文本）；**local 等其余类型一律用注入的默认执行器**（不经 registry）。
+
+### 4.2 三执行器关键差异
+
+| 能力 | LocalExecutor | SSHExecutor | DockerExecutor |
+|---|---|---|---|
+| exec | 白名单→shlex.split（不经 shell）→ `argv[0]=="echo"` 走**内建仿真**（不执行进程直接回显）→ 其余 `subprocess.run(cwd=env_root, timeout=60)`；FileNotFoundError→127 | 白名单断言**先于连接**；workdir≠"/" 时包成 `cd {shlex.quote(workdir)} && {cmd}`；exec_command 超时 60s、连接超时 10s；paramiko 惰性导入 | 白名单断言后容器内 `["/bin/sh","-c",cmd]` + workdir + demux；SDK 惰性导入（缺包抛 RuntimeError 带安装提示）；exec_timeout 参数当前**未传入 exec_run**（不生效） |
+| upload | 目录 rmtree+copytree 整体替换 / 文件 copy2 | SFTP 递归 rglob 逐文件 put，逐级建目录 | 打成内存 tar 后 put_archive |
+| snapshot/restore | 有（§6） | **无** | **无** |
+| health_check | env_root 目录存在即 ok | 配了 health_cmd 则执行（同样过白名单），否则仅测连通；连接失败返回 ok=False 而非异常 | container.reload() 后 status=="running"，可选 health_cmd |
+| query_db | 有（DSL 数据类动作用） | **抛 NotImplementedError** | **抛 NotImplementedError** |
+
+## 5. 命令白名单（whitelist.py，三重拦截）
+
+1. **模板编译**：模板 shlex.split 后，`{x}` 占位 → `(\S+)`，其余段 re.escape，段间 `\s+`，整条锚定匹配；
+2. **元字符黑名单**：命令含 `[;&\|`$<>\n]` 任一字符直接拒（防拼接注入/命令替换/管道重定向）；
+3. **参数字符集**：占位符捕获的每个参数须匹配 `^[\w./:=@+-]+$`。
+
+拒绝抛 `CommandRejectedError`（PermissionError 子类）→ Stage 异常 → 失败分支。默认白名单 5 条模板：`echo {text}`、`systemctl start/stop/restart {service}`、`tail -n {n} {log}`（config.py:50-58）。真实拦截用例见 `tests/test_whitelist.py`（`echo ok; rm -rf /`、`echo $(whoami)`、重定向等 11 个拒绝样例）。
+
+## 6. 回滚机制
+
+- **快照内容**：部署前 env_root 整目录递归拷贝到 `{env_root.parent}/{env名}.snapshots/{snap_tag}/`，tag 已存在先 rmtree；
+- **还原算法**（LocalExecutor.restore）：清空 env_root 全部内容后从快照目录全量拷回；快照不存在抛 FileNotFoundError（由失败分支捕获记 steps_log stderr）；
+- **两级降级（as-built 关键事实）**：
+  1. 执行器无 snapshot/restore 方法（**ssh/docker 均如此**）→ 部署时不做快照、失败时不还原——远程环境停留在半部署状态，仅 ops 告警 + 审计，**无报错**；
+  2. 有能力但快照缺失 → restore 抛错记 steps_log，回滚链其余步骤（告警/审计/释放锁/FAILED）照常。
+- 回滚后 steps_log 追加 `rollback to {snap_tag}` 条目，审计 `deploy_rollback`（detail 含 snapshot tag）。
+
+## 7. 异常矩阵
+
+| 场景 | 行为 | 结果 |
+|---|---|---|
+| 无环境配置行 | S1 判空 | FAILED（未取锁） |
+| 环境被他人持有 | S3 acquire False | WAIT_ENV（审计 env_lock_wait），不失败 |
+| 健康检查不过（前/后） | RuntimeError | 失败分支：回滚+释放锁 → FAILED |
+| 白名单外命令 | CommandRejectedError（执行前） | 失败分支 → FAILED |
+| 部署命令退出码非 0 | RuntimeError（含 stderr） | 同上；stderr 不进 steps_log |
+| 上传异常 | 直接进失败分支 | 同上；此步失败无 steps_log 条目 |
+| 缺 FixRecord（无工作区） | S8 RuntimeError | 同上 |
+| 进程崩溃 | 残留锁等租约过期 | 调度器下轮回收 |
+
+## 8. 数据与配置（真实字段名，环境变量加 `AUTOBUGFIXER_` 前缀）
+
+- `environment` 表：type（local/ssh/docker）、deploy_script（JSON 命令列表）、cmd_whitelist、credential_ref（Fernet 密文）；
+- `env_lock` 表：env_id（UNIQUE）、holder_task_id、expires_at；
+- `deploy_record` 表：attempt、prev_version（=snap_tag）、status（**代码只写 "success"/"rolled_back" 两种值**，模型注释里的 "failed" 无写入点）、steps_log（JSON）；
+- 配置：`env_lock_lease_seconds=1800`、`env_root=./var/testenv`、`cmd_whitelist`（5 条默认模板）、`workspace_root`。
+
+## 9. 测试映射（含旧版错引修正）
+
+| 条款 | 测试 | 备注 |
+|---|---|---|
+| 全链路部署+锁获取/释放+cmd_exec 审计 | `test_end_to_end_full_pipeline` | 断言审计动作集合与 CLOSED，**未直接查 DeployRecord** |
+| 失败回滚+锁释放（deploy_script=["false"]） | `test_env_lock.py::test_部署失败释放锁` | 断言 FAILED + EnvLock 空 + 环境可被他人立即获取；**未断言 rolled_back 与 ops 通知** |
+| 锁互斥/租约过期/过期回收/renew | `test_env_lock.py` 六用例 | — |
+| 白名单拦截 | `test_whitelist.py` | — |
+| SSH/Docker 执行器（拒绝先于连接、cd 包装、凭据解密、tar 上传、容器健康） | `test_adapters_real.py` | — |
+| WAIT_ENV 排队 + env_lock_wait 审计 | **无覆盖** | 旧版引 test_env_lock.py 为**虚构**（该文件无 WAIT_ENV 用例） |
+| 调度器回收过期锁 | **无覆盖**（仅 service 层直接调用有测试） | 旧版引 test_scheduler.py 为**虚构**（全文无锁断言） |
+| rolled_back 状态 + ops 通知 | **无覆盖** | 旧版引 test_failure_branch.py 为**错引**（该文件测讨论介入，零部署断言） |
+
+## 10. 已知限制
+
+- **ssh/docker 无回滚能力**：失败后远程环境停留在半部署状态（§6 两级降级第一条）——生产启用远程执行器前必须补远程快照方案；
+- `renew` 未接线：超 30 分钟的临界区锁会被回收，存在双任务同环境风险；
+- 无 environment_id 时取库中第一条环境（多环境时选择不可控）；
+- Docker `exec_timeout` 参数未传入 exec_run（不生效）；
+- steps_log 失败命令无独立条目（stderr 只在异常消息里）、上传失败无条目；
+- k8s 执行器仅枚举预留，代码完全不存在。

@@ -1,127 +1,159 @@
-# Spec 05 · AI 修复（Fixing）
+# Spec 05 · AI 修复（Fixing）——Codex 驱动
 
 | 项 | 值 |
 |---|---|
-| 涉及状态 | `FIXING`（执行态）；上游 `SCORED/WAIT_DISCUSS/FAILED/VERIFYING(重试环)` 均汇入 |
-| 源码 | `src/autobugfixer/pipeline/stages/fixing.py`、`stages/common.py` |
-| 提示词 | `prompts/templates/fixing_v1.md`、`fixing_retry_v1.md` |
-| 需求 | FR-FIX-01（修复留痕）、FR-FIX-02（三维感知，默认关）、FR-MEM-01（经验复用）、11.2（安全防护）、11.5（重试反馈回路） |
-| 上游 | 评分准入（Spec 04） |
-| 下游 | 部署（Spec 06）/ 经验沉淀失败分支（Spec 08） |
-| 修复通道 | `langchain`（默认，LLMGateway 内建 agent）或 `claude_code_cli`（headless CLI） |
+| 涉及状态 | `FIXING`（执行态）；出口 `{DEPLOYING, MANUAL, FAILED, LEARNING}` |
+| 修复驱动 | **`codex exec`（唯一通道，本 spec 为目标规格）**——headless 子进程，OpenAI Codex CLI |
+| 源码 | `pipeline/stages/fixing.py`、`pipeline/stages/common.py`、`adapters/codex_cli.py`（新增）；遗留移除清单见 §6 |
+| 提示词 | `prompts/templates/fixing_v1.md`、`fixing_retry_v1.md`（内容不变，codex 对格式无感） |
+| 上游 / 下游 | 评分准入（Spec 04）、验证重试环（Spec 07）→ 部署（Spec 06）、失败经验（Spec 08） |
 
-## 1. 目标与职责
+> 决策记录（2025 走查确认）：修复驱动统一为 Codex；langchain 修复通道、claude_code_cli 通道、fake 修复模拟**全部移除**（范围仅限修复路径；分析类阶段的 LLM 调用与 Fake 结构化输出不受影响，否则无 Key 测试体系崩塌，见 §6 边界）。
 
-在**隔离工作区**内由 AI agent 产出修复变更，并施加出口侧安全校验：
+## 1. 目标
 
-1. 准备隔离工作区（git worktree 或目录快照）；
-2. 组装修理指令：Bug 上下文 + 验证方案验收点 + 经验复用块 +（重试时）失败反馈 +（可选）感知基线；
-3. 修复通道执行，产出变更文件与 diff；
-4. 出口校验：禁改路径、空变更、重复 diff 提前终止；
-5. 全量留痕（FixRecord 含 prompt 快照）。
+在隔离工作区内由 **Codex CLI 自主完成代码修复**：系统准备环境、组装指令、以受控参数调起 `codex exec` 子进程、对产物做出口验收。理解-定位-修改的驱动过程在 Codex 内部闭环，本系统不干预。
 
-## 2. 输入与前置条件
-
-- 任务状态 `FIXING`；`attempt = task.retry_count + 1`（1 起始）；
-- 分支命名：`autofix/{platform_bug_id}`；
-- 最新 `verification_plan`（验收点来源，无则"(无验证方案)"占位）；
-- 历史 `fix_record`（全部尝试）与失败 `verify_record`（重试反馈来源）。
-
-## 3. 处理流程
-
-```
-1. prepare_workspace（见 §3.1）
-2. 感知基线（PERCEPTION_ENABLED 且注入 perception 服务时）：
-   capture(task, plan, "pre_fix")；异常摘要注入 prompt（前 10 条）；
-   失败不阻断主链路
-3. 组装 prompt（attempt=1 → fixing_v1；attempt≥2 → fixing_retry_v1）：
-   bug_block（注入防护）
-   + 验收点（方案步骤 desc/action + expected_results）
-   + 经验块（见 §3.2）
-   + 感知基线摘要（可选）
-   + [重试] previous_attempts（历史 FixRecord 摘要，各截 300 字）
-          + failure_evidence（历史失败 VerifyRecord 的失败步骤 JSON）
-4. 修复通道执行：
-   channel = ctx.fix_channel（claude_code_cli）或 ctx.llm（langchain）
-   agent = channel.create_fix_agent(工作区工具集)   # 见 §3.3
-   summary = channel.run_fix_agent(agent, prompt)    # 计量 + 预算检查
-5. compute_diff(workspace) → (changed_files, unified diff)
-   current_hash = diff_hash(diff)（sha256 前 16 位）
-6. 落库 FixRecord（prompt 快照、changed_files、diff、diff_hash、summary、experience_hit）
-   + 审计 fix_attempt
-7. 出口校验与分流（见 §4）
-```
-
-### 3.1 工作区准备（`prepare_workspace`）
-
-- 路径：`{WORKSPACE_ROOT}/task-{task.id}`，每次重建（先删后建，保证幂等）；
-- `USE_GIT_WORKTREE=true` 且 `repo_url` 为本地 git 仓库：清理残留后 `git worktree add -b autofix/{bug-id} <branch>`（受控分支）；失败回退快照方案；
-- 快照方案：复制源目录（跳过 `.git`）并建 `.baseline/` 基线副本供 diff 比对；
-- git 工作区用 `git diff --cached`（暂存后取全量含新增文件），快照方案用 `difflib.unified_diff` 对比 `.baseline`。
-
-### 3.2 经验复用回路（FR-MEM-01）
-
-- 检索：`ExperienceService.find_relevant(modules=affected_modules, keywords=title 分词, limit=3)`，匹配 `problem_signature/symptoms/applicable_conditions`；
-- 命中：每条 `hit_count += 1`（审计 `experience_hit`），摘要素材注入 prompt（fix_pattern 前 200 字），`FixRecord.experience_hit=True`；
-- 提示语义：经验是"可参考，须结合本次 Bug 判断适用性"。
-
-### 3.3 Agent 工具集（执行侧权限收敛，11.2）
-
-`read_file / write_file / list_dir / git_diff` 四个工具，**全部路径解析限制在工作区内**（越出即抛错），LLM 无法触碰工作区外文件与 shell。
-
-## 4. 输出与状态迁移（出口校验）
-
-| 校验 | 结果 | 迁移 | 说明 |
-|---|---|---|---|
-| 禁改路径命中（`FORBIDDEN_PATHS` glob） | `failed` | `→ MANUAL` | 安全红线，直接转人工（不再重试） |
-| `changed_files` 为空 | `failed` | `→ FAILED` | 可断点续跑重试 |
-| `current_hash` 与历史任一 FixRecord 相同 | `failed` | `→ LEARNING` | 相同 diff 提前终止重试（11.5），走失败分支 |
-| 以上均不命中 | `success` | `→ DEPLOYING` | 携带 `fix_record_id / changed_files` |
-
-## 5. 数据模型
-
-- 写：`fix_record`（attempt、branch、worktree、prompt_version、prompt_snapshot、changed_files、diff、diff_hash、summary、experience_hit）、`task_state_history`、`audit_log`、`llm_usage`、`experience.hit_count`；
-- 读：`verification_plan`、`fix_record`（历史）、`verify_record`（失败证据）、`experience`。
-
-## 6. 配置项
-
-| 配置 | 默认 | 说明 |
+| # | 预期 | 验证方式 |
 |---|---|---|
-| `FIX_CHANNEL` | `langchain` | `langchain` / `claude_code_cli` |
-| `CLAUDE_EXECUTABLE` / `CLAUDE_TIMEOUT` | `claude` / `600s` | CLI 通道参数 |
-| `USE_GIT_WORKTREE` | `false` | 工作区模式 |
-| `WORKSPACE_ROOT` | `./var/workspaces` | 工作区根目录 |
-| `FORBIDDEN_PATHS` | `.env,*.key,*.pem,deploy/*,secrets/*` | 出口侧禁改清单（glob） |
-| `PERCEPTION_ENABLED` | `false` | 感知基线开关 |
+| R1 | 每次尝试恰好 1 条 `FixRecord`（prompt 全文快照 + diff + 哈希），成功失败违规一律留痕 | `fix_record` + 审计 `fix_attempt` |
+| R2 | 修复只发生在隔离工作区（codex 沙箱 workspace-write 强制 + 出口侧复核） | 沙箱参数 + diff 范围 |
+| R3 | 禁改路径命中 → `MANUAL` 不重试；零变更 → `FAILED` 可续跑；重复 diff → `LEARNING` 提前终止 | 状态历史 message |
+| R4 | attempt≥2 的尝试自动携带历史修复摘要与验证失败证据（11.5） | retry 模板 prompt 快照 |
+| R5 | 经验库命中注入指令且 `hit_count` 递增 | `experience_hit=True` + prompt 含经验块 |
+| R6 | 每次 codex 调用的 token 用量写入 `llm_usage`（从事件流解析，不留计量缺口） | `llm_usage(stage="fixing")` |
 
-## 7. 异常与失败处理
+## 2. 修复驱动全过程
 
-- 修复通道崩溃/超时/预算超限 → Stage 异常 → Orchestrator 兜底 `FAILED`；
-- git worktree 不可用 → 自动回退目录快照（降级不失败）；
-- 感知采集失败 → 仅告警，修复继续；
-- 重试语义：验证失败回退时 `retry_count += 1`，故同一任务最多执行 `max_retry + 1` 次修复（见 Spec 07 §4）。
+### 2.1 一次尝试的完整时序
 
-## 8. 人工介入点
+```
+进入 FIXING
+  ① attempt = retry_count + 1 → 选模板（1→fixing_v1，≥2→fixing_retry_v1）
+  ② prepare_workspace → 三形态之一（§3）
+  ③ （可选，默认关）pre_fix 感知快照，异常前 10 条做注记；失败不阻断
+  ④ 组装 prompt（§4）：bug 块 + 验收点 +（经验块/感知注记/历史反馈）
+  ⑤ 调用 codex exec 子进程（§2.2）——修复主体在 Codex 内部闭环，最终消息 = summary
+  ⑥ compute_diff（工作区 vs 基线）→ changed_files + unified diff → sha256[:16] 哈希
+  ⑦ FixRecord 落库 + 审计 fix_attempt + llm_usage（事件流用量）
+  ⑧ 出口校验四分支（§5）→ DEPLOYING / MANUAL / FAILED / LEARNING
+```
 
-无直接介入。禁改路径违规与超阈值一样落 `MANUAL`；修复反复失败的讨论介入在 Spec 08。
+⑤ 是子进程调用，⑥⑧ 是系统的独立验收——**不信任 CLI 自述，以工作区 diff 为唯一事实**。
 
-## 9. 安全约束（11.2 三层）
+### 2.2 codex exec 调用规格（子系统契约）
 
-1. **输入侧**：Bug 文本注入防护（检测留痕 + 包裹）；
-2. **执行侧**：agent 工具路径沙箱（仅工作区）；
-3. **出口侧**：禁改路径 glob 校验（命中即转人工）+ prompt 快照落库可回放。
+| 项 | 规格 |
+|---|---|
+| argv | `[codex, "exec", <prompt>, "--cd", <workspace>, "-s", "workspace-write", "--json", "--output-last-message", <tmp文件>, "--skip-git-repo-check"]` +（配置了模型时 `--model <codex_model>`）；**参数列表形式，不经 shell** |
+| 鉴权 | `OPENAI_API_KEY` 环境变量或本机 `codex login`；启动预检（Spec 02 B0 扩展）静态检查 CLI 可执行 + 鉴权配置 |
+| 沙箱 | `workspace-write`：进程**只能写工作区内文件**，网络默认禁用（修复不需要外网；如需装依赖属 P2 放开评估）。原 make_workspace_tools 字符串前缀沙箱整体废弃，其已知前缀逃逸弱点随之消灭 |
+| `--skip-git-repo-check` | 目录快照/空工作区不是 git 仓库，必须跳过 codex 的 git 仓库前置检查；git worktree 形态天然满足 |
+| 输出 | `--json` JSONL 事件流（逐行 JSON：执行过程/文件变更/用量事件）→ 解析用量事件写 `llm_usage`；`--output-last-message` 指定文件读取最终文本 = summary（修复说明） |
+| 产物 | changed_files/diff **一律由 ⑥ compute_diff 独立计算**，不解析 CLI 事件流中的文件清单作准 |
+| 超时 | `codex_timeout` 默认 600s，超时杀进程 → 本次尝试失败 |
+| 退出码 | 非 0 → `CodexError`（含 stderr 前 500 字）→ 本次尝试失败 |
+| 配置 | `codex_executable`（默认 `codex`）、`codex_model`、`codex_timeout`、`codex_sandbox`（默认 workspace-write） |
 
-## 10. 验收标准
+### 2.3 驱动过程语义（Codex 内部）
 
-- 产出变更的任务落 `FixRecord` 且进入 `DEPLOYING`（`tests/test_e2e.py`）；
-- 修改 `.env` 等禁改路径 → `MANUAL`（`tests/test_failure_branch.py`）；
-- 无变更 → `FAILED`；与历史相同 diff → 直接 `LEARNING` 失败分支；
-- 工作区路径越界被工具层拒绝（`test_whitelist.py` 相应边界）；
-- 经验库命中条目注入 prompt 且 `hit_count` 递增（`test_experience_reuse.py`）；
-- git worktree 模式创建 `autofix/<bug-id>` 分支并清理残留（`test_git_worktree.py`）。
+codex exec 收到 prompt 后在其内部自主完成"探索（read/grep）→ 定位 → 修改（edit/apply_patch）→ 自查"循环，工具链与轮数上限由 Codex CLI 自身管理——本工程不再有 agent 循环、递归上限、工具集的概念（原 langchain 版的 §2.2-2.3 机制随通道一并移除）。系统侧唯一控制点：prompt 内容（④）+ 沙箱参数 + 超时 + 出口验收。
 
-## 11. 已知限制与演进
+### 2.4 完整实例：BUG-T001 目标态 trace
 
-- 重试反馈为结构化摘要（各 300 字截断），非全量日志；
-- `claude_code_cli` 通道依赖本机 CLI 可执行文件；生产建议容器化隔离；
-- 感知默认关闭（P1）；修复指令无多 agent 协作（P2）。
+前置：工作区 = repo 快照（`api/health.json` = `{"status": "fail"}`）+ `.baseline` 副本；注入测试桩 `ScriptedCodexCLI`（§2.5）模拟子进程直接改写工作区文件。
+
+| 步骤 | 动作 | 结果 |
+|---|---|---|
+| ④ | 组装 prompt | fixing_v1 填充：bug 七行块 + 验收点（方案两步 desc + "预期: status 为 ok"） |
+| ⑤ | codex exec（桩） | 桩在 workspace 内把 `api/health.json` 覆写为 `{"status": "ok"}`，最终消息文件写"修复完成：已将 status 修正为 ok."，事件流含模拟用量事件 |
+| ⑥ | compute_diff | difflib 对比 `.baseline` → `changed_files=["api/health.json"]`，diff 含 `-fail`/`+ok` |
+| ⑦ | FixRecord | attempt=1、branch、prompt 快照、diff、哈希、summary；llm_usage 记录桩用量 |
+| ⑧ | 出口校验 | 非禁改、非空、非重复 → `DEPLOYING` |
+
+### 2.5 测试注入策略（非 Fake LLM 模式）
+
+`codex exec` 依赖外部 CLI 与 API Key，全链路测试不可真实调用。测试注入**桩**：`ScriptedCodexCLI` 与 `CodexCLI` 同接口（构造 argv → 执行 → 返回事件流/最终消息/退出码），e2e 套件 monkeypatch 替换子进程执行点。这是标准测试替身，不是被移除的 Fake 修复模拟——生产路径无桩、必真调 codex。
+
+## 3. 工作区三形态（prepare_workspace，不变）
+
+路径 `{workspace_root}/task-{task.id}`，每次先删后建（幂等）。
+
+| 形态 | 条件 | diff 来源 |
+|---|---|---|
+| git worktree | 开关开 + repo_url 为本地 git 仓库；清残留后 `worktree add -b autofix/{bug-id}` | `git add -A` + `diff --cached HEAD` |
+| 目录快照 | repo_url 为本地非 git 目录，或 worktree 失败回退 | 复制源目录 + `.baseline/` 副本，difflib 对比 |
+| 空工作区 | repo_url 空/非本地目录 | 空目录开修，产出全为新增文件（Spec 01 §9 P1 后废除） |
+
+git diff 失败返回空变更 → 表现为 §5 零变更失败，不抛异常。
+
+## 4. 修复指令组装（不变）
+
+**fixing_v1**（attempt=1）= bug 块（七行结构化 + untrusted 包裹）+ acceptance（最新版方案每步 desc-or-action 一行 + 每条预期一行；无方案占位"(无验证方案)"）；经验块（`find_relevant` 命中注入 `fix_pattern[:200]` + `hit_count+1`）与感知注记拼接在 acceptance 尾部。
+
+**fixing_retry_v1**（attempt≥2）额外：`previous_attempts`（历史 FixRecord：attempt/changed_files/summary[:300]/diff[:300] JSON）+ `failure_evidence`（失败 VerifyRecord 的失败步骤 JSON）。
+
+**Codex 看不到**：仓库全貌（仅工作区副本）、评分结论、DSL 步骤参数原文、代码实证结果（P1 接入）。
+
+## 5. 出口校验（FixRecord 先无条件落库，再依序判定；不变）
+
+| 序 | 校验 | 结果 | 迁移 |
+|---|---|---|---|
+| 1 | 变更文件 fnmatch 禁改清单（默认 `.env,*.key,*.pem,deploy/*,secrets/*`，全路径或文件名双匹配） | failed | `MANUAL`（安全红线不重试） |
+| 2 | `changed_files` 为空 | failed | `FAILED`（断点续跑） |
+| 3 | diff 哈希与本任务历史任一尝试相同（11.5） | failed | `LEARNING`（提前终止，走失败经验分支） |
+| 4 | 均不命中 | success | `DEPLOYING`（携带 fix_record_id + changed_files） |
+
+## 6. 通道整合与移除清单（迁移记录）
+
+**新增**：`adapters/codex_cli.py`（`CodexError` + `CodexCLI` 子进程封装 + 事件流解析 + 用量提取）；`pipeline/stages/fixing.py` ⑤ 处改为调用 CodexCLI；配置四项（§2.2）；启动预检补 codex 检查。
+
+**移除**：
+
+| 移除项 | 说明 |
+|---|---|
+| `LLMGateway.create_fix_agent / run_fix_agent` | langchain 修复通道；`analyze`（分析类结构化输出）**保留** |
+| `adapters/claude_code_cli.py` 整个适配器 | 连同 `test_adapters_real.py` Claude 段测试 |
+| `MeteredFixChannel` | 为 CLI 通道补计量的包装，随 claude 通道移除；codex 通道内建事件流计量 |
+| `make_workspace_tools` + 4 工具 | 沙箱职责移交 codex workspace-write；其字符串前缀逃逸弱点（task-1→task-11）随之消灭，不再需要修复 |
+| `ScriptedFakeChatModel` 的修复兜底应答 | `{"tool_calls": [write_file...]}` 与 ToolMessage 短路逻辑（`_generate` 前两段修复相关分支） |
+| 配置 `FIX_CHANNEL / CLAUDE_EXECUTABLE / CLAUDE_TIMEOUT` | 由 codex 四配置替代 |
+
+**边界（重要）**：移除范围仅修复路径。完整性/方案/评分/失败分析四类 `ctx.llm.analyze` 调用与 Fake 模式结构化输出**全部保留**——无 Key 测试体系（161 项）依赖它，Spec 02/03/04 的 as-built 描述不受影响。
+
+**测试改造**：依赖修复动作的 e2e 系测试（test_e2e / test_git_worktree / test_experience_reuse / test_env_lock / test_failure_branch / test_scoring 部分 / test_api_fields_perception）统一注入 `ScriptedCodexCLI` 桩；真实 codex 冒烟为手动步骤，不进 CI。
+
+## 7. 异常矩阵
+
+| 场景 | 行为 | 结果 |
+|---|---|---|
+| codex CLI 未安装 / 鉴权未配置 | 启动预检拦截（B0 扩展）；运行期 FileNotFoundError → CodexError | 预检失败拒绝启动 / 尝试 `FAILED` |
+| 超时（默认 600s） | 杀进程 | 本次尝试 `FAILED` |
+| 退出码非 0 | CodexError（stderr[:500]） | 本次尝试 `FAILED` |
+| 沙箱拒绝写（越出工作区） | codex 内部报错 → 非零退出或零变更 | `FAILED`（原前缀逃逸面已不存在） |
+| 零变更 | 出口校验 2 | `FAILED` 可续跑 |
+| 禁改路径命中 | 出口校验 1 | `MANUAL`，FixRecord 留痕 |
+| 重复 diff | 出口校验 3 | `LEARNING` 失败分支 |
+| 事件流用量解析失败 | 告警，用量记 0，不阻断 | 尝试照常，计量缺该次 |
+| 预算超限 | 调用前拦截 `BudgetExceededError` | `FAILED` |
+| 感知采集失败 | warning + 空注记 | 修复继续 |
+
+## 8. 验收条款
+
+| # | 条款 | 测试 |
+|---|---|---|
+| A1 | 桩注入全链路：FixRecord 留痕（branch/changed_files/diff/prompt_snapshot）且 CLOSED | `test_end_to_end_full_pipeline`（改造后） |
+| A2/A3 | git worktree 模式分支真实存在 / 非 git 回退快照 | `test_git_worktree.py` 两用例（桩改造后） |
+| A4 | 经验命中注入 + hit_count+1 | `test_experience_injected_into_fix_prompt`（桩改造后） |
+| A5 | codex argv 构造：沙箱/工作目录/skip-git-repo-check/参数列表不经 shell | **新增单测**（纯本地） |
+| A6 | 事件流解析：用量事件 → llm_usage；最终消息文件 → summary | **新增单测**（样例 JSONL 固定输入） |
+| A7 | 五类异常（缺失/超时/非零退出/鉴权/输出不可解析）| **新增单测**（monkeypatch 子进程，模式同原 Claude 段） |
+| A8-A10 | 禁改→MANUAL / 零变更→FAILED / 重复 diff→LEARNING | **无覆盖，待补**（原有缺口不变） |
+| 真实冒烟 | 真 codex 修 BUG-T001 | 手动，不进 CI |
+
+## 9. 已知限制与 P1 联动
+
+- 依赖本机 codex CLI + OpenAI 鉴权；无 Key 环境仅桩测试可跑（真实链路冒烟需专用环境）；
+- 沙箱禁网：修复中无法装依赖/拉包（需联网场景 P2 评估定向放开）；
+- 事件流 schema 随 codex 版本演化，解析器需带版本容错（实现时对齐当前版本文档）；
+- Spec 01 §9（空工作区废除）、Spec 03 §9.4（fix_approach 注入首轮 prompt）、Spec 04 §8.6（代码实证注入）联动不变——三者都以"修复驱动收 prompt"为注入点，codex 化不影响。
