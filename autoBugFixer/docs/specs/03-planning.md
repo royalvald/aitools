@@ -191,22 +191,22 @@
 |---|---|---|
 | A1 | 给定低风险任务（CSV 路径），当方案生成，则 risk_level=low、自动通过进 SCORED 且方案已落库 | `test_import_and_analysis_end_to_end` |
 | A2 | 给定状态机迁移表，当查询，则 PLANNING→WAIT_PLAN、WAIT_PLAN→SCORED 为合法迁移 | `test_state_machine.py`（迁移对参数化） |
-| A3 | 给定高风险任务（affected_modules 含 core-payment），当方案生成，则产生 plan_confirm 介入单、任务停 WAIT_PLAN | **无覆盖**（待补，见下） |
-| A4 | 给定 WAIT_PLAN 介入单，当回写 approved=true，则 confirmed_by 落库、任务进 SCORED | **无覆盖**（待补） |
-| A5 | 给定 WAIT_PLAN 介入单，当回写 approved=true+steps，则 plan.version+1、steps 被覆盖、按新版本执行 | **无覆盖**（待补） |
-| A6 | 给定 WAIT_PLAN 介入单，当回写 approved=false，则任务转 MANUAL | **不可验收**——当前因 B6-3 缺陷必然失败，修复后补 |
+| A3 | 给定高风险任务（affected_modules 含 core-payment），当方案生成，则产生 plan_confirm 介入单、任务停 WAIT_PLAN | `test_plan_confirm.py::test_high_risk_plan_blocks_at_wait_plan` |
+| A4 | 给定 WAIT_PLAN 介入单，当回写 approved=true，则 confirmed_by 落库、任务进 SCORED | `test_plan_confirm.py::test_plan_approved_enters_scored` |
+| A5 | 给定 WAIT_PLAN 介入单，当回写 approved=true+steps，则 plan.version+1、steps 被覆盖、按新版本执行 | `test_plan_confirm.py::test_plan_approved_with_steps_bumps_version` |
+| A6 | 给定 WAIT_PLAN 介入单，当回写 approved=false，则任务转 MANUAL | `test_plan_confirm.py::test_plan_rejected_goes_manual`（B6-3 缺陷修复回归） |
 
 **规则覆盖对照**（规则 ↔ 测试，标注缺口）：
 
 | 规则 | 自动化测试 | 缺口 |
 |---|---|---|
 | B1/B4 生成与落库（低风险路径） | A1（端到端间接覆盖） | — |
-| B2 词表校验（生成期拦截重试） | 无直接单测 | 可补：非法动作/缺参构造断言重试与 FAILED |
+| B2 词表校验（生成期拦截重试） | `test_gap_coverage.py::test_planning_invalid_action_retries_then_succeeds` / `test_planning_validation_exhausted_goes_failed` | — |
 | B3-4 CSV 恒低风险 | A1（risk_level=="low" 断言） | — |
-| B5-2 高风险阻塞 | 无 | 高风险端到端（A3） |
-| B6-1/B6-2 批准与调整回写 | 无 | A4/A5 |
-| B6-3 拒绝回写 | 无 | **被缺陷阻断**，修复后补 A6 |
-| 空步骤方案（§5） | 无 | 可补：steps=[] 断言空真通过（固化现状或先加约束） |
+| B5-2 高风险阻塞 | `test_plan_confirm.py` A3 | — |
+| B6-1/B6-2 批准与调整回写 | `test_plan_confirm.py` A4/A5 | — |
+| B6-3 拒绝回写 | `test_plan_confirm.py` A6 | — |
+| 空步骤方案（§5） | `test_dsl_plan.py::test_empty_steps_vacuous_pass`（空真固化）+ `test_plan_output_rejects_too_few_steps`（生成期拦截） | — |
 
 ## 8. DSL 扩展机制（AI 自主技能扩展 · 已实现）
 

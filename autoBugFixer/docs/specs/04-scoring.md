@@ -169,12 +169,12 @@
 
 | 规则 | A1 | A2 | A3 | A4 | A5 | A6 | A7 | 缺口 |
 |---|---|---|---|---|---|---|---|---|
-| B1 输入契约 | | | | ✓ | | | | B1-3 截断、B1-4 无方案占位无直接断言 |
+| B1 输入契约 | | | | ✓ | | | | B1-3 截断 / B1-4 无方案占位：`test_scoring.py::test_scoring_prompt_truncates_plan_summary` / `test_scoring_prompt_placeholder_when_no_plan` |
 | B2 LLM 行为 | ✓ | ✓ | | | | | | B2-1/B2-4 属模板事实，无自动化校验（设计性缺口） |
-| B3 边界重试 | | | | | | | | —（越界重试、耗尽转 FAILED 无直接测试） |
-| B4 权重/策略 | | | ✓ | | ✓ | | | B4-2 部分合并、B4-3 和不校验仅间接覆盖 |
-| B5 合成准入 | ✓ | ✓ | ✓ | | ✓ | | ✓ | B5-2 developer 通知**无任何断言**（旧版 spec 引用 test_notifier_writeback.py 为虚构，已修正） |
-| B6 消费路径 | | | | | | ✓ | ✓ | admission_hold 审计无直接断言（hold 行为由 A6 间接覆盖） |
+| B3 边界重试 | | | | | | | | `test_scoring.py::test_out_of_range_score_retries_then_failed` |
+| B4 权重/策略 | | | ✓ | | ✓ | | | B4-2 部分合并：`test_scoring.py::test_strategy_partial_merge_keeps_config_defaults` |
+| B5 合成准入 | ✓ | ✓ | ✓ | | ✓ | | ✓ | B5-2 developer 通知：`test_scoring.py::test_high_score_notifies_developer_with_score_detail` |
+| B6 消费路径 | | | | | | ✓ | ✓ | admission_hold 审计：`test_scoring.py::test_preprocessing_hold_writes_admission_hold_audit` |
 
 ## 8. 演进：评分机制 v2（本地评价标准模板 + AI 多维分析 + 本地加权）
 
@@ -305,6 +305,6 @@ AI 按标准逐项判定：归类 bug 类型 + 判定命中因子（+ 复杂类�
 - `rationale` 允许为空且无质量校验（v2 已由判定表单证据替代；v1 路径仍在）
 - 权重和不强制为 1（配置责任）
 - 评分不含历史通过率反馈信号（P2 可结合经验库命中率修正难度先验；v2 的 rubric 治理通道已为其预留入口）
-- developer 通知与 admission_hold 审计无测试断言（§7 矩阵缺口）
+- ~~developer 通知与 admission_hold 审计无测试断言~~（已补齐，见 §7 矩阵缺口列）
 - LLM 网关重试不分类异常（认证错误也会重试 3 次）——与 Spec 02 B0 遗留优化项相同
 - 范围外：调度器整体行为（出队上限调优、SLA 扫描）见调度相关设计；策略建议生成算法（optimization 服务）仅在 B4-4 引用

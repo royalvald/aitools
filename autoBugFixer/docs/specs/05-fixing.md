@@ -148,7 +148,7 @@ git diff 失败返回空变更 → 表现为 §5 零变更失败，不抛异常�
 | A5 | codex argv 构造：沙箱/工作目录/skip-git-repo-check/参数列表不经 shell | **新增单测**（纯本地） |
 | A6 | 事件流解析：用量事件 → llm_usage；最终消息文件 → summary | **新增单测**（样例 JSONL 固定输入） |
 | A7 | 五类异常（缺失/超时/非零退出/鉴权/输出不可解析）| **新增单测**（monkeypatch 子进程，模式同原 Claude 段） |
-| A8-A10 | 禁改→MANUAL / 零变更→FAILED / 重复 diff→LEARNING | **无覆盖，待补**（原有缺口不变） |
+| A8-A10 | 禁改→MANUAL / 零变更→FAILED / 重复 diff→LEARNING | `test_codex_cli.py::test_forbidden_path_goes_manual` / `test_zero_change_goes_failed` / `test_duplicate_diff_goes_learning` |
 | 真实冒烟 | 真 codex 修 BUG-T001 | 手动，不进 CI |
 
 ## 9. 已知限制与 P1 联动

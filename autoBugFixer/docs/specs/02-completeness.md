@@ -296,10 +296,10 @@ T2  再补一轮仍不齐 → 2 ≥ 2 达上限 → 不再开单，直接 MANUAL
 | B3-1 通过分流 | A2 | — |
 | B3-3 / B3-4 往返上限 | A4 | — |
 | B5-3 无变化不唤醒 | A6 | — |
-| B2-5 注入检测留痕 | 无 | 可补：含注入样例断言审计 `injection_detected` |
-| B2-6 预算超限 → FAILED | 无 | 可补：极小预算配置下断言 FAILED |
-| B2-8 校验重试耗尽 → FAILED | 无 | 可补：持续输出非法 JSON 断言 FAILED |
-| B5-1 未知字段静默忽略 | 无 | 可补：fields 混入未知键断言不报错 |
+| B2-5 注入检测留痕 | `test_gap_coverage.py::test_injection_detected_audit_not_blocking` | — |
+| B2-6 预算超限 → FAILED | `test_gap_coverage.py::test_budget_exceeded_goes_failed` | — |
+| B2-8 校验重试耗尽 → FAILED | `test_gap_coverage.py::test_validation_retry_exhausted_goes_failed` | — |
+| B5-1 未知字段静默忽略 | `test_gap_coverage.py::test_resolve_ignores_unknown_fields` | — |
 
 ## 8. 第一阶段范围外（演进项）
 

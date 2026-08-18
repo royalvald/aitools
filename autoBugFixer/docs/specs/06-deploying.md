@@ -178,13 +178,14 @@ OUT-4 FAILED（无环境行，未取锁）
 | 条款 | 测试 | 备注 |
 |---|---|---|
 | 全链路部署+锁获取/释放+cmd_exec 审计 | `test_end_to_end_full_pipeline` | 断言审计动作集合与 CLOSED，**未直接查 DeployRecord** |
-| 失败回滚+锁释放（deploy_script=["false"]） | `test_env_lock.py::test_部署失败释放锁` | 断言 FAILED + EnvLock 空 + 环境可被他人立即获取；**未断言 rolled_back 与 ops 通知** |
+| 失败回滚+锁释放（deploy_script=["false"]） | `test_env_lock.py::test_deploy_failure_releases_env_lock` | 断言 FAILED + EnvLock 空 + 环境可被他人立即获取 |
 | 锁互斥/租约过期/过期回收/renew | `test_env_lock.py` 六用例 | — |
 | 白名单拦截 | `test_whitelist.py` | — |
 | SSH/Docker 执行器（拒绝先于连接、cd 包装、凭据解密、tar 上传、容器健康） | `test_adapters_real.py` | — |
-| WAIT_ENV 排队 + env_lock_wait 审计 | **无覆盖** | 旧版引 test_env_lock.py 为**虚构**（该文件无 WAIT_ENV 用例） |
-| 调度器回收过期锁 | **无覆盖**（仅 service 层直接调用有测试） | 旧版引 test_scheduler.py 为**虚构**（全文无锁断言） |
-| rolled_back 状态 + ops 通知 | **无覆盖** | 旧版引 test_failure_branch.py 为**错引**（该文件测讨论介入，零部署断言） |
+| 环境配置预检（type 枚举/ssh host/凭据/docker container/脚本白名单/local 警告） | `test_env_precheck.py` 预检五用例 | §2.1 P1 |
+| WAIT_ENV 排队 + env_lock_wait 审计 | `test_env_precheck.py::test_deploy_waits_when_env_locked` | 含锁释放唤醒后续跑闭环 |
+| 调度器回收过期锁 | `test_env_precheck.py::test_scheduler_reclaims_expired_lock` | 断言 locks_reclaimed 与锁行清空 |
+| rolled_back 状态 + ops 通知 | `test_env_precheck.py::test_deploy_failure_rolled_back_and_ops_notified` | 断言 steps_log rollback 条目与 deploy_rollback 审计 |
 
 ## 10. 已知限制
 

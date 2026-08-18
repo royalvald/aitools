@@ -225,8 +225,8 @@ Stage 级未捕获异常 → Orchestrator 兜底（orchestrator.py:185-204）：
 | 回写失败重试（calls≥2）+ platform_writeback_failed 审计 + 不阻塞 CLOSED | `test_notifier_writeback.py::test_writeback_failure_not_blocking` | |
 | IM 通知器 payload（wecom/dingtalk/失败吞掉/配置构建） | `test_notifier_writeback.py` 前四用例 | NoticeMessage title/content/link 结构 |
 | info_supplement 续跑闭环 + info_rounds 超限转 MANUAL | `test_intervention.py` 两用例 | 与本 spec 关联仅为回写机制同源（§3.3） |
-| 讨论 close 不写 closed_at（§3.5 不一致） | **无覆盖**（test_discussion_close 未断言 closed_at） | 待补断言 |
-| 无验证记录进入 LEARNING（相同 diff 终止路径） | **无覆盖** | 待补（Spec 05 §8 A8-A12 同为缺口） |
+| 讨论 close 同步写 closed_at（§3.5 已对齐） | `test_failure_branch.py::test_discussion_close`（断言 closed_at） | |
+| 无验证记录进入 LEARNING（相同 diff 终止路径） | `test_failure_branch.py::test_learning_without_verify_record_goes_failure_branch` | 失败分支不抛错、规则模板兜底 |
 
 ## 7. 已知限制
 

@@ -193,14 +193,15 @@ VERIFYING 未过 且 retry_count < max_retry
 |---|---|---|
 | 全过 → conclusion=passed、逐步 passed、verify 审计 | `test_e2e.py::test_end_to_end_full_pipeline`（55-57、73 行断言真实存在） | 另断言 dsl_version=="1.0"、链路 CLOSED |
 | 临界区收口锁释放 | `test_e2e.py::test_env_lock_released_after_pipeline` | EnvLock 表空 |
-| 验证异常路径锁释放 | `test_env_lock.py::test_verify_exception_releases_env_lock`（93-116） | 缺参步骤 → FAILED + 锁释放；**这是 §7 第 2 行的唯一测试** |
-| 重试耗尽 → 失败分支 + 讨论 | `test_failure_branch.py` | 测的是**耗尽后** LEARNING 失败分支与讨论介入三回写（WAIT_DISCUSS / InapplicableCase）；重试环本身（FIXING→DEPLOYING→VERIFYING 回环、retry_count 递增、failure_evidence 注入）只是链路背景，**无直接断言** |
+| 验证异常路径锁释放 | `test_env_lock.py::test_verify_exception_releases_env_lock`（93-116） | 缺参步骤 → FAILED + 锁释放 |
+| 无验证方案行 → FAILED（S1/OUT-3） | `test_gap_coverage.py::test_verifying_without_plan_fails` | 不产生 VerifyRecord |
+| 重试耗尽 → 失败分支 + 讨论 | `test_failure_branch.py` | 测的是**耗尽后** LEARNING 失败分支与讨论介入三回写 |
+| 重试环时序（回环重走、attempt 递增、失败证据注入 prompt） | `test_gap_coverage.py::test_retry_loop_timing_and_failure_evidence` | 断言 fixes/verifies attempt 序列与 retry prompt 内容 |
 | 人工 retry 重置计数 | `test_failure_branch.py::test_discussion_retry_resets_count` | retry_count==0 且回 FIXING |
-| risk_notes / introduced / perception_compare 审计 | `test_api_fields_perception.py::test_perception_wiring`（90-104） | **旧版引 test_perception.py 为错引**——该文件测感知服务本体（DBPerception、三维采集、pre/post compare），不含 VerifyRecord.risk_notes 断言 |
+| risk_notes / introduced / perception_compare 审计 | `test_api_fields_perception.py::test_perception_wiring`（90-104） | 感知服务本体见 `test_perception.py` |
 | 感知默认关 | `test_api_fields_perception.py::test_perception_disabled_by_default` | 注入但不采集 |
-| 感知本体（三维/只读 SQL/超时重试/对比） | `test_perception.py` 六用例 | 注意 `test_readonly_sql_enforced` 校验的是**感知侧**白名单，不是 DSLInterpreter 的 |
-| DSL 白名单（update/delete 被拒） | **无覆盖** | **旧版"DSL 白名单用例"为虚构引用**：tests/ 全目录无任何 DSLInterpreter 测试（仅 test_e2e.py:44 一行 dsl_version 断言），DSL 执行器零测试覆盖 |
-| 重试环时序（回环重走 DEPLOYING、attempt 递增、失败证据注入 prompt） | **无覆盖** | 待补 |
+| 感知本体（三维/只读 SQL/超时重试/对比） | `test_perception.py` 六用例 | 注意 `test_readonly_sql_enforced` 校验的是**感知侧**白名单 |
+| DSL 语义（九动作/白名单只读 SELECT/单步异常捕获/空真） | `test_dsl_plan.py` DSLInterpreter 段 11 用例 | 含 `test_query_db_rejects_write_sql_as_failed_step`（update 被拒） |
 
 ## 10. 已知限制
 

@@ -1,11 +1,13 @@
-"""Spec 覆盖缺口补充测试（Spec 02 §7 规则覆盖对照 / Spec 07 §9 重试环时序）。
+"""Spec 覆盖缺口补充测试（Spec 02 §7 规则覆盖对照 / Spec 03 §7 / Spec 07 §9）。
 
 - B2-5 注入检测留痕（审计 injection_detected，不阻断）；
 - B2-6 预算超限 -> FAILED（不误发介入单）；
 - B2-8 结构化输出校验重试耗尽 -> FAILED；
 - B5-1 回写未知字段名静默忽略；
 - 重试环：VERIFYING 未过回 FIXING、retry_count/attempt 递增、
-  失败证据注入重试 prompt、耗尽入失败分支。
+  失败证据注入重试 prompt、耗尽入失败分支；
+- Spec 03 B2/B1-4：词表外动作经 Gateway 重试（恢复/耗尽两分支）；
+- Spec 07 S1/OUT-3：无验证方案行 -> FAILED。
 """
 
 import json
@@ -14,7 +16,14 @@ from sqlalchemy import select
 
 from autobugfixer.adapters.bug_platform import BugTicketData
 from autobugfixer.adapters.codex_cli import CodexRunResult
-from autobugfixer.models import AuditLog, FixRecord, Intervention, Task, VerifyRecord
+from autobugfixer.models import (
+    AuditLog,
+    FixRecord,
+    Intervention,
+    Task,
+    VerificationPlan,
+    VerifyRecord,
+)
 from autobugfixer.pipeline.state import TaskState
 from autobugfixer.services.ingestion import ingest_bug
 from autobugfixer.services.intervention import InterventionService
@@ -30,6 +39,80 @@ def _ingest(session_factory, settings, bug_id="BUG-GAP1", **overrides) -> int:
         task, _ = ingest_bug(s, data, max_retry=settings.max_retry)
         s.commit()
         return task.id
+
+
+VALID_PLAN_RESPONSE = {
+    "env_requirements": "env",
+    "steps": [
+        {"action": "input", "params": {"selector": "#env", "value": "v1"}},
+        {"action": "call_api", "params": {"method": "GET", "path": "/health"}},
+        {"action": "assert_response",
+         "params": {"json_path": "status", "expect": "ok"}},
+    ],
+    "expected_results": [], "function_points": [], "regression_scope": ""}
+
+INVALID_PLAN_RESPONSE = {
+    "env_requirements": "env",
+    "steps": [
+        {"action": "restart_service", "params": {}},  # 词表外动作（Spec 03 B2）
+        {"action": "call_api", "params": {"method": "GET", "path": "/health"}},
+        {"action": "assert_response",
+         "params": {"json_path": "status", "expect": "ok"}},
+    ],
+    "expected_results": [], "function_points": [], "regression_scope": ""}
+
+
+def test_planning_invalid_action_retries_then_succeeds(
+        make_orchestrator, session_factory, settings, repo, environment):
+    """Spec 03 B1-4/B2：词表外动作被 Schema 拦截 -> Gateway 重试 -> 合法方案落库续跑。"""
+    task_id = _ingest(session_factory, settings, repo_url=str(repo))
+    orchestrator = make_orchestrator([
+        {"complete": True, "missing": [], "suggestions": []},
+        INVALID_PLAN_RESPONSE, VALID_PLAN_RESPONSE])
+    assert orchestrator.run_until_blocked(task_id) == TaskState.CLOSED
+    with session_factory() as s:
+        plan = s.scalar(select(VerificationPlan).where(
+            VerificationPlan.task_id == task_id))
+        # 落库的是重试后的合法方案（非法动作应答已被拒绝丢弃）
+        assert [step["action"] for step in plan.steps] == [
+            "input", "call_api", "assert_response"]
+
+
+def test_planning_validation_exhausted_goes_failed(
+        make_orchestrator, session_factory, settings, repo, environment):
+    """Spec 03 B1-4：方案校验 3 次均失败 -> FAILED 断点续跑，无方案落库。"""
+    task_id = _ingest(session_factory, settings, repo_url=str(repo))
+    orchestrator = make_orchestrator([
+        {"complete": True, "missing": [], "suggestions": []},
+        INVALID_PLAN_RESPONSE, INVALID_PLAN_RESPONSE, INVALID_PLAN_RESPONSE])
+    assert orchestrator.run_until_blocked(task_id) == TaskState.FAILED
+    with session_factory() as s:
+        assert s.scalar(select(VerificationPlan).where(
+            VerificationPlan.task_id == task_id)) is None
+        exc = s.scalar(select(AuditLog).where(
+            AuditLog.task_id == task_id, AuditLog.action == "stage_exception"))
+        assert exc.detail["stage"] == "planning"
+
+
+def test_verifying_without_plan_fails(make_orchestrator, session_factory,
+                                      settings, repo):
+    """Spec 07 S1/OUT-3：无验证方案行 -> FAILED，不产生验证记录。"""
+    task_id = _ingest(session_factory, settings, repo_url=str(repo))
+    orchestrator = make_orchestrator()
+    assert orchestrator.run_preprocessing(task_id) == TaskState.SCORED
+    with session_factory() as s:
+        s.query(VerificationPlan).filter(
+            VerificationPlan.task_id == task_id).delete()
+        task = s.get(Task, task_id)
+        task.state = TaskState.VERIFYING.value
+        s.commit()
+
+    result = orchestrator.run_task(task_id)
+    assert result.status == "failed"
+    with session_factory() as s:
+        assert TaskState(s.get(Task, task_id).state) == TaskState.FAILED
+        assert s.scalar(select(VerifyRecord).where(
+            VerifyRecord.task_id == task_id)) is None
 
 
 # ---------- Spec 02 B2-5：注入检测留痕 ----------
