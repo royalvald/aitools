@@ -132,7 +132,7 @@ class DeployingStage:
     @staticmethod
     def _workspace(ctx: TaskContext) -> Path:
         record = ctx.session.scalar(select(FixRecord).where(
-            FixRecord.task_id == ctx.task.id).order_by(FixRecord.attempt.desc()))
+            FixRecord.task_id == ctx.task.id).order_by(FixRecord.id.desc()))
         if record is None:
             raise RuntimeError("缺少修复记录，无法部署")
         return Path(record.worktree)

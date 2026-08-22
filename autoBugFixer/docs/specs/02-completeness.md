@@ -306,4 +306,4 @@ T2  再补一轮仍不齐 → 2 ≥ 2 达上限 → 不再开单，直接 MANUAL
 - 判空之外的**确定性质量规则**（如复现步骤最少步数、描述最短长度）——当前语义质量判断全交 LLM；
 - **附件内容**参与完整性判断（当前仅文件名标识，见 Spec 01 §8）；
 - missing / suggestions 内容约束（当前 LLM 自由生成：missing 不强制标准字段名、建议无模板/长度规范），介入单展示侧需容忍自由文本；
-- info_supplement 介入单 SLA deadline 自动填充（当前超时升级依赖调度器 SLA 扫描）。
+- ~~info_supplement 介入单 SLA deadline 自动填充~~（已实现：介入单创建即按 `intervention_sla_hours` 填充 deadline，四类介入单同口径；超时升级由调度器 SLA 扫描消费）。

@@ -27,7 +27,7 @@ class LearningStage:
         """按最近验证结论分流：通过则经验入库并关闭缺陷单，未通过则生成讨论议题。"""
         task = ctx.task
         last_verify = ctx.session.scalar(select(VerifyRecord).where(
-            VerifyRecord.task_id == task.id).order_by(VerifyRecord.attempt.desc()))
+            VerifyRecord.task_id == task.id).order_by(VerifyRecord.id.desc()))
         verified = last_verify is not None and last_verify.conclusion == "passed"
 
         if verified:
@@ -38,7 +38,7 @@ class LearningStage:
 
     def _success_branch(self, ctx: TaskContext, verify: VerifyRecord) -> StageResult:
         fix = ctx.session.scalar(select(FixRecord).where(
-            FixRecord.task_id == ctx.task.id).order_by(FixRecord.attempt.desc()))
+            FixRecord.task_id == ctx.task.id).order_by(FixRecord.id.desc()))
         digest = self._digest_experience(ctx, fix, verify)
         category = digest.category or self._classify(ctx)
         # 比对去重：同 category + problem_signature 合并更新而非重复新增（FR-MEM-01）

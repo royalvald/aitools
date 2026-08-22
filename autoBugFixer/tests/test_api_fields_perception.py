@@ -33,6 +33,13 @@ def _ingest(client, repo):
     })
 
 
+def _full_flow(client, repo):
+    """webhook 安全唤醒（SCORED）后模拟调度器推进到闭环。"""
+    resp = _ingest(client, repo)
+    client.app.state.orchestrator.run_until_blocked(resp.json()["task_id"])
+    return resp
+
+
 # ---------- API 字段缺口 ----------
 
 def test_task_brief_has_title_and_updated_at(api_client, repo):
@@ -52,14 +59,14 @@ def test_interventions_have_deadline(api_client):
 
 
 def test_experiences_have_extra_fields(api_client, repo):
-    _ingest(api_client, repo)
+    _full_flow(api_client, repo)
     item = api_client.get("/api/experiences").json()["items"][0]
     assert "verification_points" in item
     assert "applicable_conditions" in item
 
 
 def test_metrics_has_duration_and_reuse_rate(api_client, repo):
-    _ingest(api_client, repo)
+    _full_flow(api_client, repo)
     metrics = api_client.get("/api/metrics/summary").json()
     assert "avg_fix_duration_minutes" in metrics
     assert metrics["avg_fix_duration_minutes"] >= 0

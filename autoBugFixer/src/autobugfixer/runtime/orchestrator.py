@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
+from sqlalchemy import or_, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from autobugfixer.adapters.platform import BugPlatformAdapter
@@ -18,7 +19,8 @@ from autobugfixer.features.intervention.service import InterventionService
 from autobugfixer.common.core.llm import LLMGateway
 from autobugfixer.adapters.platform.writeback import writeback_platform_status
 from autobugfixer.common.core.stage import Stage, StageResult, TaskContext
-from autobugfixer.common.core.state import BLOCKING_STATES, TERMINAL_STATES, TaskState, assert_transition
+from autobugfixer.common.core.state import BLOCKING_STATES, TERMINAL_STATES, TaskState
+from autobugfixer.common.core.transitions import transition_task
 from autobugfixer.features.completeness import CompletenessStage
 from autobugfixer.features.deploying import DeployingStage
 from autobugfixer.features.fixing import FixingStage
@@ -106,38 +108,26 @@ class Orchestrator:
             executor=self.executor,
             notifier=self.notifier,
             audit=AuditService(session),
-            interventions=InterventionService(session, self.notifier, writeback=_writeback),
+            interventions=InterventionService(
+                session, self.notifier, writeback=_writeback,
+                sla_hours=self.settings.intervention_sla_hours),
             env_locks=EnvLockService(session, lease_seconds=self.settings.env_lock_lease_seconds),
             codex=self.codex,
             perception=self.perception,
         )
 
     def _transition(self, ctx: TaskContext, to_state: TaskState, stage: str, message: str = "") -> None:
-        """执行状态迁移：断言合法性、写状态历史与审计、触发平台状态回写。"""
-        task = ctx.task
-        from_state = TaskState(task.state)
-        assert_transition(from_state, to_state)
-        task.state = to_state.value
-        task.current_stage = stage
-        if to_state == TaskState.CLOSED:
-            task.closed_at = datetime.now(timezone.utc)
-        ctx.session.add(
-            TaskStateHistory(
-                task_id=task.id, from_state=from_state.value, to_state=to_state.value,
-                stage=stage, message=message,
-            )
+        """执行状态迁移（统一走 core.transitions.transition_task，保证留痕完整）。"""
+        from_state = TaskState(ctx.task.state)
+        transition_task(
+            ctx.session, ctx.task, to_state, stage=stage, message=message,
+            audit=ctx.audit,
+            writeback=lambda to: writeback_platform_status(
+                platform=self.platform, bug=ctx.bug, to_state=to,
+                settings=self.settings, audit=ctx.audit, notifier=self.notifier,
+                task_id=ctx.task.id),
         )
-        ctx.audit.log(
-            action="state_transition", target=f"task:{task.id}",
-            detail={"from": from_state.value, "to": to_state.value, "stage": stage, "message": message},
-            task_id=task.id,
-        )
-        # 平台状态回写（11.7 status_map）：失败重试一次并告警，不阻塞主流程
-        writeback_platform_status(
-            platform=self.platform, bug=ctx.bug, to_state=to_state.value,
-            settings=self.settings, audit=ctx.audit, notifier=self.notifier,
-            task_id=task.id)
-        logger.info("task=%s %s -> %s (%s)", task.id, from_state, to_state, message)
+        logger.info("task=%s %s -> %s (%s)", ctx.task.id, from_state, to_state, message)
 
     def _handle_result(self, ctx: TaskContext, stage: Stage, result: StageResult) -> StageResult:
         """按四类结果（成功/介入/重试/失败）处理状态迁移与介入单创建。"""
@@ -158,6 +148,34 @@ class Orchestrator:
             self._transition(ctx, result.next_state or TaskState.FAILED, stage.name, result.message)
         return result
 
+    # ---------- 任务认领（并发互斥，11.1 防双驱） ----------
+
+    def _try_claim(self, task_id: int) -> bool:
+        """原子认领任务：claimed_until 为空或已过期方可写入新租约。
+
+        多执行者（调度器/API/webhook/介入回写）并发驱动同一任务时，
+        后到者在此被挡下，避免两个修复进程写同一工作区。
+        """
+        now = datetime.now(timezone.utc).replace(tzinfo=None)  # 统一 naive UTC 存储
+        lease = (datetime.now(timezone.utc)
+                 + timedelta(seconds=self.settings.task_claim_lease_seconds)
+                 ).replace(tzinfo=None)
+        with self.session_factory() as s:
+            rows = s.execute(
+                update(Task).where(
+                    Task.id == task_id,
+                    or_(Task.claimed_until.is_(None), Task.claimed_until < now),
+                ).values(claimed_until=lease)
+            ).rowcount
+            s.commit()
+            return bool(rows)
+
+    def _release_claim(self, task_id: int) -> None:
+        """释放认领（幂等；租约到期后调度器回收也会兜底）。"""
+        with self.session_factory() as s:
+            s.execute(update(Task).where(Task.id == task_id).values(claimed_until=None))
+            s.commit()
+
     # ---------- 对外 ----------
 
     def run_task(self, task_id: int,
@@ -166,7 +184,22 @@ class Orchestrator:
 
         hold_next_states：当 Stage 成功且目标状态在该集合内时，不做迁移，
         只写审计留痕（用于预处理模式：评分准入后停在 SCORED，不自动进入修复）。
+
+        并发防护：执行前原子认领（claimed_until 租约），被其他执行者持有时
+        返回 None（视同阻塞），绝不并行跑同一任务。
         """
+        if not self._try_claim(task_id):
+            self._state_of(task_id)  # 任务不存在时保持 KeyError 语义
+            logger.info("task=%s 已被其他执行者持有（claim），本步跳过", task_id)
+            return None
+        try:
+            return self._run_task_locked(task_id, hold_next_states)
+        finally:
+            self._release_claim(task_id)
+
+    def _run_task_locked(self, task_id: int,
+                         hold_next_states: set[TaskState] | None = None) -> StageResult | None:
+        """run_task 的实际执行体（调用方已持有任务租约）。"""
         with self.session_factory() as session:
             task = session.get(Task, task_id)
             if task is None:
@@ -220,19 +253,27 @@ class Orchestrator:
                 break
         return self._state_of(task_id)
 
-    # 预处理阶段对应的状态（评分在 SCORED 态执行）
-    PREPROCESS_STATES = (TaskState.ANALYZING, TaskState.PLANNING, TaskState.SCORED)
+    # 预处理循环推进的状态（评分在 SCORED 态执行，见 run_preprocessing 收尾步）
+    PREPROCESS_STATES = (TaskState.ANALYZING, TaskState.PLANNING)
 
     def run_preprocessing(self, task_id: int, max_steps: int = 10) -> TaskState:
         """只跑预处理三阶段（completeness -> planning -> scoring），不自动进入修复。
 
         评分准入的任务停在 SCORED（入队待调度）；其余停在 MANUAL/WAIT_INFO/WAIT_PLAN。
+        评分恰好执行一次：循环只推进 ANALYZING/PLANNING，SCORED 态在收尾步
+        按"未评分（priority_score 为空）"判定后补一次——修复了旧实现把 SCORED
+        纳入循环导致的重复评分（每次导入重复消耗 LLM 调用与审计写入）。
         """
         for _ in range(max_steps):
             if self._state_of(task_id) not in self.PREPROCESS_STATES:
                 break
             if self.run_task(task_id, hold_next_states={TaskState.FIXING}) is None:
                 break
+        if self._state_of(task_id) == TaskState.SCORED:
+            with self.session_factory() as s:
+                unscored = s.get(Task, task_id).priority_score is None
+            if unscored:  # 新入队或方案重生成（旧评分已作废）尚未评分
+                self.run_task(task_id, hold_next_states={TaskState.FIXING})
         return self._state_of(task_id)
 
     def _state_of(self, task_id: int) -> TaskState:

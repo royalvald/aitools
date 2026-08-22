@@ -74,6 +74,9 @@ class PlanningStage:
                 artifacts={"plan_id": plan.id},
                 message="方案命中高风险模块，待人工确认",
             )
+        # 方案重生成 -> 旧评分作废（run_preprocessing 收尾步按"未评分"重评），
+        # 避免 SCORED 任务带着过期分数出队
+        ctx.task.priority_score = None
         return StageResult(status="success", next_state=TaskState.SCORED,
                            artifacts={"plan_id": plan.id}, message="低风险方案自动通过")
 

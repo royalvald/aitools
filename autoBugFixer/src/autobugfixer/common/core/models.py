@@ -75,6 +75,8 @@ class Task(Base):
     info_rounds: Mapped[int] = mapped_column(Integer, default=0)  # 信息补充往返次数
     current_stage: Mapped[str] = mapped_column(String(50), default="")
     environment_id: Mapped[int | None] = mapped_column(ForeignKey("environment.id"), nullable=True)
+    # 任务认领租约（并发互斥，naive UTC）：非空且未过期 = 某执行者正在推进本任务
+    claimed_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

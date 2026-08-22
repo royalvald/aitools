@@ -70,8 +70,9 @@ Stage 内未捕获异常由 Orchestrator 兜底：写 `stage_exception` 审计�
 | `Orchestrator.run_task(id)` | 执行当前状态对应的单个 Stage（单步） |
 | `Orchestrator.run_until_blocked(id)` | 连续推进直到阻塞态/终态（webhook、API 触发） |
 | `Orchestrator.run_preprocessing(id)` | 仅跑预处理三阶段；评分准入后停在 `SCORED`（`admission_hold` 审计），不自动进入修复 |
-| `Scheduler.run_round()`（常驻） | 轮询拉新 → 推进预处理 → 回收过期环境锁 → 按 `priority_score` 升序出队 `SCORED` 任务（`scheduler_dispatch_limit` 上限）→ 介入 SLA 扫描 |
-| API `POST /tasks/{id}/retry` | 人工唤醒：`FAILED → ANALYZING` 重跑 / `WAIT_ENV → DEPLOYING` 抢锁 |
+| `Scheduler.run_round()`（常驻） | 轮询拉新 → 推进预处理（含 SCORED 未评分补评）→ 回收过期环境锁 → **回收孤儿 in-flight 任务**（FIXING/DEPLOYING/VERIFYING/LEARNING，认领租约防双驱）→ **唤醒 WAIT_ENV**（锁空闲按优先级）→ 按 `priority_score` 升序出队已评分 `SCORED` 任务（`scheduler_dispatch_limit` 上限）→ 介入 SLA 扫描 |
+| API `POST /tasks/{id}/retry` | 人工唤醒：FAILED 按 `current_stage` 断点续跑（fixing→FIXING、deploying/verifying→DEPLOYING、learning→LEARNING，其余→ANALYZING）；MANUAL→ANALYZING 重跑预处理；WAIT_ENV→DEPLOYING 抢锁 |
+| API `POST /tasks/{id}/cancel` | 人工取消：→CANCELLED，关闭待办介入单并释放环境锁 |
 
 ## Spec 统一模板
 

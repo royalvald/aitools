@@ -6,15 +6,15 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from autobugfixer.features.intervention.notifier import NoticeMessage, Notifier
-from autobugfixer.common.core.models import BugTicket, Intervention, Task, TaskStateHistory, VerificationPlan
+from autobugfixer.common.core.models import BugTicket, Intervention, Task, VerificationPlan
 from autobugfixer.common.core.stage import InterventionRequest
-from autobugfixer.common.core.state import TaskState, assert_transition
+from autobugfixer.common.core.state import TaskState
 from autobugfixer.common.core.audit import AuditService
 
 # 介入类型 -> 默认处理角色
@@ -31,15 +31,21 @@ class InterventionService:
     """人工介入服务：创建介入单、处理结果回写并驱动任务续跑。"""
 
     def __init__(self, session: Session, notifier: Notifier | None = None,
-                 writeback=None) -> None:
+                 writeback=None, sla_hours: float | None = None) -> None:
         self.session = session
         self.notifier = notifier
         self.audit = AuditService(session)
         # 状态迁移后的平台回写钩子（由 Orchestrator 注入，可选）
         self._writeback = writeback
+        # SLA（PRD 第八章）：创建介入单时填充 deadline，供调度器超时升级扫描
+        self._sla_hours = sla_hours
 
     def create(self, task_id: int, request: InterventionRequest) -> Intervention:
-        """创建介入单并推送通知（任务置阻塞态由 Orchestrator 完成）。"""
+        """创建介入单并推送通知（任务置阻塞态由 Orchestrator 完成）。
+
+        deadline = 创建时刻 + SLA 时长（调度器超时升级扫描的依据）；
+        未配置 SLA 时留空（不参与超时升级）。
+        """
         intervention = Intervention(
             task_id=task_id,
             type=request.type,
@@ -47,6 +53,8 @@ class InterventionService:
             context=request.context,
             assignee_role=request.assignee_role or TYPE_TO_ROLE.get(request.type, "developer"),
             status="pending",
+            deadline=(datetime.now(timezone.utc) + timedelta(hours=self._sla_hours))
+            if self._sla_hours else None,
             notified_at=datetime.now(timezone.utc),
         )
         self.session.add(intervention)
@@ -62,27 +70,11 @@ class InterventionService:
         return intervention
 
     def _transition_task(self, task: Task, to_state: TaskState, message: str) -> None:
-        """介入回写引发的任务状态迁移（走状态机校验 + 历史 + 审计）。
+        """介入回写引发的任务状态迁移（统一走 core.transitions，保证留痕完整）。"""
+        from autobugfixer.common.core.transitions import transition_task
 
-        CLOSED 时同步写 closed_at（Spec 08 §3.5：与 Orchestrator._transition
-        口径对齐，报表按 closed_at 统计不漏人工关闭任务）。
-        """
-        from datetime import datetime, timezone
-
-        from_state = TaskState(task.state)
-        assert_transition(from_state, to_state)
-        task.state = to_state.value
-        if to_state == TaskState.CLOSED:
-            task.closed_at = datetime.now(timezone.utc)
-        self.session.add(TaskStateHistory(
-            task_id=task.id, from_state=from_state.value, to_state=to_state.value,
-            stage="intervention", message=message,
-        ))
-        self.audit.log(action="state_transition", target=f"task:{task.id}",
-                       detail={"from": from_state.value, "to": to_state.value,
-                               "stage": "intervention", "message": message}, task_id=task.id)
-        if self._writeback is not None:
-            self._writeback(to_state.value)
+        transition_task(self.session, task, to_state, stage="intervention",
+                        message=message, audit=self.audit, writeback=self._writeback)
 
     def resolve(self, intervention_id: int, result: dict, actor: str = "human") -> Task:
         """介入处理回写：写结果、按介入类型驱动任务续跑，返回所属任务。
@@ -138,8 +130,10 @@ class InterventionService:
                 plan = self.session.scalar(select(VerificationPlan).where(
                     VerificationPlan.task_id == task.id).order_by(VerificationPlan.version.desc()))
                 if plan is not None:
-                    if result.get("steps"):  # 人工调整后的步骤落回 DSL
-                        plan.steps = result["steps"]
+                    if result.get("steps") is not None:
+                        # 人工调整后的步骤落回 DSL：与生成期同强度校验
+                        # （词表/必填参数/最少步数/必含断言），阻断免检弱方案
+                        plan.steps = _validate_adjusted_steps(result["steps"])
                         plan.version += 1
                     plan.confirmed_by = actor
                     plan.confirmed_at = datetime.now(timezone.utc)
@@ -183,3 +177,26 @@ def bug_data_of(bug: BugTicket):
 
     return BugTicketData(platform=bug.platform, platform_bug_id=bug.platform_bug_id,
                          repo_url=bug.repo_url, repo_branch=bug.repo_branch)
+
+
+def _validate_adjusted_steps(steps: list) -> list[dict]:
+    """人工调整 steps 的回写期校验（与生成期 PlanOutput 同强度，Spec 03 §10）。
+
+    - 每步过 DSLStep 词表/必填参数校验；
+    - 至少 3 步且至少 1 条 assert_* 断言（空/无断言方案 = 免检通过，拒绝）。
+    违规抛 ValueError（API 层映射 409），介入单保持 pending 可重新提交。
+    """
+    from autobugfixer.common.dsl import DSLStep
+    from autobugfixer.features.planning.schemas import ASSERT_ACTIONS
+
+    if not isinstance(steps, list) or not steps:
+        raise ValueError("人工调整的 steps 不能为空")
+    try:
+        validated = [DSLStep.model_validate(step) for step in steps]
+    except Exception as exc:
+        raise ValueError(f"人工调整的 steps 含非法步骤: {exc}") from exc
+    if len(validated) < 3:
+        raise ValueError(f"人工调整的 steps 至少 3 步（与生成期一致），当前 {len(validated)} 步")
+    if not any(s.action in ASSERT_ACTIONS for s in validated):
+        raise ValueError("人工调整的 steps 至少含 1 条断言动作（assert_*）")
+    return [s.model_dump() for s in validated]

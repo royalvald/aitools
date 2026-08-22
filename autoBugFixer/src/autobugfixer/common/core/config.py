@@ -54,6 +54,9 @@ class Settings(BaseSettings):
     # 环境锁（11.1）
     env_lock_lease_seconds: int = 30 * 60
 
+    # 任务认领租约（并发互斥）：调度器/API/webhook 并发驱动同一任务时的双驱防护
+    task_claim_lease_seconds: int = 15 * 60
+
     # 命令白名单模板（FR-REG-01），支持 {param} 占位
     cmd_whitelist: list[str] = Field(
         default_factory=lambda: [

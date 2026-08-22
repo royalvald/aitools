@@ -33,19 +33,21 @@ class TaskState(StrEnum):
 LEGAL_TRANSITIONS: dict[TaskState, set[TaskState]] = {
     TaskState.DISCOVERED: {TaskState.ANALYZING, TaskState.CANCELLED},
     TaskState.ANALYZING: {TaskState.WAIT_INFO, TaskState.PLANNING, TaskState.MANUAL, TaskState.FAILED, TaskState.CANCELLED},
-    TaskState.WAIT_INFO: {TaskState.ANALYZING, TaskState.CANCELLED},  # 补充完成重新分析
+    TaskState.WAIT_INFO: {TaskState.ANALYZING, TaskState.CANCELLED, TaskState.FAILED},  # 补充完成重新分析；FAILED=SLA 超时挂起
     TaskState.PLANNING: {TaskState.WAIT_PLAN, TaskState.SCORED, TaskState.FAILED, TaskState.CANCELLED},
     # 确认/调整后继续；拒绝（approved=false）转人工（Spec 03 B6-3 缺陷修复）
-    TaskState.WAIT_PLAN: {TaskState.PLANNING, TaskState.SCORED, TaskState.MANUAL, TaskState.CANCELLED},
+    TaskState.WAIT_PLAN: {TaskState.PLANNING, TaskState.SCORED, TaskState.MANUAL, TaskState.CANCELLED, TaskState.FAILED},
     TaskState.SCORED: {TaskState.MANUAL, TaskState.FIXING, TaskState.FAILED, TaskState.CANCELLED},
     TaskState.MANUAL: {TaskState.ANALYZING, TaskState.FIXING, TaskState.CANCELLED},  # 人工重新触发
     TaskState.FIXING: {TaskState.DEPLOYING, TaskState.FAILED, TaskState.MANUAL, TaskState.LEARNING, TaskState.CANCELLED},
     TaskState.DEPLOYING: {TaskState.VERIFYING, TaskState.WAIT_ENV, TaskState.FIXING, TaskState.FAILED, TaskState.CANCELLED},
-    TaskState.WAIT_ENV: {TaskState.DEPLOYING, TaskState.CANCELLED},  # 锁释放后被唤醒
+    TaskState.WAIT_ENV: {TaskState.DEPLOYING, TaskState.CANCELLED, TaskState.FAILED},  # 锁释放后被唤醒；FAILED=SLA 挂起
     TaskState.VERIFYING: {TaskState.FIXING, TaskState.LEARNING, TaskState.FAILED, TaskState.CANCELLED},
     TaskState.LEARNING: {TaskState.CLOSED, TaskState.WAIT_DISCUSS, TaskState.FAILED, TaskState.CANCELLED},
-    TaskState.WAIT_DISCUSS: {TaskState.MANUAL, TaskState.CLOSED, TaskState.FIXING, TaskState.CANCELLED},
-    TaskState.FAILED: {TaskState.ANALYZING, TaskState.FIXING, TaskState.DEPLOYING, TaskState.CANCELLED},  # 断点续跑
+    TaskState.WAIT_DISCUSS: {TaskState.MANUAL, TaskState.CLOSED, TaskState.FIXING, TaskState.CANCELLED, TaskState.FAILED},
+    # 断点续跑（按 current_stage 回到最近可重入状态；learning 崩溃直接续跑沉淀）
+    TaskState.FAILED: {TaskState.ANALYZING, TaskState.FIXING, TaskState.DEPLOYING,
+                       TaskState.LEARNING, TaskState.CANCELLED},
     TaskState.CLOSED: set(),
     TaskState.CANCELLED: set(),
 }

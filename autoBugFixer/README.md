@@ -55,7 +55,8 @@ python -m venv .venv
 | `STATUS_MAP` | 见 config | 系统状态 → 平台状态回写映射（JSON） |
 | `SCHEDULER_POLL_INTERVAL_SECONDS` | `60` | 调度器轮询间隔 |
 | `SCHEDULER_DISPATCH_LIMIT` | `2` | 单轮出队任务数上限 |
-| `INTERVENTION_SLA_HOURS` / `INTERVENTION_ESCALATION` | `24` / `remind` | 介入 SLA 与超时动作（remind/suspend） |
+| `INTERVENTION_SLA_HOURS` / `INTERVENTION_ESCALATION` | `24` / `remind` | 介入 SLA 与超时动作（remind/suspend；deadline 随介入单创建自动填充） |
+| `TASK_CLAIM_LEASE_SECONDS` | `900` | 任务认领租约：调度器/API/webhook 并发驱动同一任务时的双驱防护 |
 | `FERNET_KEY` | 开发兜底 | 凭据加密主密钥（生产必配） |
 
 ## 目录结构

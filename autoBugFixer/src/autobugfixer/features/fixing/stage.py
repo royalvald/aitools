@@ -91,16 +91,16 @@ class FixingStage:
                                artifacts={"fix_record_id": record.id},
                                message="修复 agent 未产生任何变更")
 
-        # 连续两次产出相同 diff（哈希比对）-> 提前终止重试，直接进失败分支（11.5）
-        prev_hashes = [
-            r.diff_hash for r in ctx.session.scalars(
-                select(FixRecord).where(FixRecord.task_id == task.id, FixRecord.id != record.id)
-            ).all()
-        ]
-        if current_hash in prev_hashes:
+        # 连续两次产出相同 diff（哈希比对，11.5）-> 提前终止重试，直接进失败分支。
+        # 仅与"上一次"修复比对：跨 FAILED 的人工续跑重产出正确修复不属白烧重试，
+        # 全历史比对会把环境类失败后的正确重试误杀（Spec 05 §11.5 语义 = 连续两次）。
+        prev = ctx.session.scalar(select(FixRecord).where(
+            FixRecord.task_id == task.id, FixRecord.id != record.id
+        ).order_by(FixRecord.id.desc()).limit(1))
+        if prev is not None and prev.diff_hash == current_hash:
             return StageResult(status="failed", next_state=TaskState.LEARNING,
                                artifacts={"fix_record_id": record.id},
-                               message="与历史修复产出相同 diff，提前终止重试")
+                               message="与上一次修复产出相同 diff，提前终止重试")
 
         return StageResult(status="success", next_state=TaskState.DEPLOYING,
                            artifacts={"fix_record_id": record.id, "changed_files": changed_files},
@@ -152,7 +152,7 @@ class FixingStage:
         # 11.5：第 N 次（N>=2）修复增量注入失败反馈（结构化摘要，控制 token）
         previous = []
         for r in ctx.session.scalars(select(FixRecord).where(
-                FixRecord.task_id == ctx.task.id).order_by(FixRecord.attempt)).all():
+                FixRecord.task_id == ctx.task.id).order_by(FixRecord.id)).all():
             previous.append({"attempt": r.attempt, "changed_files": r.changed_files,
                              "summary": r.summary[:300], "diff_preview": r.diff[:300]})
         evidence = []

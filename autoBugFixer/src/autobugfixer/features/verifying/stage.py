@@ -101,7 +101,9 @@ class VerifyingStage:
         try:
             root = Path(ctx.settings.perception_evidence_root) / "verify"
             root.mkdir(parents=True, exist_ok=True)
-            name = f"task-{ctx.task.id}-attempt-{ctx.attempt}.json"
+            # 文件名带序号：人工重试重置 attempt 后编号会重复，避免覆盖旧轮证据
+            seq = len(list(root.glob(f"task-{ctx.task.id}-*.json"))) + 1
+            name = f"task-{ctx.task.id}-{seq:03d}-attempt-{ctx.attempt}.json"
             payload = {
                 "task_id": ctx.task.id, "attempt": ctx.attempt,
                 "plan_version": plan.version,

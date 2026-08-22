@@ -34,16 +34,26 @@ def _bug_payload(repo) -> dict:
     }
 
 
-def test_webhook_ingest_and_full_flow(client, repo):
+def _drive(client, task_id):
+    """模拟调度器出队：webhook 安全唤醒只跑到 SCORED，修复链路由调度器推进。"""
+    from autobugfixer.common.core.state import TaskState
+    final = client.app.state.orchestrator.run_until_blocked(task_id)
+    assert final == TaskState.CLOSED
+
+
+def test_webhook_wakes_to_scored_and_scheduler_completes(client, repo):
+    """P0-3：webhook 只推进预处理停在 SCORED（不插队/不双驱），调度器出队后闭环。"""
     resp = client.post("/api/webhooks/mock", json=_bug_payload(repo))
     assert resp.status_code == 200
     body = resp.json()
     assert body["created"] is True
-    assert body["state"] == "CLOSED"
+    assert body["state"] == "SCORED"  # 安全唤醒：不越过评分闸门
+    _drive(client, body["task_id"])
 
 
 def test_tasks_list_and_detail(client, repo):
-    client.post("/api/webhooks/mock", json=_bug_payload(repo))
+    task_id = client.post("/api/webhooks/mock", json=_bug_payload(repo)).json()["task_id"]
+    _drive(client, task_id)
     resp = client.get("/api/tasks")
     assert resp.status_code == 200
     items = resp.json()["items"]
@@ -85,7 +95,8 @@ def test_intervention_list_and_resolve(client, repo):
 
 
 def test_metrics_and_experiences(client, repo):
-    client.post("/api/webhooks/mock", json=_bug_payload(repo))
+    task_id = client.post("/api/webhooks/mock", json=_bug_payload(repo)).json()["task_id"]
+    _drive(client, task_id)
     metrics = client.get("/api/metrics/summary").json()
     assert metrics["auto_fix_rate"] == 1.0
     assert metrics["first_verify_pass_rate"] == 1.0

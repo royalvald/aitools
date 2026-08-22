@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel
 from sqlalchemy import func, select
@@ -91,27 +93,85 @@ def task_detail(request: Request, task_id: int):
 
 @router.post("/tasks/{task_id}/retry")
 def retry_task(request: Request, task_id: int):
-    """人工重新触发：从断点续跑（FAILED/WAIT_ENV/阻塞解除后继续流转）。"""
+    """人工重新触发（统一走 transition_task：校验 + 历史 + 审计 + 回写）。
+
+    - FAILED：按崩溃时所在阶段断点续跑（fixing→FIXING、deploying/verifying→DEPLOYING、
+      learning→LEARNING，其余→ANALYZING 重跑预处理），不再一律回分析重烧 LLM；
+    - MANUAL：人工重新触发进入 ANALYZING（激活设计承诺的"可人工重新触发"）；
+    - WAIT_ENV：直接唤醒尝试部署；
+    - 其余阻塞/终态：不迁移不驱动，返回当前状态。
+
+    驱动策略：ANALYZING 目标只跑预处理（停在 SCORED 等调度器，受 admission_hold
+    与派发上限约束）；FIXING/DEPLOYING/LEARNING 为人工显式续跑，同步推进。
+    """
+    from autobugfixer.common.core.transitions import transition_task
+
     sf = request.app.state.session_factory
     orchestrator = request.app.state.orchestrator
+    target: TaskState | None = None
     with sf() as s:
         task = s.get(Task, task_id)
         if task is None:
             raise HTTPException(404, f"任务不存在: {task_id}")
         state = TaskState(task.state)
         if state == TaskState.FAILED:
-            task.state = TaskState.ANALYZING.value  # 回到分析阶段重跑
-            s.add(TaskStateHistory(task_id=task_id, from_state=state.value,
-                                   to_state=TaskState.ANALYZING.value,
-                                   stage="api", message="人工重新触发"))
+            stage = (task.current_stage or "").lower()
+            if stage in ("deploying", "verifying"):
+                target = TaskState.DEPLOYING
+            elif stage == "fixing":
+                target = TaskState.FIXING
+            elif stage == "learning":
+                target = TaskState.LEARNING
+            else:
+                target = TaskState.ANALYZING
+        elif state == TaskState.MANUAL:
+            target = TaskState.ANALYZING
         elif state == TaskState.WAIT_ENV:
-            task.state = TaskState.DEPLOYING.value
-            s.add(TaskStateHistory(task_id=task_id, from_state=state.value,
-                                   to_state=TaskState.DEPLOYING.value,
-                                   stage="api", message="人工唤醒等锁任务"))
+            target = TaskState.DEPLOYING
+        if target is not None:
+            message = {
+                TaskState.ANALYZING: "人工重新触发，重跑预处理",
+                TaskState.FIXING: "人工重新触发，从修复续跑",
+                TaskState.DEPLOYING: "人工重新触发，从部署续跑",
+                TaskState.LEARNING: "人工重新触发，从经验沉淀续跑",
+            }.get(target, "人工重新触发")
+            transition_task(s, task, target, stage="api", message=message)
         s.commit()
-    final = orchestrator.run_until_blocked(task_id)
+    if target == TaskState.ANALYZING:
+        final = orchestrator.run_preprocessing(task_id)
+    elif target in (TaskState.FIXING, TaskState.DEPLOYING, TaskState.LEARNING):
+        final = orchestrator.run_until_blocked(task_id)
+    else:
+        final = orchestrator._state_of(task_id)
     return {"task_id": task_id, "state": final.value}
+
+
+@router.post("/tasks/{task_id}/cancel")
+def cancel_task(request: Request, task_id: int):
+    """人工取消任务（激活 CANCELLED 终态）：关闭待办介入单并释放持有的环境锁。"""
+    from autobugfixer.adapters.env.lock import EnvLockService
+    from autobugfixer.common.core.transitions import transition_task
+
+    sf = request.app.state.session_factory
+    settings = request.app.state.settings
+    with sf() as s:
+        task = s.get(Task, task_id)
+        if task is None:
+            raise HTTPException(404, f"任务不存在: {task_id}")
+        if task.state in (TaskState.CLOSED.value, TaskState.CANCELLED.value):
+            raise HTTPException(409, f"任务已是终态: {task.state}")
+        transition_task(s, task, TaskState.CANCELLED, stage="api", message="人工取消")
+        for it in s.scalars(select(Intervention).where(
+                Intervention.task_id == task_id,
+                Intervention.status == "pending")).all():
+            it.status = "cancelled"
+            it.result = {"note": "任务已人工取消，介入单自动关闭"}
+            it.resolved_at = datetime.now(timezone.utc)
+        if task.environment_id is not None:
+            EnvLockService(s, lease_seconds=settings.env_lock_lease_seconds).release(
+                task.environment_id, task_id)
+        s.commit()
+    return {"task_id": task_id, "state": TaskState.CANCELLED.value}
 
 
 # ---------- 介入 ----------
@@ -161,7 +221,14 @@ def resolve_intervention(request: Request, intervention_id: int, body: ResolveBo
 
 @router.post("/webhooks/{platform}")
 async def platform_webhook(request: Request, platform: str):
-    """平台事件接入：payload 为 Bug 字段字典，标准化入库并触发流水线。"""
+    """平台事件接入（安全唤醒语义）：
+
+    - 入库/刷新/唤醒仍由 ``ingest_bug`` 幂等完成；
+    - 仅当任务停在 ANALYZING（新接入或平台补全唤醒）时推进**预处理**
+      （停在 SCORED 等调度器按优先级出队，受 admission_hold 与派发上限约束）；
+    - 不再无条件 ``run_until_blocked``：SCORED 任务不插队、in-flight 任务
+      （FIXING/DEPLOYING/VERIFYING/LEARNING）不被第二个执行者并发驱动。
+    """
     from autobugfixer.adapters.platform import BugTicketData
 
     payload = await request.json()
@@ -173,9 +240,10 @@ async def platform_webhook(request: Request, platform: str):
     with sf() as s:
         task, created = ingest_bug(s, data, max_retry=request.app.state.settings.max_retry)
         s.commit()
-        task_id = task.id
-    final = request.app.state.orchestrator.run_until_blocked(task_id)
-    return {"task_id": task_id, "created": created, "state": final.value}
+        task_id, state = task.id, TaskState(task.state)
+    if state == TaskState.ANALYZING:
+        state = request.app.state.orchestrator.run_preprocessing(task_id)
+    return {"task_id": task_id, "created": created, "state": state.value}
 
 
 # ---------- CSV 导入 ----------
@@ -212,36 +280,52 @@ async def import_csv(request: Request,
 
 @router.get("/metrics/summary")
 def metrics_summary(request: Request):
-    """指标口径见设计文档 11.7。"""
+    """指标口径（设计 11.7，按状态历史判定而非按当前态近似）：
+
+    - 自动修复成功率 = 无需人工介入到达 CLOSED 的任务 / 进入 SCORED 的任务总数；
+      分母取 TaskStateHistory 中 to_state=SCORED 的去重任务（预处理期转出的
+      MANUAL/WAIT_* 不计入），分子剔除经人工介入（补充/确认/讨论）的任务；
+    - 回归通过率 = 首次验证通过任务 / 完成首次验证任务；"首次"按每任务
+      最早 VerifyRecord（id 最小）判定——人工重试重置 attempt 后不再误计；
+    - 知识库复用率 = 命中经验的修复任务 / 进入 FIXING 的任务总数（历史判定）。
+    """
     sf = request.app.state.session_factory
     with sf() as s:
         tasks = s.scalars(select(Task)).all()
-        scored = [t for t in tasks if TaskState(t.state) not in
-                  (TaskState.DISCOVERED, TaskState.ANALYZING, TaskState.WAIT_INFO,
-                   TaskState.PLANNING, TaskState.WAIT_PLAN)]
-        closed_auto = [t for t in tasks if t.state == TaskState.CLOSED.value]
-        verifies = s.scalars(select(VerifyRecord)).all()
-        first_pass = len({v.task_id for v in verifies if v.attempt == 1
-                          and v.conclusion == "passed"})
-        first_total = len({v.task_id for v in verifies if v.attempt == 1})
+        entered_scored = set(s.scalars(select(TaskStateHistory.task_id).where(
+            TaskStateHistory.to_state == TaskState.SCORED.value).distinct()).all())
+        entered_fixing = set(s.scalars(select(TaskStateHistory.task_id).where(
+            TaskStateHistory.to_state == TaskState.FIXING.value).distinct()).all())
+        # 人工介入过的任务（平台侧自动唤醒关闭的介入单不计为人工）
+        human_touched = {it.task_id for it in s.scalars(select(Intervention).where(
+            Intervention.status.in_(["resolved", "timeout"]),
+            Intervention.type.in_(["info_supplement", "repo_supplement",
+                                   "plan_confirm", "discussion"]))).all()
+            if (it.result or {}).get("fields") != "platform_sync"}
+        closed = [t for t in tasks if t.state == TaskState.CLOSED.value]
+        closed_auto = [t for t in closed if t.id not in human_touched]
+        # 首次验证 = 每任务最早（id 最小）的 VerifyRecord
+        first_verify: dict[int, VerifyRecord] = {}
+        for v in s.scalars(select(VerifyRecord).order_by(VerifyRecord.id)).all():
+            first_verify.setdefault(v.task_id, v)
+        first_total = len(first_verify)
+        first_pass = sum(1 for v in first_verify.values() if v.conclusion == "passed")
         # 平均修复周期：CLOSED 任务的 closed_at - created_at 均值（分钟）
         durations = []
-        for t in closed_auto:
+        for t in closed:
             if t.closed_at and t.created_at:
                 end, start = t.closed_at, t.created_at
                 if end.tzinfo is None and start.tzinfo is not None:
                     start = start.replace(tzinfo=None)
                 durations.append((end - start).total_seconds() / 60)
         avg_duration = round(sum(durations) / len(durations), 2) if durations else None
-        # 知识库复用率：修复指令命中经验条目的任务数 / 进入 FIXING 的任务数
         fixes = s.scalars(select(FixRecord)).all()
-        fix_tasks = {f.task_id for f in fixes}
         hit_tasks = {f.task_id for f in fixes if f.experience_hit}
         return {
-            "auto_fix_rate": len(closed_auto) / len(scored) if scored else 0.0,
+            "auto_fix_rate": len(closed_auto) / len(entered_scored) if entered_scored else 0.0,
             "first_verify_pass_rate": first_pass / first_total if first_total else 0.0,
             "avg_fix_duration_minutes": avg_duration,
-            "knowledge_reuse_rate": len(hit_tasks) / len(fix_tasks) if fix_tasks else 0.0,
+            "knowledge_reuse_rate": len(hit_tasks) / len(entered_fixing) if entered_fixing else 0.0,
             "tasks_total": len(tasks),
         }
 
