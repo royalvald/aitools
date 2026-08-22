@@ -5,9 +5,9 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from sqlalchemy import select
 
-from autobugfixer.intervention.notifier import LogNotifier
-from autobugfixer.core.models import Intervention, Task, TaskStateHistory
-from autobugfixer.core.state import TaskState
+from autobugfixer.features.intervention.notifier import LogNotifier
+from autobugfixer.common.core.models import Intervention, Task, TaskStateHistory
+from autobugfixer.common.core.state import TaskState
 from autobugfixer.runtime.scheduler import Scheduler
 
 

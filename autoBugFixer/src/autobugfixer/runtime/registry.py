@@ -40,13 +40,13 @@ def register_env_executor(name: str, factory: Callable[..., Any]) -> None:
 def register_builtin_adapters() -> None:
     """注册内置适配器（幂等）。仅导入适配器类本身，可选依赖仍按需惰性加载。"""
     global _builtins_ready
-    from autobugfixer.platform import MockBugPlatform
-    from autobugfixer.platform.jira import JiraBugPlatform
-    from autobugfixer.platform.zentao import ZentaoBugPlatform
-    from autobugfixer.env import LocalExecutor
-    from autobugfixer.env.docker import DockerExecutor
-    from autobugfixer.env.ssh import SSHExecutor
-    from autobugfixer.env.whitelist import CommandWhitelist
+    from autobugfixer.adapters.platform import MockBugPlatform
+    from autobugfixer.adapters.platform.jira import JiraBugPlatform
+    from autobugfixer.adapters.platform.zentao import ZentaoBugPlatform
+    from autobugfixer.adapters.env import LocalExecutor
+    from autobugfixer.adapters.env.docker import DockerExecutor
+    from autobugfixer.adapters.env.ssh import SSHExecutor
+    from autobugfixer.adapters.env.whitelist import CommandWhitelist
 
     def _make_local(env_root: str = "./var/testenv", whitelist=None, **kwargs):
         if isinstance(whitelist, list):
@@ -98,11 +98,11 @@ def get_env_executor_for(env, *, vault=None):
     """
     env_type = getattr(env, "type", "local")
     if env_type == "ssh":
-        from autobugfixer.env.ssh import SSHExecutor
+        from autobugfixer.adapters.env.ssh import SSHExecutor
 
         return SSHExecutor.from_env_model(env, vault=vault)
     if env_type == "docker":
-        from autobugfixer.env.docker import DockerExecutor
+        from autobugfixer.adapters.env.docker import DockerExecutor
 
         return DockerExecutor.from_env_model(env)
     config = dict(getattr(env, "conn_config", None) or {})

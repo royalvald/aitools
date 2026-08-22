@@ -13,17 +13,17 @@ import pytest
 from pydantic import ValidationError
 from sqlalchemy import select
 
-from autobugfixer.platform import BugTicketData
-from autobugfixer.core.models import AuditLog, BugRepo, StrategyVersion, Task, VerificationPlan
-from autobugfixer.scoring.schemas import CodeEvidence, JudgmentForm, LocateSignals
-from autobugfixer.scoring.v2 import (
+from autobugfixer.adapters.platform import BugTicketData
+from autobugfixer.common.core.models import AuditLog, BugRepo, StrategyVersion, Task, VerificationPlan
+from autobugfixer.features.scoring.schemas import CodeEvidence, JudgmentForm, LocateSignals
+from autobugfixer.features.scoring.v2 import (
     extract_keywords,
     map_judgment,
     search_repos,
 )
-from autobugfixer.core.state import TaskState
-from autobugfixer.prompts.rubric import load_rubric, parse_rubric
-from autobugfixer.ingest.ingestion import ingest_bug
+from autobugfixer.common.core.state import TaskState
+from autobugfixer.common.prompts.rubric import load_rubric, parse_rubric
+from autobugfixer.features.ingest.ingestion import ingest_bug
 
 RUBRIC = load_rubric()
 
@@ -248,10 +248,10 @@ def test_v2_code_evidence_prompt_includes_repo_snippet(make_orchestrator, sessio
             if schema.__name__ == "CodeEvidence":
                 return CodeEvidence(triggered=True, suspected_files=["api/health.py"])
             if schema.__name__ == "CompletenessEval":
-                from autobugfixer.completeness.schemas import CompletenessEval
+                from autobugfixer.features.completeness.schemas import CompletenessEval
                 return CompletenessEval(complete=True)
             if schema.__name__ == "PlanOutput":
-                from autobugfixer.planning.schemas import PlanOutput
+                from autobugfixer.features.planning.schemas import PlanOutput
                 return PlanOutput(steps=[
                     {"action": "input", "params": {"selector": "#env", "value": "v1"}},
                     {"action": "call_api", "params": {"method": "GET", "path": "/health"}},
@@ -265,10 +265,10 @@ def test_v2_code_evidence_prompt_includes_repo_snippet(make_orchestrator, sessio
         def record_usage(self, *a, **k):
             pass
 
-    from autobugfixer.fixing.codex import ScriptedCodexCLI
-    from autobugfixer.env import LocalExecutor
-    from autobugfixer.intervention.notifier import LogNotifier
-    from autobugfixer.env.whitelist import CommandWhitelist
+    from autobugfixer.features.fixing.codex import ScriptedCodexCLI
+    from autobugfixer.adapters.env import LocalExecutor
+    from autobugfixer.features.intervention.notifier import LogNotifier
+    from autobugfixer.adapters.env.whitelist import CommandWhitelist
     from autobugfixer.runtime.orchestrator import Orchestrator
 
     class _NoopPlatform:

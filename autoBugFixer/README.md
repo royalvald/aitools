@@ -61,29 +61,32 @@ python -m venv .venv
 ## 目录结构
 
 ```
-src/autobugfixer/                # 按流水线阶段分包（与 docs/specs/01~08 一一对应）
-├── core/                        # 内核：config/models(14+ 表)/state 状态机/stage 协议/
-│                                #   llm 网关(fake/anthropic+计量预算)/audit/bugtext
-├── dsl/                         # 验证 DSL：动作词表 + Schema + 解释执行器
-├── ingest/                      # 阶段01：平台/CSV/Webhook 接入、幂等入库、仓库门禁
-├── completeness/                # 阶段02：完整性分析（FR-PRE-02）
-├── planning/                    # 阶段03：验证方案生成（FR-PRE-03）
-├── scoring/                     # 阶段04：难度评分（v1 + v2 rubric，FR-PRE-04）
-├── fixing/                      # 阶段05：AI 修复（codex 通道 + 工作区 + 出口校验）
-├── deploying/                   # 阶段06：部署（环境锁 + 回滚）
-├── verifying/                   # 阶段07：回归验证（DSL 执行 + 证据落盘）
-├── learning/                    # 阶段08：经验沉淀与关闭
-├── platform/                    # 缺陷平台适配（mock/jira/zentao）+ 状态回写
-├── env/                         # 环境执行器（local/ssh/docker）+ 白名单 + 环境锁
-├── knowledge/                   # 经验库、技能库、知识库导出
-├── intervention/                # 人工介入（HITL）+ 通知（log/im）
-├── optimization/                # 自我优化：策略建议与版本化（FR-SYS-02）
-├── runtime/                     # Orchestrator、Scheduler、适配器注册表
-├── perception/                  # 三维感知（FR-FIX-02）
-├── security/                    # Fernet 凭据、注入防护、脱敏
-├── prompts/                     # 版本化提示词模板
-├── api/ + web/                  # FastAPI 对内接口 + 静态控制台
-└── cli.py / scheduler_cli.py / export_cli.py
+src/autobugfixer/                # 树状分包：common 通用 / features 功能 / adapters 适配
+├── common/                      # 通用基础层（零业务依赖）
+│   ├── core/                    #   内核：config/models(14+ 表)/state 状态机/stage 协议/
+│   │                            #   llm 网关(fake/anthropic+计量预算)/audit/bugtext
+│   ├── dsl/                     #   验证 DSL：动作词表 + Schema + 解释执行器
+│   ├── prompts/                 #   版本化提示词模板 + 评分 rubric
+│   └── security/                #   Fernet 凭据、注入防护、脱敏
+├── features/                    # 业务功能层，每个功能一个子包
+│   ├── ingest/                  #   阶段01：平台/CSV/Webhook 接入、幂等入库、仓库门禁
+│   ├── completeness/            #   阶段02：完整性分析（FR-PRE-02）
+│   ├── planning/                #   阶段03：验证方案生成（FR-PRE-03）
+│   ├── scoring/                 #   阶段04：难度评分（v1 + v2 rubric，FR-PRE-04）
+│   ├── fixing/                  #   阶段05：AI 修复（codex 通道 + 工作区 + 出口校验）
+│   ├── deploying/               #   阶段06：部署（环境锁 + 回滚）
+│   ├── verifying/               #   阶段07：回归验证（DSL 执行 + 证据落盘）
+│   ├── learning/                #   阶段08：经验沉淀与关闭
+│   ├── knowledge/               #   经验库、技能库、知识库导出
+│   ├── perception/              #   三维感知（FR-FIX-02）
+│   ├── intervention/            #   人工介入（HITL）+ 通知（log/im）
+│   └── optimization/            #   自我优化：策略建议与版本化（FR-SYS-02）
+├── adapters/                    # 外部系统适配层
+│   ├── platform/                #   缺陷平台适配（mock/jira/zentao）+ 状态回写
+│   └── env/                     #   环境执行器（local/ssh/docker）+ 白名单 + 环境锁
+├── runtime/                     # 编排：Orchestrator、Scheduler、适配器注册表
+├── api/                         # FastAPI 对内接口 + web/ 静态控制台
+└── cli/                         # 命令行入口：import_cli / scheduler_cli / export_cli
 tests/                           # 247 条用例（单元 + 端到端 + API）
 examples/bugs_sample.csv         # 中文示例 CSV（utf-8-sig）
 docs/                            # PRD、整体方案设计、阶段 specs、测试用例设计

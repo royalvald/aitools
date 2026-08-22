@@ -2,7 +2,7 @@
 
 import pytest
 
-from autobugfixer.env.whitelist import CommandRejectedError, CommandWhitelist
+from autobugfixer.adapters.env.whitelist import CommandRejectedError, CommandWhitelist
 
 
 @pytest.fixture()

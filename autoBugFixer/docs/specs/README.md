@@ -76,3 +76,21 @@ Stage 内未捕获异常由 Orchestrator 兜底：写 `stage_exception` 审计�
 ## Spec 统一模板
 
 每篇 spec 包含：目标与职责、输入与前置条件、处理流程、输出与状态迁移、数据模型、配置项、异常与失败处理、人工介入点、安全约束、验收标准（对应测试）、已知限制与演进方向。
+
+## 模块路径映射（2026-08 目录树状重组）
+
+各 spec 正文中的源码路径为重组前的历史写法，阅读时按下表映射到当前结构（正文保持原样，作为版本演进留痕）：
+
+| spec 中的旧路径 | 当前路径 |
+|---|---|
+| `core/*` | `common/core/*` |
+| `dsl/*` | `common/dsl/*` |
+| `prompts/*` | `common/prompts/*` |
+| `security/*` | `common/security/*` |
+| `ingest/*`、`completeness/*`、`planning/*`、`scoring/*`、`fixing/*`、`deploying/*`、`verifying/*`、`learning/*` | `features/<同名>/*` |
+| `knowledge/*`、`perception/*`、`intervention/*`、`optimization/*` | `features/<同名>/*` |
+| `platform/*` | `adapters/platform/*` |
+| `env/*` | `adapters/env/*` |
+| `web/*` | `api/web/*` |
+| `cli.py` / `export_cli.py` / `scheduler_cli.py` | `cli/import_cli.py` / `cli/export_cli.py` / `cli/scheduler_cli.py` |
+| `runtime/*`、`api/*` | 位置不变 |

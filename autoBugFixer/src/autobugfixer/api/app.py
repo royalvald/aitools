@@ -6,17 +6,17 @@ import logging
 
 from fastapi import FastAPI
 
-from autobugfixer.platform import BugPlatformAdapter
-from autobugfixer.fixing.codex import CodexCLI, codex_preflight
-from autobugfixer.env import LocalExecutor
-from autobugfixer.intervention.notifier_im import build_notifier
+from autobugfixer.adapters.platform import BugPlatformAdapter
+from autobugfixer.features.fixing.codex import CodexCLI, codex_preflight
+from autobugfixer.adapters.env import LocalExecutor
+from autobugfixer.features.intervention.notifier_im import build_notifier
 from autobugfixer.runtime.registry import get_bug_platform
-from autobugfixer.env.whitelist import CommandWhitelist
-from autobugfixer.core.config import Settings, get_settings
-from autobugfixer.core.db import init_db, make_engine, make_session_factory
-from autobugfixer.core.logging_setup import setup_logging
+from autobugfixer.adapters.env.whitelist import CommandWhitelist
+from autobugfixer.common.core.config import Settings, get_settings
+from autobugfixer.common.core.db import init_db, make_engine, make_session_factory
+from autobugfixer.common.core.logging_setup import setup_logging
 from autobugfixer.runtime.orchestrator import Orchestrator
-from autobugfixer.core.llm import LLMGateway, LLMPreflightError
+from autobugfixer.common.core.llm import LLMGateway, LLMPreflightError
 from .routes import router
 
 logger = logging.getLogger(__name__)
@@ -31,7 +31,7 @@ def _build_perception(settings: Settings, session_factory, executor):
     """按配置构建三维感知服务（默认关闭）。"""
     if not settings.perception_enabled:
         return None
-    from ..perception import APIPerception, DBPerception, PagePerception, PerceptionService
+    from autobugfixer.features.perception import APIPerception, DBPerception, PagePerception, PerceptionService
 
     return PerceptionService(
         session_factory,
@@ -55,7 +55,7 @@ def create_app(
     engine = make_engine(settings.database_url)
     init_db(engine)
     # 感知模块自有表（checkfirst 幂等）
-    from ..perception.service import init_perception_db
+    from autobugfixer.features.perception.service import init_perception_db
 
     init_perception_db(engine)
     session_factory = make_session_factory(engine)
@@ -96,7 +96,7 @@ def create_app(
     app.include_router(router, prefix="/api")
 
     # Web 控制台（静态 SPA）：挂载在 API 路由之后
-    from ..web import mount_web
+    from autobugfixer.api.web import mount_web
 
     mount_web(app)
     return app

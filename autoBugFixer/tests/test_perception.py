@@ -13,16 +13,16 @@ import sqlite3
 import httpx
 import pytest
 
-from autobugfixer.env import LocalExecutor
-from autobugfixer.core.db import init_db, make_engine, make_session_factory
-from autobugfixer.core.models import BugTicket, Task, VerificationPlan
-from autobugfixer.perception import (
+from autobugfixer.adapters.env import LocalExecutor
+from autobugfixer.common.core.db import init_db, make_engine, make_session_factory
+from autobugfixer.common.core.models import BugTicket, Task, VerificationPlan
+from autobugfixer.features.perception import (
     DBPerception,
     PagePerception,
     APIPerception,
     PerceptionService,
 )
-from autobugfixer.perception.service import (
+from autobugfixer.features.perception.service import (
     PerceptionSnapshotRecord,
     init_perception_db,
 )

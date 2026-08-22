@@ -7,17 +7,17 @@ from pathlib import Path
 
 import pytest
 
-from autobugfixer.platform import BugTicketData, MockBugPlatform
-from autobugfixer.fixing.codex import ScriptedCodexCLI
-from autobugfixer.env import LocalExecutor
-from autobugfixer.intervention.notifier import LogNotifier
-from autobugfixer.env.whitelist import CommandWhitelist
-from autobugfixer.core.config import Settings
-from autobugfixer.core.db import init_db, make_engine, make_session_factory
-from autobugfixer.core.models import Environment
+from autobugfixer.adapters.platform import BugTicketData, MockBugPlatform
+from autobugfixer.features.fixing.codex import ScriptedCodexCLI
+from autobugfixer.adapters.env import LocalExecutor
+from autobugfixer.features.intervention.notifier import LogNotifier
+from autobugfixer.adapters.env.whitelist import CommandWhitelist
+from autobugfixer.common.core.config import Settings
+from autobugfixer.common.core.db import init_db, make_engine, make_session_factory
+from autobugfixer.common.core.models import Environment
 from autobugfixer.runtime.orchestrator import Orchestrator
-from autobugfixer.ingest.ingestion import ingest_bug
-from autobugfixer.core.llm import LLMGateway
+from autobugfixer.features.ingest.ingestion import ingest_bug
+from autobugfixer.common.core.llm import LLMGateway
 
 
 @pytest.fixture()

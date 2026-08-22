@@ -9,7 +9,7 @@ from pathlib import Path
 
 from sqlalchemy import select
 
-from autobugfixer.core.models import (
+from autobugfixer.common.core.models import (
     AuditLog,
     Experience,
     FixRecord,
@@ -18,7 +18,7 @@ from autobugfixer.core.models import (
     VerificationPlan,
     VerifyRecord,
 )
-from autobugfixer.core.state import TaskState
+from autobugfixer.common.core.state import TaskState
 
 
 def test_end_to_end_full_pipeline(make_orchestrator, task_id, session_factory,
@@ -79,7 +79,7 @@ def test_end_to_end_full_pipeline(make_orchestrator, task_id, session_factory,
 
 def test_env_lock_released_after_pipeline(make_orchestrator, task_id, session_factory):
     """临界区结束后环境锁必须释放（11.1）。"""
-    from autobugfixer.core.models import EnvLock
+    from autobugfixer.common.core.models import EnvLock
 
     orchestrator = make_orchestrator()
     assert orchestrator.run_until_blocked(task_id) == TaskState.CLOSED

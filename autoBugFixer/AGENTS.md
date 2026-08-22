@@ -4,14 +4,13 @@ Contributor guide for autobugfixer: a state-machine-driven pipeline that pulls b
 
 ## Project Structure & Module Organization
 
-Organized by pipeline stage (one package per stage, mapping 1:1 to `docs/specs/01~08`):
+Hierarchical tree layout under `src/autobugfixer/` — generic utilities, business features, and external adapters each live in their own top-level group:
 
-- `src/autobugfixer/` — Python package (src layout).
-  - `core/` — shared kernel: `config`, `models`, `state` (state machine), `stage` (Stage protocol + TaskContext), `llm` (gateway/budget), `audit`, `bugtext` (injection-safe bug block).
-  - `dsl/` — verification DSL: action vocabulary, schema, interpreter.
-  - Stage packages: `ingest/` (platform/CSV/webhook ingestion, repo gate), `completeness/`, `planning/`, `scoring/` (v1 + `v2.py`), `fixing/` (stage + `codex.py` channel + `workspace.py`), `deploying/`, `verifying/`, `learning/` — each holds `stage.py` (+ `schemas.py` where the stage owns LLM output schemas).
-  - Cross-cutting domains: `platform/` (bug platform adapters `mock`/`jira`/`zentao` + writeback), `env/` (executors `local`/`ssh`/`docker`, `whitelist`, `lock`, `resolve`), `knowledge/` (experience/skill/export), `intervention/` (HITL service + notifiers), `optimization/` (strategy versions), `runtime/` (Orchestrator, Scheduler, adapter `registry`).
-  - `perception/` — three-dimension perception (FR-FIX-02); `api/` + `web/` — FastAPI routes and the static console; `security/` — injection defense, Fernet credentials, redaction; `prompts/templates/` — versioned prompt templates.
+- `common/` — shared foundation (zero business dependencies): `core/` (kernel: `config`, `models`, `state` state machine, `stage` Stage protocol + TaskContext, `llm` gateway/budget, `audit`, `bugtext` injection-safe bug block), `dsl/` (verification DSL: action vocabulary, schema, interpreter), `prompts/` (versioned templates + scoring rubric), `security/` (injection defense, Fernet credentials, redaction).
+- `features/` — one subpackage per business feature. Pipeline stages mapping 1:1 to `docs/specs/01~08`: `ingest/` (platform/CSV/webhook ingestion, repo gate), `completeness/`, `planning/`, `scoring/` (v1 + `v2.py`), `fixing/` (stage + `codex.py` channel + `workspace.py`), `deploying/`, `verifying/`, `learning/` — each holds `stage.py` (+ `schemas.py` where the stage owns LLM output schemas). Independent domains: `knowledge/` (experience/skill/export), `perception/` (three-dimension perception, FR-FIX-02), `intervention/` (HITL service + notifiers), `optimization/` (strategy versions).
+- `adapters/` — external integrations registered via `runtime/registry.py`: `platform/` (bug platform adapters `mock`/`jira`/`zentao` + writeback), `env/` (executors `local`/`ssh`/`docker`, `whitelist`, `lock`, `resolve`).
+- `runtime/` — Orchestrator, Scheduler, adapter `registry` (composition engine).
+- `api/` — FastAPI routes plus `web/` static console; `cli/` — entry points `import_cli` / `scheduler_cli` / `export_cli`.
 - `tests/` — pytest suite; `docs/` — PRD, design docs, specs; `examples/` — sample CSV; `var/` — runtime artifacts (workspaces/test env), gitignored.
 
 ## Architecture Overview
@@ -19,7 +18,7 @@ Organized by pipeline stage (one package per stage, mapping 1:1 to `docs/specs/0
 - State-machine-driven pipeline: `DISCOVERED → ANALYZING → PLANNING → SCORED → FIXING → DEPLOYING → VERIFYING → LEARNING → CLOSED`, with blocking `WAIT_*` states for human/environment intervention and `FAILED` for resumable failures.
 - Main flow: ingest (platform/CSV/webhook) → completeness analysis → verification plan (DSL) → difficulty scoring → scheduler dispatch (easiest first) → fix in an isolated workspace → deploy (env lock + rollback) → DSL verification → experience persistence → platform status writeback.
 - Functional domains: Bug ingestion; preprocessing (completeness/plan/scoring); scheduling; auto-fix; deploy & verify; experience learning; human intervention (HITL); audit & metering; platform sync; governance (versioned strategy, centralized config).
-- Key code areas: `core/` (state machine, Stage protocol, LLM gateway, audit), stage packages `completeness|planning|scoring|fixing|deploying|verifying|learning` (one `stage.py` each), `runtime/` (Orchestrator, Scheduler, adapter registry), `platform/` + `env/` + `intervention/` (adapters and HITL), `security/` (injection defense, credentials, redaction).
+- Key code areas: `common/core/` (state machine, Stage protocol, LLM gateway, audit), stage packages under `features/` (`completeness|planning|scoring|fixing|deploying|verifying|learning`, one `stage.py` each), `runtime/` (Orchestrator, Scheduler, adapter registry), `adapters/platform/` + `adapters/env/` + `features/intervention/` (adapters and HITL), `common/security/` (injection defense, credentials, redaction).
 
 ## Build, Test, and Development Commands
 

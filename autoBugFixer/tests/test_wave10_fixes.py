@@ -12,11 +12,11 @@ from pathlib import Path
 
 from sqlalchemy import select
 
-from autobugfixer.env.docker import DockerExecutor
-from autobugfixer.core.models import AuditLog, Experience, VerifyRecord
-from autobugfixer.learning.schemas import ExperienceDigest
-from autobugfixer.core.stage import TaskContext
-from autobugfixer.core.state import TaskState
+from autobugfixer.adapters.env.docker import DockerExecutor
+from autobugfixer.common.core.models import AuditLog, Experience, VerifyRecord
+from autobugfixer.features.learning.schemas import ExperienceDigest
+from autobugfixer.common.core.stage import TaskContext
+from autobugfixer.common.core.state import TaskState
 
 
 # ---------- Docker exec_timeout（Spec 06 §10） ----------
@@ -54,8 +54,8 @@ def test_docker_exec_timeout_effective(monkeypatch):
 
 def test_env_lock_renewed_at_verifying_start(make_orchestrator, session_factory,
                                              settings, repo, environment):
-    from autobugfixer.platform import BugTicketData
-    from autobugfixer.ingest.ingestion import ingest_bug
+    from autobugfixer.adapters.platform import BugTicketData
+    from autobugfixer.features.ingest.ingestion import ingest_bug
 
     data = BugTicketData(
         platform_bug_id="BUG-RN1", title="健康检查接口返回 fail",
@@ -87,8 +87,8 @@ def test_env_lock_renewed_at_verifying_start(make_orchestrator, session_factory,
 
 def test_experience_llm_digest_fills_root_cause(make_orchestrator, session_factory,
                                                 settings, repo, environment):
-    from autobugfixer.platform import BugTicketData
-    from autobugfixer.ingest.ingestion import ingest_bug
+    from autobugfixer.adapters.platform import BugTicketData
+    from autobugfixer.features.ingest.ingestion import ingest_bug
 
     data = BugTicketData(
         platform_bug_id="BUG-DG1", title="健康检查接口返回 fail",
@@ -109,16 +109,16 @@ def test_experience_llm_digest_fills_root_cause(make_orchestrator, session_facto
 def test_experience_digest_falls_back_on_llm_failure(
         make_orchestrator, session_factory, settings, repo, environment):
     """归因调用异常 -> 回退关键词分类、root_cause 留空，成功分支不中断。"""
-    from autobugfixer.platform import BugTicketData
-    from autobugfixer.fixing.codex import ScriptedCodexCLI
-    from autobugfixer.env import LocalExecutor
-    from autobugfixer.intervention.notifier import LogNotifier
-    from autobugfixer.env.whitelist import CommandWhitelist
-    from autobugfixer.core.models import BugTicket, Task
+    from autobugfixer.adapters.platform import BugTicketData
+    from autobugfixer.features.fixing.codex import ScriptedCodexCLI
+    from autobugfixer.adapters.env import LocalExecutor
+    from autobugfixer.features.intervention.notifier import LogNotifier
+    from autobugfixer.adapters.env.whitelist import CommandWhitelist
+    from autobugfixer.common.core.models import BugTicket, Task
     from autobugfixer.runtime.orchestrator import Orchestrator
-    from autobugfixer.learning.stage import LearningStage
-    from autobugfixer.ingest.ingestion import ingest_bug
-    from autobugfixer.core.llm import LLMGateway
+    from autobugfixer.features.learning.stage import LearningStage
+    from autobugfixer.features.ingest.ingestion import ingest_bug
+    from autobugfixer.common.core.llm import LLMGateway
 
     class FlakyLLM(LLMGateway):
         def analyze(self, prompt, schema, **kwargs):

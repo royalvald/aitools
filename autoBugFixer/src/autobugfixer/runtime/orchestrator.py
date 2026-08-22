@@ -7,25 +7,25 @@ from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session, sessionmaker
 
-from autobugfixer.platform import BugPlatformAdapter
-from autobugfixer.env import EnvExecutor
-from autobugfixer.intervention.notifier import LogNotifier, Notifier
-from autobugfixer.core.config import Settings, get_settings
-from autobugfixer.core.models import BugTicket, Task, TaskStateHistory
-from autobugfixer.core.audit import AuditService
-from autobugfixer.env.lock import EnvLockService
-from autobugfixer.intervention.service import InterventionService
-from autobugfixer.core.llm import LLMGateway
-from autobugfixer.platform.writeback import writeback_platform_status
-from autobugfixer.core.stage import Stage, StageResult, TaskContext
-from autobugfixer.core.state import BLOCKING_STATES, TERMINAL_STATES, TaskState, assert_transition
-from autobugfixer.completeness import CompletenessStage
-from autobugfixer.deploying import DeployingStage
-from autobugfixer.fixing import FixingStage
-from autobugfixer.learning import LearningStage
-from autobugfixer.planning import PlanningStage
-from autobugfixer.scoring import ScoringStage
-from autobugfixer.verifying import VerifyingStage
+from autobugfixer.adapters.platform import BugPlatformAdapter
+from autobugfixer.adapters.env import EnvExecutor
+from autobugfixer.features.intervention.notifier import LogNotifier, Notifier
+from autobugfixer.common.core.config import Settings, get_settings
+from autobugfixer.common.core.models import BugTicket, Task, TaskStateHistory
+from autobugfixer.common.core.audit import AuditService
+from autobugfixer.adapters.env.lock import EnvLockService
+from autobugfixer.features.intervention.service import InterventionService
+from autobugfixer.common.core.llm import LLMGateway
+from autobugfixer.adapters.platform.writeback import writeback_platform_status
+from autobugfixer.common.core.stage import Stage, StageResult, TaskContext
+from autobugfixer.common.core.state import BLOCKING_STATES, TERMINAL_STATES, TaskState, assert_transition
+from autobugfixer.features.completeness import CompletenessStage
+from autobugfixer.features.deploying import DeployingStage
+from autobugfixer.features.fixing import FixingStage
+from autobugfixer.features.learning import LearningStage
+from autobugfixer.features.planning import PlanningStage
+from autobugfixer.features.scoring import ScoringStage
+from autobugfixer.features.verifying import VerifyingStage
 
 logger = logging.getLogger(__name__)
 

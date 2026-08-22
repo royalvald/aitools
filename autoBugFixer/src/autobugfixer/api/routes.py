@@ -6,7 +6,7 @@ from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel
 from sqlalchemy import func, select
 
-from autobugfixer.core.models import (
+from autobugfixer.common.core.models import (
     BugTicket,
     FixRecord,
     Intervention,
@@ -15,10 +15,10 @@ from autobugfixer.core.models import (
     VerificationPlan,
     VerifyRecord,
 )
-from autobugfixer.core.state import TaskState
-from autobugfixer.knowledge.experience import ExperienceService
-from autobugfixer.ingest.ingestion import ingest_bug
-from autobugfixer.intervention.service import InterventionService
+from autobugfixer.common.core.state import TaskState
+from autobugfixer.features.knowledge.experience import ExperienceService
+from autobugfixer.features.ingest.ingestion import ingest_bug
+from autobugfixer.features.intervention.service import InterventionService
 
 router = APIRouter()
 
@@ -162,7 +162,7 @@ def resolve_intervention(request: Request, intervention_id: int, body: ResolveBo
 @router.post("/webhooks/{platform}")
 async def platform_webhook(request: Request, platform: str):
     """平台事件接入：payload 为 Bug 字段字典，标准化入库并触发流水线。"""
-    from autobugfixer.platform import BugTicketData
+    from autobugfixer.adapters.platform import BugTicketData
 
     payload = await request.json()
     sf = request.app.state.session_factory
@@ -186,8 +186,8 @@ async def import_csv(request: Request,
                      platform: str = Form("csv"),
                      run_analysis: bool = Form(False)):
     """CSV 批量导入（multipart 上传）；run_analysis=true 时附带预处理分析结果。"""
-    from autobugfixer.ingest.csv_import import CsvFormatError, parse_csv
-    from autobugfixer.ingest.importer import analyze_tasks, import_bug_rows
+    from autobugfixer.features.ingest.csv_import import CsvFormatError, parse_csv
+    from autobugfixer.features.ingest.importer import analyze_tasks, import_bug_rows
 
     content = await file.read()
     try:
@@ -251,7 +251,7 @@ def export_experiences(request: Request, format: str = "markdown"):
     """知识库沉淀输出（FR-SYS-03）：经验库导出为 Markdown（导出前脱敏）。"""
     from fastapi.responses import PlainTextResponse
 
-    from autobugfixer.knowledge.export import render_markdown
+    from autobugfixer.features.knowledge.export import render_markdown
 
     if format != "markdown":
         raise HTTPException(400, f"暂不支持的导出格式: {format}")

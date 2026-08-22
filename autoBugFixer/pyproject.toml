@@ -28,15 +28,16 @@ dev = [
 
 [project.scripts]
 autobugfixer-api = "autobugfixer.api.app:main"
-autobugfixer-import = "autobugfixer.cli:main"
-autobugfixer-scheduler = "autobugfixer.scheduler_cli:main"
-autobugfixer-export = "autobugfixer.export_cli:main"
+autobugfixer-import = "autobugfixer.cli.import_cli:main"
+autobugfixer-scheduler = "autobugfixer.cli.scheduler_cli:main"
+autobugfixer-export = "autobugfixer.cli.export_cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-autobugfixer = ["prompts/templates/*.md"]
+"autobugfixer.common.prompts" = ["templates/*.md", "rubrics/*.md"]
+"autobugfixer.api.web" = ["static/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

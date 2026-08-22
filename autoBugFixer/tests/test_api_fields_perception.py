@@ -6,12 +6,12 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
-from autobugfixer.platform import MockBugPlatform
-from autobugfixer.fixing.codex import ScriptedCodexCLI
+from autobugfixer.adapters.platform import MockBugPlatform
+from autobugfixer.features.fixing.codex import ScriptedCodexCLI
 from autobugfixer.api.app import create_app
-from autobugfixer.core.models import AuditLog, Environment, VerifyRecord
-from autobugfixer.core.state import TaskState
-from autobugfixer.ingest.ingestion import ingest_bug
+from autobugfixer.common.core.models import AuditLog, Environment, VerifyRecord
+from autobugfixer.common.core.state import TaskState
+from autobugfixer.features.ingest.ingestion import ingest_bug
 
 
 @pytest.fixture()

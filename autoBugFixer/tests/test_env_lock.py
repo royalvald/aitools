@@ -4,11 +4,11 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 
-from autobugfixer.platform import BugTicketData
-from autobugfixer.core.models import Environment, EnvLock, VerificationPlan
-from autobugfixer.core.state import TaskState
-from autobugfixer.env.lock import EnvLockService
-from autobugfixer.ingest.ingestion import ingest_bug
+from autobugfixer.adapters.platform import BugTicketData
+from autobugfixer.common.core.models import Environment, EnvLock, VerificationPlan
+from autobugfixer.common.core.state import TaskState
+from autobugfixer.adapters.env.lock import EnvLockService
+from autobugfixer.features.ingest.ingestion import ingest_bug
 
 
 def _make_env(session_factory) -> int:

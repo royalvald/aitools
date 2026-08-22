@@ -5,13 +5,13 @@ from types import SimpleNamespace
 
 from sqlalchemy import select
 
-from autobugfixer.platform import BugTicketData
-from autobugfixer.env import validate_environment
-from autobugfixer.intervention.notifier import NoticeMessage
-from autobugfixer.core.models import AuditLog, DeployRecord, Environment, EnvLock, Task
-from autobugfixer.core.state import TaskState
-from autobugfixer.env.lock import EnvLockService
-from autobugfixer.ingest.ingestion import ingest_bug
+from autobugfixer.adapters.platform import BugTicketData
+from autobugfixer.adapters.env import validate_environment
+from autobugfixer.features.intervention.notifier import NoticeMessage
+from autobugfixer.common.core.models import AuditLog, DeployRecord, Environment, EnvLock, Task
+from autobugfixer.common.core.state import TaskState
+from autobugfixer.adapters.env.lock import EnvLockService
+from autobugfixer.features.ingest.ingestion import ingest_bug
 from autobugfixer.runtime.scheduler import Scheduler
 
 

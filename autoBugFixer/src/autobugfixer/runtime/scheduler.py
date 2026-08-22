@@ -20,14 +20,14 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from autobugfixer.platform import BugPlatformAdapter
-from autobugfixer.intervention.notifier import NoticeMessage, Notifier
-from autobugfixer.core.config import Settings, get_settings
-from autobugfixer.core.models import Intervention, Task
+from autobugfixer.adapters.platform import BugPlatformAdapter
+from autobugfixer.features.intervention.notifier import NoticeMessage, Notifier
+from autobugfixer.common.core.config import Settings, get_settings
+from autobugfixer.common.core.models import Intervention, Task
 from autobugfixer.runtime.orchestrator import Orchestrator
-from autobugfixer.core.state import TaskState
-from autobugfixer.core.audit import AuditService
-from autobugfixer.ingest.ingestion import ingest_bug
+from autobugfixer.common.core.state import TaskState
+from autobugfixer.common.core.audit import AuditService
+from autobugfixer.features.ingest.ingestion import ingest_bug
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +94,7 @@ class Scheduler:
 
         出队即 SCORED -> FIXING 迁移（评分已在预处理阶段完成，不重复评分）。
         """
-        from autobugfixer.core.models import TaskStateHistory
+        from autobugfixer.common.core.models import TaskStateHistory
 
         with self.session_factory() as s:
             tasks = list(s.scalars(select(Task).where(
@@ -157,7 +157,7 @@ class Scheduler:
         task = s.get(Task, it.task_id)
         if task is None or task.state in (TaskState.CLOSED.value, TaskState.CANCELLED.value):
             return
-        from autobugfixer.core.state import assert_transition
+        from autobugfixer.common.core.state import assert_transition
 
         try:
             assert_transition(task.state, TaskState.FAILED)

@@ -3,9 +3,9 @@
 import pytest
 from sqlalchemy import select
 
-from autobugfixer.core.models import InapplicableCase, Intervention, Task
-from autobugfixer.core.state import TaskState
-from autobugfixer.intervention.service import InterventionService
+from autobugfixer.common.core.models import InapplicableCase, Intervention, Task
+from autobugfixer.common.core.state import TaskState
+from autobugfixer.features.intervention.service import InterventionService
 
 # 让验证永远失败的方案（断言一个不可能的值），队列耗尽后走关键字兜底应答
 FAILING_PLAN_RESPONSES = [

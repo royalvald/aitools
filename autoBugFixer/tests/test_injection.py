@@ -1,6 +1,6 @@
 """prompt 注入防护测试（11.2 输入侧）。"""
 
-from autobugfixer.security.injection import (
+from autobugfixer.common.security.injection import (
     UNTRUSTED_CLOSE,
     UNTRUSTED_OPEN,
     detect_injection,

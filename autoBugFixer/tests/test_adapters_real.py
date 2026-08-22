@@ -20,11 +20,11 @@ from types import SimpleNamespace
 import httpx
 import pytest
 
-from autobugfixer.platform import BugPatch, BugTicketData, MockBugPlatform
-from autobugfixer.platform.jira import JiraBugPlatform
-from autobugfixer.platform.zentao import ZentaoBugPlatform
-from autobugfixer.env.docker import DockerExecutor
-from autobugfixer.env.ssh import SSHExecutor
+from autobugfixer.adapters.platform import BugPatch, BugTicketData, MockBugPlatform
+from autobugfixer.adapters.platform.jira import JiraBugPlatform
+from autobugfixer.adapters.platform.zentao import ZentaoBugPlatform
+from autobugfixer.adapters.env.docker import DockerExecutor
+from autobugfixer.adapters.env.ssh import SSHExecutor
 from autobugfixer.runtime.registry import (
     get_bug_platform,
     get_env_executor,
@@ -32,7 +32,7 @@ from autobugfixer.runtime.registry import (
     register_builtin_adapters,
     registered_adapters,
 )
-from autobugfixer.env.whitelist import CommandRejectedError
+from autobugfixer.adapters.env.whitelist import CommandRejectedError
 
 # ---------------------------------------------------------------- Jira
 
@@ -392,7 +392,7 @@ def test_ssh_missing_paramiko_hint(monkeypatch):
 
 
 def test_ssh_from_env_model_decrypts_credentials(fake_paramiko):
-    from autobugfixer.security.credentials import CredentialVault
+    from autobugfixer.common.security.credentials import CredentialVault
 
     vault = CredentialVault()
     secret = vault.encrypt(json.dumps({"username": "deploy", "password": "s3cret"}))
@@ -553,10 +553,10 @@ def test_registry_get_env_executor_for_model(tmp_path):
 
 def test_stage_package_contracts_importable():
     """按阶段分包后（refactor/stage-packages），platform/env 包公共契约可从包根导入。"""
-    from autobugfixer.platform import (
+    from autobugfixer.adapters.platform import (
         BugPlatformAdapter, BugTicketData, MockBugPlatform, sample_bugs,
     )
-    from autobugfixer.env import (
+    from autobugfixer.adapters.env import (
         EnvExecutor, ExecResult, Health, LocalExecutor,
     )
 

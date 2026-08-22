@@ -4,19 +4,19 @@ import json
 
 from sqlalchemy import select
 
-from autobugfixer.platform import BugTicketData
-from autobugfixer.fixing.codex import ScriptedCodexCLI
-from autobugfixer.intervention.notifier import LogNotifier
-from autobugfixer.core.models import AuditLog, Task, VerificationPlan, VerificationSkill
-from autobugfixer.planning.schemas import PlanOutput
-from autobugfixer.core.stage import TaskContext
-from autobugfixer.planning.stage import PlanningStage
-from autobugfixer.core.state import TaskState
-from autobugfixer.core.audit import AuditService
-from autobugfixer.env.lock import EnvLockService
-from autobugfixer.ingest.ingestion import ingest_bug
-from autobugfixer.intervention.service import InterventionService
-from autobugfixer.knowledge.skill import SkillService, render_skill_library
+from autobugfixer.adapters.platform import BugTicketData
+from autobugfixer.features.fixing.codex import ScriptedCodexCLI
+from autobugfixer.features.intervention.notifier import LogNotifier
+from autobugfixer.common.core.models import AuditLog, Task, VerificationPlan, VerificationSkill
+from autobugfixer.features.planning.schemas import PlanOutput
+from autobugfixer.common.core.stage import TaskContext
+from autobugfixer.features.planning.stage import PlanningStage
+from autobugfixer.common.core.state import TaskState
+from autobugfixer.common.core.audit import AuditService
+from autobugfixer.adapters.env.lock import EnvLockService
+from autobugfixer.features.ingest.ingestion import ingest_bug
+from autobugfixer.features.intervention.service import InterventionService
+from autobugfixer.features.knowledge.skill import SkillService, render_skill_library
 
 # 组合校验技能模板：环境健康冒烟检查（3 步，占位符 {env}/{path}）
 SMOKE_SKILL = {
@@ -122,7 +122,7 @@ def test_skill_library_rendered_into_planning_prompt(
                  "params": {"json_path": "status", "expect": "ok"}}])
 
     with session_factory() as s:
-        from autobugfixer.core.models import BugTicket
+        from autobugfixer.common.core.models import BugTicket
         task = s.get(Task, task_id)
         bug = s.get(BugTicket, task.bug_ticket_id)
         ctx = TaskContext(
@@ -157,7 +157,7 @@ def test_skill_use_counted_on_structural_match(session_factory, settings, task_i
                  "params": {"json_path": "status", "expect": "ok"}}])
 
     with session_factory() as s:
-        from autobugfixer.core.models import BugTicket
+        from autobugfixer.common.core.models import BugTicket
         task = s.get(Task, task_id)
         bug = s.get(BugTicket, task.bug_ticket_id)
         ctx = TaskContext(

@@ -2,7 +2,7 @@
 
 import pytest
 
-from autobugfixer.security.credentials import CredentialVault
+from autobugfixer.common.security.credentials import CredentialVault
 
 
 def test_encrypt_decrypt_roundtrip():

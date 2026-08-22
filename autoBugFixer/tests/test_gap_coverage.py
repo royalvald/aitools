@@ -14,9 +14,9 @@ import json
 
 from sqlalchemy import select
 
-from autobugfixer.platform import BugTicketData
-from autobugfixer.fixing.codex import CodexRunResult
-from autobugfixer.core.models import (
+from autobugfixer.adapters.platform import BugTicketData
+from autobugfixer.features.fixing.codex import CodexRunResult
+from autobugfixer.common.core.models import (
     AuditLog,
     FixRecord,
     Intervention,
@@ -24,9 +24,9 @@ from autobugfixer.core.models import (
     VerificationPlan,
     VerifyRecord,
 )
-from autobugfixer.core.state import TaskState
-from autobugfixer.ingest.ingestion import ingest_bug
-from autobugfixer.intervention.service import InterventionService
+from autobugfixer.common.core.state import TaskState
+from autobugfixer.features.ingest.ingestion import ingest_bug
+from autobugfixer.features.intervention.service import InterventionService
 
 
 def _ingest(session_factory, settings, bug_id="BUG-GAP1", **overrides) -> int:

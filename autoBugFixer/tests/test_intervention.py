@@ -1,10 +1,10 @@
 """人工介入回写后任务续跑测试（FR-PRE-02 + 4.5）：信息补充场景。"""
 
-from autobugfixer.platform import BugTicketData, MockBugPlatform
-from autobugfixer.core.models import BugTicket, Intervention, Task
-from autobugfixer.core.state import TaskState
-from autobugfixer.ingest.ingestion import ingest_bug
-from autobugfixer.intervention.service import InterventionService
+from autobugfixer.adapters.platform import BugTicketData, MockBugPlatform
+from autobugfixer.common.core.models import BugTicket, Intervention, Task
+from autobugfixer.common.core.state import TaskState
+from autobugfixer.features.ingest.ingestion import ingest_bug
+from autobugfixer.features.intervention.service import InterventionService
 from sqlalchemy import select
 
 

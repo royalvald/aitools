@@ -2,10 +2,10 @@
 
 from sqlalchemy import select
 
-from autobugfixer.core.models import Intervention, StrategyVersion
-from autobugfixer.core.state import TaskState
-from autobugfixer.intervention.service import InterventionService
-from autobugfixer.optimization.service import (
+from autobugfixer.common.core.models import Intervention, StrategyVersion
+from autobugfixer.common.core.state import TaskState
+from autobugfixer.features.intervention.service import InterventionService
+from autobugfixer.features.optimization.service import (
     create_optimization_intervention,
     rollback_strategy,
 )
@@ -13,7 +13,7 @@ from autobugfixer.optimization.service import (
 
 def _seed_scored_tasks(session_factory):
     """造样本：低分通过 + 高分失败（准入过松场景）。"""
-    from autobugfixer.core.models import BugTicket, Task
+    from autobugfixer.common.core.models import BugTicket, Task
 
     with session_factory() as s:
         for i, (state, score) in enumerate(
@@ -48,7 +48,7 @@ def test_optimization_full_flow(make_orchestrator, task_id, session_factory, set
     orchestrator = make_orchestrator()
     assert orchestrator.run_preprocessing(task_id) == TaskState.SCORED
     with session_factory() as s:
-        from autobugfixer.core.models import Task
+        from autobugfixer.common.core.models import Task
         assert s.get(Task, task_id).score_detail["weights"]["version"] == "strategy:v1"
 
     # 4) 收紧到阈值 10 的第二版本生效 -> 同样本转 MANUAL
@@ -63,7 +63,7 @@ def test_optimization_full_flow(make_orchestrator, task_id, session_factory, set
         s.commit()
     # 重新分析同一任务（MANUAL -> ANALYZING 合法迁移）
     with session_factory() as s:
-        from autobugfixer.core.models import Task
+        from autobugfixer.common.core.models import Task
         t = s.get(Task, task_id)
         t.state = TaskState.ANALYZING.value
         s.commit()
@@ -76,7 +76,7 @@ def test_optimization_full_flow(make_orchestrator, task_id, session_factory, set
             StrategyVersion.active.is_(True))).version == 1
         s.commit()
     with session_factory() as s:
-        from autobugfixer.core.models import Task
+        from autobugfixer.common.core.models import Task
         t = s.get(Task, task_id)
         t.state = TaskState.ANALYZING.value
         s.commit()

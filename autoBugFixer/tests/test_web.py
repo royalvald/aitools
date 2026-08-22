@@ -4,8 +4,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from autobugfixer.api.app import create_app
-from autobugfixer.core.models import Environment
-from autobugfixer.web import STATIC_DIR, mount_web
+from autobugfixer.common.core.models import Environment
+from autobugfixer.api.web import STATIC_DIR, mount_web
 
 
 @pytest.fixture()
