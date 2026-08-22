@@ -3,7 +3,7 @@
 | 项 | 值 |
 |---|---|
 | 范围 | **仅验证方案生成阶段**：LLM 产出 DSL 结构化方案 + 风险分级 + 高风险人工确认（评分见 Spec 04，DSL 执行见 Spec 07） |
-| 源码 | `pipeline/stages/planning.py`（阶段逻辑）、`pipeline/dsl.py`（DSL 词表与校验）、`services/intervention.py`（确认回写） |
+| 源码 | `planning/stage.py`（阶段逻辑）、`dsl/__init__.py`（DSL 词表与校验）、`intervention/service.py`（确认回写） |
 | 提示词 | `prompts/templates/planning_v1.md`（占位符 `{bug_block}`）；P1 演进 `planning_v2`（四段式 + 修复思路大纲，见 §9） |
 | 参考样例 | `examples/bugs_sample.csv`（CSV 路径恒低风险，落点可复现） |
 
@@ -212,7 +212,7 @@
 
 **定位**：验证能力随使用自我增长——AI 在方案生成中把有价值的组合校验沉淀为可复用**技能**（命名 + 参数化的步骤模板），后续方案直接引用。全部技能由 9 基础动作组合而成，**不引入新原子动作**，既有安全防线完整保留。
 
-> 实现落点：`models.py::VerificationSkill`（技能库表）、`services/skill.py`（upsert/清单渲染/结构匹配计量）、`pipeline/schemas.py::ProposedSkill` + `PlanOutput.proposed_skills`、`planning_v3` 模板（`{skill_library}` 动态段）、planning 阶段 `skill_proposed`/`skill_used` 审计、learning 成功分支 `skill_distilled` 蒸馏。落库口径：引用技能的方案以展开后的原始步骤存入 `verification_plan`（LLM 按模板拷贝生成实参步骤，执行与技能库演化解耦）；结构匹配（动作序列 + 参数键集合一致）判定引用并 `use_count+1`。
+> 实现落点：`models.py::VerificationSkill`（技能库表）、`knowledge/skill.py`（upsert/清单渲染/结构匹配计量）、`各阶段包 schemas.py::ProposedSkill` + `PlanOutput.proposed_skills`、`planning_v3` 模板（`{skill_library}` 动态段）、planning 阶段 `skill_proposed`/`skill_used` 审计、learning 成功分支 `skill_distilled` 蒸馏。落库口径：引用技能的方案以展开后的原始步骤存入 `verification_plan`（LLM 按模板拷贝生成实参步骤，执行与技能库演化解耦）；结构匹配（动作序列 + 参数键集合一致）判定引用并 `use_count+1`。
 
 | 环节 | 设计 |
 |---|---|
@@ -239,7 +239,7 @@
 
 ## 9. 方案深度要求（P1 目标规格 · 已实现）
 
-> 状态：**已实现**（`pipeline/schemas.py::PlanOutput` 四段式硬校验、`fix_approach` 字段、`planning_v2` 模板、`dsl.py` check_log `absent` 参数、Fake 应答五步方案同步升级）。
+> 状态：**已实现**（`各阶段包 schemas.py::PlanOutput` 四段式硬校验、`fix_approach` 字段、`planning_v2` 模板、`dsl.py` check_log `absent` 参数、Fake 应答五步方案同步升级）。
 
 ### 9.1 要求总则
 
@@ -311,9 +311,9 @@ P1：增加可选参数 `absent`（bool，缺省 `false`）——`absent=true` �
 | 触点 | 改动 |
 |---|---|
 | `prompts/templates/planning_v2.md` | 四段式说明 + 完整示例 + fix_approach 要求（§9.5） |
-| `pipeline/schemas.py` PlanOutput | steps 校验器（≥3 且含 assert_*，§9.2）+ `fix_approach` 字段 |
+| `各阶段包 schemas.py` PlanOutput | steps 校验器（≥3 且含 assert_*，§9.2）+ `fix_approach` 字段 |
 | `models.py` VerificationPlan | `fix_approach` JSON 列 |
-| `pipeline/dsl.py` check_log | `absent` 可选参数（§9.3） |
+| `dsl/__init__.py` check_log | `absent` 可选参数（§9.3） |
 | `llm_gateway.py` Fake 应答 | **同步升级为四段式五步方案**——否则新校验直接打回 Fake 2 步应答，现有测试全红 |
 | Spec 04 评分 prompt | 注入 fix_approach（v2 实现时，见 Spec 04 §8.7 触点 8） |
 | Spec 05 fixing prompt | 首轮注入 fix_approach |

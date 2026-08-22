@@ -6,18 +6,18 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
-from autobugfixer.adapters.bug_platform import MockBugPlatform
-from autobugfixer.adapters.csv_import import CsvFormatError, parse_csv
-from autobugfixer.adapters.env_executor import LocalExecutor
-from autobugfixer.adapters.notifier import LogNotifier
-from autobugfixer.adapters.whitelist import CommandWhitelist
+from autobugfixer.platform import MockBugPlatform
+from autobugfixer.ingest.csv_import import CsvFormatError, parse_csv
+from autobugfixer.env import LocalExecutor
+from autobugfixer.intervention.notifier import LogNotifier
+from autobugfixer.env.whitelist import CommandWhitelist
 from autobugfixer.api.app import create_app
 from autobugfixer.cli import main as cli_main
-from autobugfixer.models import AuditLog, Task, VerificationPlan
-from autobugfixer.pipeline.orchestrator import Orchestrator
-from autobugfixer.pipeline.state import TaskState
-from autobugfixer.services.importer import analyze_tasks, import_bug_rows
-from autobugfixer.services.llm_gateway import LLMGateway
+from autobugfixer.core.models import AuditLog, Task, VerificationPlan
+from autobugfixer.runtime.orchestrator import Orchestrator
+from autobugfixer.core.state import TaskState
+from autobugfixer.ingest.importer import analyze_tasks, import_bug_rows
+from autobugfixer.core.llm import LLMGateway
 
 EXAMPLE_CSV = Path(__file__).parent.parent / "examples" / "bugs_sample.csv"
 
@@ -157,7 +157,7 @@ def test_import_and_analysis_end_to_end(settings, session_factory, tmp_path):
     with session_factory() as s:
         plans = s.scalars(select(VerificationPlan)).all()
         assert len(plans) == 1  # 两个 WAIT_INFO 的 Bug 未生成方案
-        from autobugfixer.models import BugRepo, LLMUsage
+        from autobugfixer.core.models import BugRepo, LLMUsage
 
         repos = s.scalars(select(BugRepo).order_by(BugRepo.seq)).all()
         assert [(r.path, r.branch, r.status) for r in repos] == [

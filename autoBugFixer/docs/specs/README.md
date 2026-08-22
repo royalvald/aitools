@@ -6,14 +6,14 @@
 
 | # | 阶段 | 涉及状态 | 源码 | 需求 |
 |---|---|---|---|---|
-| [01](01-ingestion.md) | 接入与标准化 | `DISCOVERED → ANALYZING` | `services/ingestion.py`、`adapters/bug_platform.py` | FR-PRE-01 |
-| [02](02-completeness.md) | 完整性分析 | `ANALYZING ⇄ WAIT_INFO` | `pipeline/stages/completeness.py` | FR-PRE-02 |
-| [03](03-planning.md) | 验证方案生成 | `PLANNING → WAIT_PLAN/SCORED` | `pipeline/stages/planning.py`、`pipeline/dsl.py` | FR-PRE-03、11.4 |
-| [04](04-scoring.md) | 难度评分与准入 | `SCORED` | `pipeline/stages/scoring.py` | FR-PRE-04、FR-SYS-02 |
-| [05](05-fixing.md) | AI 修复 | `FIXING` | `pipeline/stages/fixing.py`、`stages/common.py` | FR-FIX-01/02、11.2、11.5 |
-| [06](06-deploying.md) | 部署 | `DEPLOYING ⇄ WAIT_ENV` | `pipeline/stages/deploying.py` | FR-REG-01/02、11.1 |
-| [07](07-verifying.md) | 回归验证 | `VERIFYING` | `pipeline/stages/verifying.py`、`pipeline/dsl.py` | FR-REG-03、11.4 |
-| [08](08-learning.md) | 经验沉淀与关闭 | `LEARNING → WAIT_DISCUSS/CLOSED` | `pipeline/stages/learning.py` | FR-MEM-01/02、11.7 |
+| [01](01-ingestion.md) | 接入与标准化 | `DISCOVERED → ANALYZING` | `ingest/ingestion.py`、`platform/__init__.py` | FR-PRE-01 |
+| [02](02-completeness.md) | 完整性分析 | `ANALYZING ⇄ WAIT_INFO` | `completeness/stage.py` | FR-PRE-02 |
+| [03](03-planning.md) | 验证方案生成 | `PLANNING → WAIT_PLAN/SCORED` | `planning/stage.py`、`dsl/__init__.py` | FR-PRE-03、11.4 |
+| [04](04-scoring.md) | 难度评分与准入 | `SCORED` | `scoring/stage.py` | FR-PRE-04、FR-SYS-02 |
+| [05](05-fixing.md) | AI 修复 | `FIXING` | `fixing/stage.py`、`stages/common.py` | FR-FIX-01/02、11.2、11.5 |
+| [06](06-deploying.md) | 部署 | `DEPLOYING ⇄ WAIT_ENV` | `deploying/stage.py` | FR-REG-01/02、11.1 |
+| [07](07-verifying.md) | 回归验证 | `VERIFYING` | `verifying/stage.py`、`dsl/__init__.py` | FR-REG-03、11.4 |
+| [08](08-learning.md) | 经验沉淀与关闭 | `LEARNING → WAIT_DISCUSS/CLOSED` | `learning/stage.py` | FR-MEM-01/02、11.7 |
 
 ## 状态机全景
 
@@ -26,13 +26,13 @@ DISCOVERED → ANALYZING → PLANNING → SCORED → FIXING → DEPLOYING → VE
 任何非终态 → FAILED（可断点续跑）/ CANCELLED；终态：CLOSED、MANUAL、CANCELLED
 ```
 
-- 合法迁移表：`pipeline/state.py::LEGAL_TRANSITIONS`；非法迁移抛 `IllegalTransitionError`。
+- 合法迁移表：`core/state.py::LEGAL_TRANSITIONS`；非法迁移抛 `IllegalTransitionError`。
 - 阻塞态 `BLOCKING_STATES = {WAIT_INFO, WAIT_PLAN, WAIT_ENV, WAIT_DISCUSS}`：Orchestrator 到达即停，等待外部事件（介入回写 / 平台同步 / API 唤醒）。
 - 终态 `TERMINAL_STATES = {CLOSED, MANUAL, CANCELLED}`（MANUAL 可人工重新触发，非绝对终态）。
 
 ## Stage 插件协议（FR-SYS-01，设计 3.2）
 
-所有阶段实现统一协议，由 `Orchestrator`（`pipeline/orchestrator.py`）按 `STATE_TO_STAGE` 路由表调度：
+所有阶段实现统一协议，由 `Orchestrator`（`runtime/orchestrator.py`）按 `STATE_TO_STAGE` 路由表调度：
 
 ```python
 class Stage(Protocol):
@@ -40,7 +40,7 @@ class Stage(Protocol):
     def run(self, ctx: TaskContext) -> StageResult: ...
 ```
 
-**TaskContext**（`pipeline/stage.py`）承载任务、标准化 Bug、DB 会话与全部服务句柄（LLM、平台、执行器、通知、审计、介入、环境锁、修复通道、感知）。关键属性：`attempt = task.retry_count + 1`（当前修复尝试次数，1 起始）。跨阶段数据一律落库按 id 查询，`ctx.data` 仅在单次 `run` 内有效。
+**TaskContext**（`core/stage.py`）承载任务、标准化 Bug、DB 会话与全部服务句柄（LLM、平台、执行器、通知、审计、介入、环境锁、修复通道、感知）。关键属性：`attempt = task.retry_count + 1`（当前修复尝试次数，1 起始）。跨阶段数据一律落库按 id 查询，`ctx.data` 仅在单次 `run` 内有效。
 
 **StageResult 四类结果**及 Orchestrator 处理方式：
 
@@ -55,12 +55,12 @@ Stage 内未捕获异常由 Orchestrator 兜底：写 `stage_exception` 审计�
 
 ## 横切机制（各阶段共用）
 
-1. **审计留痕**（`services/audit.py`）：追加写 `audit_log`，关键动作（状态迁移、LLM 调用、命令执行、介入、注入检测、经验命中、锁操作）均留痕，保留 ≥180 天。
-2. **平台状态回写**（`services/writeback.py`，11.7）：每次状态迁移后按 `status_map` 映射回写缺陷平台；失败重试一次后告警（`platform_writeback_failed`），**绝不阻塞主流程**。默认仅映射 `CLOSED/WAIT_INFO/MANUAL`。
+1. **审计留痕**（`core/audit.py`）：追加写 `audit_log`，关键动作（状态迁移、LLM 调用、命令执行、介入、注入检测、经验命中、锁操作）均留痕，保留 ≥180 天。
+2. **平台状态回写**（`platform/writeback.py`，11.7）：每次状态迁移后按 `status_map` 映射回写缺陷平台；失败重试一次后告警（`platform_writeback_failed`），**绝不阻塞主流程**。默认仅映射 `CLOSED/WAIT_INFO/MANUAL`。
 3. **提示词注入防护**（11.2 输入侧）：Bug 文本进入任何 LLM prompt 前必须经 `build_bug_block()`：`detect_injection` 模式检测（命中写 `injection_detected` 审计，不阻断）+ `wrap_untrusted` 不可信边界包裹。
 4. **LLM 预算治理**（11.3）：所有 LLM 调用走 `LLMGateway.analyze()/run_fix_agent()` 统一入口，调用前检查单任务/日预算（超限抛 `BudgetExceededError`），调用后计量写 `llm_usage`。
 5. **提示词版本化**：模板存放于 `prompts/templates/<name>_v1.md`，`load_prompt(name)` 加载、`prompt_version(name)` 取版本号，随记录落库供审计回放。
-6. **通知**（`adapters/notifier.py`）：角色包括 `tester / developer / tech_lead / ops / manager`；实现 `log`（默认）与 `im`（企业微信/钉钉 webhook）。
+6. **通知**（`intervention/notifier.py`）：角色包括 `tester / developer / tech_lead / ops / manager`；实现 `log`（默认）与 `im`（企业微信/钉钉 webhook）。
 7. **环境锁**（11.1，详见 06/07 spec）：`environment_id` 粒度 DB 行互斥，带租约（默认 30 分钟）；临界区 = DEPLOYING 起持锁、VERIFYING 结束释放。
 
 ## 执行入口与运行模式

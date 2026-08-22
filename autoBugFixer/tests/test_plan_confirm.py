@@ -7,11 +7,11 @@ B6-3 已知缺陷修复后的回归）。
 
 from sqlalchemy import select
 
-from autobugfixer.adapters.bug_platform import BugTicketData
-from autobugfixer.models import Intervention, Task, VerificationPlan, VerifyRecord
-from autobugfixer.pipeline.state import TaskState
-from autobugfixer.services.ingestion import ingest_bug
-from autobugfixer.services.intervention import InterventionService
+from autobugfixer.platform import BugTicketData
+from autobugfixer.core.models import Intervention, Task, VerificationPlan, VerifyRecord
+from autobugfixer.core.state import TaskState
+from autobugfixer.ingest.ingestion import ingest_bug
+from autobugfixer.intervention.service import InterventionService
 
 
 def _high_risk_bug(repo) -> BugTicketData:

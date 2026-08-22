@@ -3,7 +3,7 @@
 | 项 | 值 |
 |---|---|
 | 涉及状态 | `SCORED`（在本状态内执行，而非离开它时） |
-| 源码 | `src/autobugfixer/pipeline/stages/scoring.py` |
+| 源码 | `src/autobugfixer/scoring/stage.py` |
 | 提示词 | `prompts/templates/scoring_v1.md`（占位符 `bug_block`、`plan_summary`） |
 | 需求 | FR-PRE-04（难度评分与准入阈值）、FR-SYS-02（策略版本化）、设计 9.3 |
 | 上游 | 验证方案生成（Spec 03，`PLANNING/WAIT_PLAN → SCORED`） |
@@ -180,8 +180,8 @@
 
 > 状态：**已实现**（`scoring_engine=v2` 开启；默认仍为 v1 照 as-built 运行，双引擎并存）。
 > 实现落点：`prompts/rubrics/scoring_rubric_v1.md` + `prompts/rubric.py` 加载器、
-> `prompts/templates/scoring_v2_v1.md` 薄壳、`pipeline/schemas.py::JudgmentForm`、
-> `pipeline/scoring_v2.py` 本地映射器与代码实证检索、`stages/scoring.py::_run_v2`
+> `prompts/templates/scoring_v2_v1.md` 薄壳、`各阶段包 schemas.py::JudgmentForm`、
+> `scoring/v2.py` 本地映射器与代码实证检索、`stages/scoring.py::_run_v2`
 > 四键权重（`SCORE_V2_WEIGHT_*`，0.3/0.3/0.2/0.2）、`code_evidence_v1` 模板。
 
 ### 8.1 v1 的结构性问题
@@ -283,7 +283,7 @@ AI 按标准逐项判定：归类 bug 类型 + 判定命中因子（+ 复杂类�
 
 1. `prompts/rubrics/scoring_rubric_v1.md` + 加载器（表头解析、版本读取）
 2. `prompts/templates/scoring_v2.md`（薄壳 + `{rubric_block}` 占位符）
-3. `pipeline/schemas.py`：判定表单 Schema（替代/并存 ScoreOutput）
+3. `各阶段包 schemas.py`：判定表单 Schema（替代/并存 ScoreOutput）
 4. `stages/scoring.py`：本地映射器（基准+因子→四维分）、代码实证分支
 5. `strategy_version`：四键权重 + optimization 介入单提议 rubric 变更
 6. `score_detail`：增记 `rubric_version`、`bug_type`、`factors_hit`

@@ -3,7 +3,7 @@
 | 项 | 值 |
 |---|---|
 | 范围 | **仅 CSV 批量导入**（Jira/禅道/webhook 为后续版本，见 §8） |
-| 源码 | `adapters/csv_import.py`（解析）、`services/ingestion.py`（入库）、`services/importer.py`（导入编排）、`cli.py` / `api/routes.py`（入口） |
+| 源码 | `ingest/csv_import.py`（解析）、`ingest/ingestion.py`（入库）、`ingest/importer.py`（导入编排）、`cli.py` / `api/routes.py`（入口） |
 | 参考样例 | `examples/bugs_sample.csv`（本文所有示例均取自该文件，预期结果可实际复现） |
 
 ## 1. 目标与结果预期
@@ -199,7 +199,7 @@ BUG-2001,健康检查接口返回 fail,测试环境 /health 接口返回 status=
 
 ## 9. 修复关联仓库要求（P1 目标规格 · 已实现）
 
-> 状态：**已实现**（`services/repo_check.py`、`models.py::BugRepo`、完整性阶段门禁、`prepare_workspace` 改造）。本节由 Spec 04 §8.6（评分代码实证不允许"无仓库降级"）派生。
+> 状态：**已实现**（`ingest/repo_check.py`、`models.py::BugRepo`、完整性阶段门禁、`prepare_workspace` 改造）。本节由 Spec 04 §8.6（评分代码实证不允许"无仓库降级"）派生。
 
 ### 9.1 要求总则
 

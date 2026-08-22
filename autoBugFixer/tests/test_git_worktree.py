@@ -6,8 +6,8 @@ import subprocess
 import pytest
 from sqlalchemy import select
 
-from autobugfixer.models import FixRecord
-from autobugfixer.pipeline.state import TaskState
+from autobugfixer.core.models import FixRecord
+from autobugfixer.core.state import TaskState
 
 pytestmark = pytest.mark.skipif(shutil.which("git") is None, reason="git 不可用")
 
@@ -36,7 +36,7 @@ def test_git_worktree_full_pipeline(make_orchestrator, session_factory, platform
     bug.repo_url = str(git_repo)
     bug.repo_branch = "main"
 
-    from autobugfixer.services.ingestion import ingest_bug
+    from autobugfixer.ingest.ingestion import ingest_bug
 
     with session_factory() as s:
         task, _ = ingest_bug(s, bug)

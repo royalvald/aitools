@@ -18,9 +18,9 @@ from pathlib import Path
 from sqlalchemy import JSON, DateTime, Integer, String
 from sqlalchemy.orm import Mapped, Session, mapped_column, sessionmaker
 
-from autobugfixer.db import Base
-from autobugfixer.models import Task, VerificationPlan
-from autobugfixer.pipeline.dsl import DSLStep
+from autobugfixer.core.db import Base
+from autobugfixer.core.models import Task, VerificationPlan
+from autobugfixer.dsl import DSLStep
 
 from .api_layer import API_ACTIONS, APIPerception
 from .base import (

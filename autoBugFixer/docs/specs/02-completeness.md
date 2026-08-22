@@ -3,7 +3,7 @@
 | 项 | 值 |
 |---|---|
 | 范围 | **仅完整性分析阶段**：规则判空 + LLM 质量评估 + 信息补充往返（方案生成/评分见 Spec 03/04） |
-| 源码 | `pipeline/stages/completeness.py`（阶段逻辑）、`services/intervention.py`（人工回写唤醒）、`services/ingestion.py`（平台同步唤醒） |
+| 源码 | `completeness/stage.py`（阶段逻辑）、`intervention/service.py`（人工回写唤醒）、`ingest/ingestion.py`（平台同步唤醒） |
 | 提示词 | `prompts/templates/completeness_v1.md`（占位符 `{bug_block}`） |
 | 参考样例 | `examples/bugs_sample.csv`（BUG-2002 走本阶段阻塞路径，预期结果可实际复现） |
 

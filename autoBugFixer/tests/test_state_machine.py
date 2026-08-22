@@ -2,7 +2,7 @@
 
 import pytest
 
-from autobugfixer.pipeline.state import (
+from autobugfixer.core.state import (
     IllegalTransitionError,
     TaskState,
     assert_transition,

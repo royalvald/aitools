@@ -9,10 +9,10 @@ import pytest
 from pydantic import ValidationError
 from sqlalchemy import select
 
-from autobugfixer.models import FixRecord, VerificationPlan
-from autobugfixer.pipeline.dsl import DSLInterpreter, StepResult
-from autobugfixer.pipeline.schemas import PlanOutput
-from autobugfixer.pipeline.state import TaskState
+from autobugfixer.core.models import FixRecord, VerificationPlan
+from autobugfixer.dsl import DSLInterpreter, StepResult
+from autobugfixer.planning.schemas import PlanOutput
+from autobugfixer.core.state import TaskState
 
 
 def _steps(with_assert: bool = True) -> list[dict]:

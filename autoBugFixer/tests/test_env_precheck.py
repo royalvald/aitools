@@ -5,14 +5,14 @@ from types import SimpleNamespace
 
 from sqlalchemy import select
 
-from autobugfixer.adapters.bug_platform import BugTicketData
-from autobugfixer.adapters.env_executor import validate_environment
-from autobugfixer.adapters.notifier import NoticeMessage
-from autobugfixer.models import AuditLog, DeployRecord, Environment, EnvLock, Task
-from autobugfixer.pipeline.state import TaskState
-from autobugfixer.services.env_lock import EnvLockService
-from autobugfixer.services.ingestion import ingest_bug
-from autobugfixer.services.scheduler import Scheduler
+from autobugfixer.platform import BugTicketData
+from autobugfixer.env import validate_environment
+from autobugfixer.intervention.notifier import NoticeMessage
+from autobugfixer.core.models import AuditLog, DeployRecord, Environment, EnvLock, Task
+from autobugfixer.core.state import TaskState
+from autobugfixer.env.lock import EnvLockService
+from autobugfixer.ingest.ingestion import ingest_bug
+from autobugfixer.runtime.scheduler import Scheduler
 
 
 def _env(**kwargs) -> SimpleNamespace:

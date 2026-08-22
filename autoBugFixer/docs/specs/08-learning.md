@@ -3,7 +3,7 @@
 | 项 | 值 |
 |---|---|
 | 涉及状态 | `LEARNING`（执行态）→ `CLOSED`（终态）或 `WAIT_DISCUSS`（阻塞态） |
-| 源码 | `pipeline/stages/learning.py`、`services/experience.py`、`services/writeback.py`、`services/intervention.py`、`services/llm_gateway.py`、`pipeline/orchestrator.py` |
+| 源码 | `learning/stage.py`、`knowledge/experience.py`、`platform/writeback.py`、`intervention/service.py`、`core/llm.py`、`runtime/orchestrator.py` |
 | 提示词 | `prompts/templates/failure_analysis_v1.md`（四占位符 `bug_block` / `retry_count` / `max_retry` / `failed_steps`） |
 | 需求 | FR-MEM-01（经验入库与去重）、FR-MEM-02（不适用场景与人工讨论）、11.7（平台回写） |
 | 上游 / 下游 | 回归验证通过或耗尽（Spec 07）、修复相同 diff 提前终止（Spec 05 §5 校验 3）→ 终态 `CLOSED`；或讨论回写 `MANUAL / CLOSED / FIXING` |

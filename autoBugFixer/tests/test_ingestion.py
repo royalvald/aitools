@@ -1,9 +1,9 @@
 """任务接入回流测试（FR-PRE-02）：平台侧数据更新自动刷新并唤醒 WAIT_INFO 任务。"""
 
-from autobugfixer.adapters.bug_platform import BugTicketData
-from autobugfixer.models import BugTicket, Intervention, Task, TaskStateHistory
-from autobugfixer.pipeline.state import TaskState
-from autobugfixer.services.ingestion import ingest_bug
+from autobugfixer.platform import BugTicketData
+from autobugfixer.core.models import BugTicket, Intervention, Task, TaskStateHistory
+from autobugfixer.core.state import TaskState
+from autobugfixer.ingest.ingestion import ingest_bug
 from sqlalchemy import select
 
 

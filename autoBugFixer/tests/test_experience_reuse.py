@@ -3,11 +3,11 @@
 import pytest
 from sqlalchemy import select
 
-from autobugfixer.adapters.bug_platform import BugTicketData
-from autobugfixer.models import Experience, FixRecord
-from autobugfixer.pipeline.state import TaskState
-from autobugfixer.services.experience import ExperienceService
-from autobugfixer.services.ingestion import ingest_bug
+from autobugfixer.platform import BugTicketData
+from autobugfixer.core.models import Experience, FixRecord
+from autobugfixer.core.state import TaskState
+from autobugfixer.knowledge.experience import ExperienceService
+from autobugfixer.ingest.ingestion import ingest_bug
 
 
 def test_experience_injected_into_fix_prompt(make_orchestrator, task_id,
@@ -43,7 +43,7 @@ def test_experience_upsert_dedup(make_orchestrator, session_factory, platform,
         with session_factory() as s:
             task, created = ingest_bug(s, data)
             if not created:  # 幂等去重 -> 手工复制一条新任务
-                from autobugfixer.models import Task
+                from autobugfixer.core.models import Task
                 task = Task(bug_ticket_id=task.bug_ticket_id, state="ANALYZING",
                             max_retry=settings.max_retry)
                 s.add(task)

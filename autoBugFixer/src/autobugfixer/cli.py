@@ -7,16 +7,16 @@ import json
 import sys
 from pathlib import Path
 
-from .adapters.bug_platform import MockBugPlatform
-from .adapters.csv_import import CsvFormatError, parse_csv
-from .adapters.env_executor import LocalExecutor
-from .adapters.notifier import LogNotifier
-from .adapters.whitelist import CommandWhitelist
-from .config import Settings, get_settings
-from .db import init_db, make_engine, make_session_factory
-from .pipeline.orchestrator import Orchestrator
-from .services.importer import analyze_tasks, import_bug_rows
-from .services.llm_gateway import LLMGateway
+from autobugfixer.platform import MockBugPlatform
+from autobugfixer.ingest.csv_import import CsvFormatError, parse_csv
+from autobugfixer.env import LocalExecutor
+from autobugfixer.intervention.notifier import LogNotifier
+from autobugfixer.env.whitelist import CommandWhitelist
+from autobugfixer.core.config import Settings, get_settings
+from autobugfixer.core.db import init_db, make_engine, make_session_factory
+from autobugfixer.runtime.orchestrator import Orchestrator
+from autobugfixer.ingest.importer import analyze_tasks, import_bug_rows
+from autobugfixer.core.llm import LLMGateway
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -33,7 +33,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None, settings: Settings | None = None) -> int:
     """CLI 入口：解析 CSV、导入任务，可选执行预处理分析。"""
     args = build_parser().parse_args(argv)
-    from .logging_setup import setup_logging
+    from autobugfixer.core.logging_setup import setup_logging
 
     setup_logging()
     settings = settings or get_settings()

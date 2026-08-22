@@ -4,21 +4,22 @@ Contributor guide for autobugfixer: a state-machine-driven pipeline that pulls b
 
 ## Project Structure & Module Organization
 
+Organized by pipeline stage (one package per stage, mapping 1:1 to `docs/specs/01~08`):
+
 - `src/autobugfixer/` — Python package (src layout).
-  - `pipeline/` — state machine, Orchestrator, Stage plugins, verification DSL.
-  - `services/` — LLM gateway, scheduler, intervention, env lock, ingestion, audit, experience.
-  - `adapters/` — bug platforms (`mock`/`jira`/`zentao`), env executors (`local`/`ssh`/`docker`), fix channels, adapter registry.
-  - `api/` + `web/` — FastAPI routes and the static console.
-  - `security/` — prompt-injection defense, Fernet credentials, redaction.
-  - `prompts/templates/` — versioned prompt templates.
-- `tests/` — pytest suite; `docs/` — PRD and design docs; `examples/` — sample CSV; `var/` — runtime artifacts (workspaces/test env), gitignored.
+  - `core/` — shared kernel: `config`, `models`, `state` (state machine), `stage` (Stage protocol + TaskContext), `llm` (gateway/budget), `audit`, `bugtext` (injection-safe bug block).
+  - `dsl/` — verification DSL: action vocabulary, schema, interpreter.
+  - Stage packages: `ingest/` (platform/CSV/webhook ingestion, repo gate), `completeness/`, `planning/`, `scoring/` (v1 + `v2.py`), `fixing/` (stage + `codex.py` channel + `workspace.py`), `deploying/`, `verifying/`, `learning/` — each holds `stage.py` (+ `schemas.py` where the stage owns LLM output schemas).
+  - Cross-cutting domains: `platform/` (bug platform adapters `mock`/`jira`/`zentao` + writeback), `env/` (executors `local`/`ssh`/`docker`, `whitelist`, `lock`, `resolve`), `knowledge/` (experience/skill/export), `intervention/` (HITL service + notifiers), `optimization/` (strategy versions), `runtime/` (Orchestrator, Scheduler, adapter `registry`).
+  - `perception/` — three-dimension perception (FR-FIX-02); `api/` + `web/` — FastAPI routes and the static console; `security/` — injection defense, Fernet credentials, redaction; `prompts/templates/` — versioned prompt templates.
+- `tests/` — pytest suite; `docs/` — PRD, design docs, specs; `examples/` — sample CSV; `var/` — runtime artifacts (workspaces/test env), gitignored.
 
 ## Architecture Overview
 
 - State-machine-driven pipeline: `DISCOVERED → ANALYZING → PLANNING → SCORED → FIXING → DEPLOYING → VERIFYING → LEARNING → CLOSED`, with blocking `WAIT_*` states for human/environment intervention and `FAILED` for resumable failures.
 - Main flow: ingest (platform/CSV/webhook) → completeness analysis → verification plan (DSL) → difficulty scoring → scheduler dispatch (easiest first) → fix in an isolated workspace → deploy (env lock + rollback) → DSL verification → experience persistence → platform status writeback.
 - Functional domains: Bug ingestion; preprocessing (completeness/plan/scoring); scheduling; auto-fix; deploy & verify; experience learning; human intervention (HITL); audit & metering; platform sync; governance (versioned strategy, centralized config).
-- Key code areas: `pipeline/` (state machine, Orchestrator, Stage plugins, DSL), `services/` (LLM gateway, scheduler, intervention, env lock, audit, experience), `adapters/` (bug platforms, env executors, fix channels, registry), `security/` (injection defense, credentials, redaction).
+- Key code areas: `core/` (state machine, Stage protocol, LLM gateway, audit), stage packages `completeness|planning|scoring|fixing|deploying|verifying|learning` (one `stage.py` each), `runtime/` (Orchestrator, Scheduler, adapter registry), `platform/` + `env/` + `intervention/` (adapters and HITL), `security/` (injection defense, credentials, redaction).
 
 ## Build, Test, and Development Commands
 
@@ -54,4 +55,4 @@ All tunables are env vars prefixed `AUTOBUGFIXER_` (see `README.md`).
 
 - Local defaults are safe to run: SQLite, Fake LLM, mock platform.
 - Set `FERNET_KEY` in production; never commit secrets or `.env` files.
-- Add external integrations through `adapters/registry.py` registration instead of modifying the core pipeline.
+- Add external integrations through `runtime/registry.py` registration instead of modifying the core pipeline.

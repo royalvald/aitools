@@ -3,10 +3,10 @@
 import httpx
 from sqlalchemy import select
 
-from autobugfixer.adapters.notifier import LogNotifier, NoticeMessage
-from autobugfixer.adapters.notifier_im import IMNotifier, build_notifier
-from autobugfixer.models import AuditLog, Task
-from autobugfixer.pipeline.state import TaskState
+from autobugfixer.intervention.notifier import LogNotifier, NoticeMessage
+from autobugfixer.intervention.notifier_im import IMNotifier, build_notifier
+from autobugfixer.core.models import AuditLog, Task
+from autobugfixer.core.state import TaskState
 
 
 # ---------- IM 通知器 ----------

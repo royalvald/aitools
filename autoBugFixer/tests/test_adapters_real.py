@@ -20,19 +20,19 @@ from types import SimpleNamespace
 import httpx
 import pytest
 
-from autobugfixer.adapters.bug_platform import BugPatch, BugTicketData, MockBugPlatform
-from autobugfixer.adapters.bug_platform.jira import JiraBugPlatform
-from autobugfixer.adapters.bug_platform.zentao import ZentaoBugPlatform
-from autobugfixer.adapters.env_executor.docker_executor import DockerExecutor
-from autobugfixer.adapters.env_executor.ssh_executor import SSHExecutor
-from autobugfixer.adapters.registry import (
+from autobugfixer.platform import BugPatch, BugTicketData, MockBugPlatform
+from autobugfixer.platform.jira import JiraBugPlatform
+from autobugfixer.platform.zentao import ZentaoBugPlatform
+from autobugfixer.env.docker import DockerExecutor
+from autobugfixer.env.ssh import SSHExecutor
+from autobugfixer.runtime.registry import (
     get_bug_platform,
     get_env_executor,
     get_env_executor_for,
     register_builtin_adapters,
     registered_adapters,
 )
-from autobugfixer.adapters.whitelist import CommandRejectedError
+from autobugfixer.env.whitelist import CommandRejectedError
 
 # ---------------------------------------------------------------- Jira
 
@@ -548,15 +548,15 @@ def test_registry_get_env_executor_for_model(tmp_path):
     assert isinstance(get_env_executor_for(env_ssh), SSHExecutor)
 
 
-# ---------------------------------------------------------------- 兼容 shim
+# ---------------------------------------------------------------- 包契约
 
 
-def test_legacy_flat_module_contracts_still_importable():
-    """新增子包后，原有扁平模块的公共契约仍可原路径导入。"""
-    from autobugfixer.adapters.bug_platform import (
+def test_stage_package_contracts_importable():
+    """按阶段分包后（refactor/stage-packages），platform/env 包公共契约可从包根导入。"""
+    from autobugfixer.platform import (
         BugPlatformAdapter, BugTicketData, MockBugPlatform, sample_bugs,
     )
-    from autobugfixer.adapters.env_executor import (
+    from autobugfixer.env import (
         EnvExecutor, ExecResult, Health, LocalExecutor,
     )
 

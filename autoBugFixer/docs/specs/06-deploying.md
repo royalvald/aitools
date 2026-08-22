@@ -3,7 +3,7 @@
 | 项 | 值 |
 |---|---|
 | 涉及状态 | `DEPLOYING`（执行态）⇄ `WAIT_ENV`（阻塞态）；出口 `{VERIFYING, WAIT_ENV, FAILED}` |
-| 源码 | `pipeline/stages/deploying.py`、`services/env_lock.py`、`adapters/env_executor.py`（local）、`adapters/env_executor/{ssh_executor,docker_executor}.py`、`adapters/whitelist.py`、`services/writeback.py` |
+| 源码 | `deploying/stage.py`、`env/lock.py`、`env/__init__.py`（local）、`env/{ssh_executor,docker_executor}.py`、`env/whitelist.py`、`platform/writeback.py` |
 | 需求 | FR-REG-01（部署白名单）、FR-REG-02（失败自动回滚）、11.1（环境锁） |
 | 上游 / 下游 | AI 修复（Spec 05）→ 回归验证（Spec 07，共享同一临界区） |
 
@@ -91,7 +91,7 @@ OUT-4 FAILED（无环境行，未取锁）
 | `name` | DB 层唯一约束 | 重复插入直接 DB 报错 |
 | （local）env_root | LocalExecutor 构造时 `mkdir(parents=True, exist_ok=True)`（env_executor.py:72） | **目录自动创建**——S5/S9 健康检查对 local 是存在性弱检查，基本恒过 |
 
-**P1 预检规则（已实现）**：`adapters/env_executor.py::validate_environment`（部署前在取锁前执行，`DeployingStage` S1.5 调用，必败配置提前暴露并审计 `env_config_rejected`）——① `type` 枚举（local/ssh/docker，k8s 明确拒绝）；② ssh 必填 `host` 且 `credential_ref` 可解密；③ docker 必填 `container`；④ `deploy_script` 非空且**逐条命中该环境生效的白名单**；⑤ local 类型 `conn_config`/`cmd_whitelist` 不生效记 `env_config_warning` 警告。
+**P1 预检规则（已实现）**：`env/__init__.py::validate_environment`（部署前在取锁前执行，`DeployingStage` S1.5 调用，必败配置提前暴露并审计 `env_config_rejected`）——① `type` 枚举（local/ssh/docker，k8s 明确拒绝）；② ssh 必填 `host` 且 `credential_ref` 可解密；③ docker 必填 `container`；④ `deploy_script` 非空且**逐条命中该环境生效的白名单**；⑤ local 类型 `conn_config`/`cmd_whitelist` 不生效记 `env_config_warning` 警告。
 
 ## 3. 环境锁机制（DB 行实现，带租约）
 

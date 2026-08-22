@@ -5,10 +5,10 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from sqlalchemy import select
 
-from autobugfixer.adapters.notifier import LogNotifier
-from autobugfixer.models import Intervention, Task, TaskStateHistory
-from autobugfixer.pipeline.state import TaskState
-from autobugfixer.services.scheduler import Scheduler
+from autobugfixer.intervention.notifier import LogNotifier
+from autobugfixer.core.models import Intervention, Task, TaskStateHistory
+from autobugfixer.core.state import TaskState
+from autobugfixer.runtime.scheduler import Scheduler
 
 
 @pytest.fixture()

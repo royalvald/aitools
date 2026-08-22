@@ -13,17 +13,17 @@ import pytest
 from pydantic import ValidationError
 from sqlalchemy import select
 
-from autobugfixer.adapters.bug_platform import BugTicketData
-from autobugfixer.models import AuditLog, BugRepo, StrategyVersion, Task, VerificationPlan
-from autobugfixer.pipeline.schemas import CodeEvidence, JudgmentForm, LocateSignals
-from autobugfixer.pipeline.scoring_v2 import (
+from autobugfixer.platform import BugTicketData
+from autobugfixer.core.models import AuditLog, BugRepo, StrategyVersion, Task, VerificationPlan
+from autobugfixer.scoring.schemas import CodeEvidence, JudgmentForm, LocateSignals
+from autobugfixer.scoring.v2 import (
     extract_keywords,
     map_judgment,
     search_repos,
 )
-from autobugfixer.pipeline.state import TaskState
+from autobugfixer.core.state import TaskState
 from autobugfixer.prompts.rubric import load_rubric, parse_rubric
-from autobugfixer.services.ingestion import ingest_bug
+from autobugfixer.ingest.ingestion import ingest_bug
 
 RUBRIC = load_rubric()
 
@@ -248,10 +248,10 @@ def test_v2_code_evidence_prompt_includes_repo_snippet(make_orchestrator, sessio
             if schema.__name__ == "CodeEvidence":
                 return CodeEvidence(triggered=True, suspected_files=["api/health.py"])
             if schema.__name__ == "CompletenessEval":
-                from autobugfixer.pipeline.schemas import CompletenessEval
+                from autobugfixer.completeness.schemas import CompletenessEval
                 return CompletenessEval(complete=True)
             if schema.__name__ == "PlanOutput":
-                from autobugfixer.pipeline.schemas import PlanOutput
+                from autobugfixer.planning.schemas import PlanOutput
                 return PlanOutput(steps=[
                     {"action": "input", "params": {"selector": "#env", "value": "v1"}},
                     {"action": "call_api", "params": {"method": "GET", "path": "/health"}},
@@ -265,11 +265,11 @@ def test_v2_code_evidence_prompt_includes_repo_snippet(make_orchestrator, sessio
         def record_usage(self, *a, **k):
             pass
 
-    from autobugfixer.adapters.codex_cli import ScriptedCodexCLI
-    from autobugfixer.adapters.env_executor import LocalExecutor
-    from autobugfixer.adapters.notifier import LogNotifier
-    from autobugfixer.adapters.whitelist import CommandWhitelist
-    from autobugfixer.pipeline.orchestrator import Orchestrator
+    from autobugfixer.fixing.codex import ScriptedCodexCLI
+    from autobugfixer.env import LocalExecutor
+    from autobugfixer.intervention.notifier import LogNotifier
+    from autobugfixer.env.whitelist import CommandWhitelist
+    from autobugfixer.runtime.orchestrator import Orchestrator
 
     class _NoopPlatform:
         def list_bugs(self, since=None):

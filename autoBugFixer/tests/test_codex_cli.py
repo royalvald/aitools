@@ -13,18 +13,18 @@ from types import SimpleNamespace
 import pytest
 from sqlalchemy import select
 
-from autobugfixer.adapters.codex_cli import (
+from autobugfixer.fixing.codex import (
     CodexError,
     CodexCLI,
     ScriptedCodexCLI,
     extract_usage,
     parse_events,
 )
-from autobugfixer.adapters.bug_platform import BugTicketData
-from autobugfixer.config import Settings
-from autobugfixer.models import FixRecord, LLMUsage
-from autobugfixer.pipeline.state import TaskState
-from autobugfixer.services.ingestion import ingest_bug
+from autobugfixer.platform import BugTicketData
+from autobugfixer.core.config import Settings
+from autobugfixer.core.models import FixRecord, LLMUsage
+from autobugfixer.core.state import TaskState
+from autobugfixer.ingest.ingestion import ingest_bug
 
 
 # ---------- A5：argv 构造（纯本地） ----------
@@ -81,7 +81,7 @@ def test_extract_usage_empty_events_recorded_as_zero():
 # ---------- A7：五类异常（缺失/超时/非零退出/输出不可读） ----------
 
 def _patch_run(monkeypatch, **kwargs):
-    monkeypatch.setattr("autobugfixer.adapters.codex_cli.subprocess.run",
+    monkeypatch.setattr("autobugfixer.fixing.codex.subprocess.run",
                         lambda *a, **kw: SimpleNamespace(**kwargs))
 
 
@@ -89,7 +89,7 @@ def test_codex_missing_cli_raises(monkeypatch, tmp_path):
     def not_found(*a, **kw):
         raise FileNotFoundError("codex")
 
-    monkeypatch.setattr("autobugfixer.adapters.codex_cli.subprocess.run", not_found)
+    monkeypatch.setattr("autobugfixer.fixing.codex.subprocess.run", not_found)
     with pytest.raises(CodexError, match="未找到 codex CLI"):
         CodexCLI().run("p", tmp_path)
 
@@ -98,7 +98,7 @@ def test_codex_timeout_kills_attempt(monkeypatch, tmp_path):
     def hang(*a, **kw):
         raise subprocess.TimeoutExpired(["codex"], 1)
 
-    monkeypatch.setattr("autobugfixer.adapters.codex_cli.subprocess.run", hang)
+    monkeypatch.setattr("autobugfixer.fixing.codex.subprocess.run", hang)
     with pytest.raises(CodexError, match="超时"):
         CodexCLI(timeout=1).run("p", tmp_path)
 
@@ -116,7 +116,7 @@ def test_codex_run_reads_last_message_and_usage(monkeypatch, tmp_path):
             f.write("修复完成：已将 status 修正为 ok。")
         return SimpleNamespace(returncode=0, stdout=SAMPLE_JSONL, stderr="")
 
-    monkeypatch.setattr("autobugfixer.adapters.codex_cli.subprocess.run", fake_run)
+    monkeypatch.setattr("autobugfixer.fixing.codex.subprocess.run", fake_run)
     result = CodexCLI().run("p", tmp_path)
     assert result.summary == "修复完成：已将 status 修正为 ok。"
     assert result.tokens_in == 120 and result.tokens_out == 30
@@ -124,9 +124,9 @@ def test_codex_run_reads_last_message_and_usage(monkeypatch, tmp_path):
 
 
 def test_codex_preflight_reports_missing_cli_and_auth(monkeypatch, tmp_path):
-    from autobugfixer.adapters.codex_cli import codex_preflight
+    from autobugfixer.fixing.codex import codex_preflight
 
-    monkeypatch.setattr("autobugfixer.adapters.codex_cli.shutil.which", lambda _: None)
+    monkeypatch.setattr("autobugfixer.fixing.codex.shutil.which", lambda _: None)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.setattr("pathlib.Path.home", lambda: tmp_path)  # 无 ~/.codex/auth.json
     errors = codex_preflight(Settings())

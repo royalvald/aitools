@@ -13,9 +13,9 @@ import sqlite3
 import httpx
 import pytest
 
-from autobugfixer.adapters.env_executor import LocalExecutor
-from autobugfixer.db import init_db, make_engine, make_session_factory
-from autobugfixer.models import BugTicket, Task, VerificationPlan
+from autobugfixer.env import LocalExecutor
+from autobugfixer.core.db import init_db, make_engine, make_session_factory
+from autobugfixer.core.models import BugTicket, Task, VerificationPlan
 from autobugfixer.perception import (
     DBPerception,
     PagePerception,

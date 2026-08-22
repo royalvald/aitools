@@ -7,7 +7,7 @@
 
 from __future__ import annotations
 
-from autobugfixer.pipeline.dsl import (
+from autobugfixer.dsl import (
     DSLInterpreter,
     DSLRuntime,
     DSLStep,

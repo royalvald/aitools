@@ -6,17 +6,17 @@ import logging
 
 from fastapi import FastAPI
 
-from ..adapters.bug_platform import BugPlatformAdapter
-from ..adapters.codex_cli import CodexCLI, codex_preflight
-from ..adapters.env_executor import LocalExecutor
-from ..adapters.notifier_im import build_notifier
-from ..adapters.registry import get_bug_platform
-from ..adapters.whitelist import CommandWhitelist
-from ..config import Settings, get_settings
-from ..db import init_db, make_engine, make_session_factory
-from ..logging_setup import setup_logging
-from ..pipeline.orchestrator import Orchestrator
-from ..services.llm_gateway import LLMGateway, LLMPreflightError
+from autobugfixer.platform import BugPlatformAdapter
+from autobugfixer.fixing.codex import CodexCLI, codex_preflight
+from autobugfixer.env import LocalExecutor
+from autobugfixer.intervention.notifier_im import build_notifier
+from autobugfixer.runtime.registry import get_bug_platform
+from autobugfixer.env.whitelist import CommandWhitelist
+from autobugfixer.core.config import Settings, get_settings
+from autobugfixer.core.db import init_db, make_engine, make_session_factory
+from autobugfixer.core.logging_setup import setup_logging
+from autobugfixer.runtime.orchestrator import Orchestrator
+from autobugfixer.core.llm import LLMGateway, LLMPreflightError
 from .routes import router
 
 logger = logging.getLogger(__name__)

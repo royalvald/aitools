@@ -5,18 +5,18 @@ from __future__ import annotations
 import argparse
 import sys
 
-from .adapters.codex_cli import CodexPreflightError, CodexCLI, codex_preflight
-from .adapters.notifier_im import build_notifier
-from .adapters.registry import get_bug_platform
-from .adapters.env_executor import LocalExecutor
-from .adapters.whitelist import CommandWhitelist
+from autobugfixer.fixing.codex import CodexPreflightError, CodexCLI, codex_preflight
+from autobugfixer.intervention.notifier_im import build_notifier
+from autobugfixer.runtime.registry import get_bug_platform
+from autobugfixer.env import LocalExecutor
+from autobugfixer.env.whitelist import CommandWhitelist
 from .api.app import _build_perception
-from .config import Settings, get_settings
-from .db import init_db, make_engine, make_session_factory
-from .logging_setup import setup_logging
-from .pipeline.orchestrator import Orchestrator
-from .services.llm_gateway import LLMGateway, LLMPreflightError
-from .services.scheduler import Scheduler
+from autobugfixer.core.config import Settings, get_settings
+from autobugfixer.core.db import init_db, make_engine, make_session_factory
+from autobugfixer.core.logging_setup import setup_logging
+from autobugfixer.runtime.orchestrator import Orchestrator
+from autobugfixer.core.llm import LLMGateway, LLMPreflightError
+from autobugfixer.runtime.scheduler import Scheduler
 
 
 def build_scheduler(settings: Settings | None = None, *, codex=None) -> Scheduler:

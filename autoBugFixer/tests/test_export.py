@@ -4,8 +4,8 @@ from fastapi.testclient import TestClient
 
 from autobugfixer.api.app import create_app
 from autobugfixer.export_cli import main as export_main
-from autobugfixer.services.experience import ExperienceService
-from autobugfixer.services.export import render_markdown
+from autobugfixer.knowledge.experience import ExperienceService
+from autobugfixer.knowledge.export import render_markdown
 
 
 def _seed(session_factory):

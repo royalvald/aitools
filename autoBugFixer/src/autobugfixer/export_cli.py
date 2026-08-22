@@ -5,10 +5,10 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from .config import Settings, get_settings
-from .db import init_db, make_engine, make_session_factory
-from .logging_setup import setup_logging
-from .services.export import render_markdown
+from autobugfixer.core.config import Settings, get_settings
+from autobugfixer.core.db import init_db, make_engine, make_session_factory
+from autobugfixer.core.logging_setup import setup_logging
+from autobugfixer.knowledge.export import render_markdown
 
 
 def main(argv: list[str] | None = None, settings: Settings | None = None) -> int:

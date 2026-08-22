@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 
 import httpx
 
-from autobugfixer.pipeline.dsl import DSLStep
+from autobugfixer.dsl import DSLStep
 
 from .base import (
     ObservationContext,

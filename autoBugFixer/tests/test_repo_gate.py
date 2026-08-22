@@ -7,13 +7,13 @@ import subprocess
 import pytest
 from sqlalchemy import select
 
-from autobugfixer.adapters.bug_platform import BugTicketData
-from autobugfixer.adapters.codex_cli import ScriptedCodexCLI
-from autobugfixer.models import AuditLog, BugRepo, BugTicket, FixRecord, Task
-from autobugfixer.pipeline.state import TaskState
-from autobugfixer.services.ingestion import ingest_bug
-from autobugfixer.services.intervention import InterventionService
-from autobugfixer.services.repo_check import check_repo, split_repos
+from autobugfixer.platform import BugTicketData
+from autobugfixer.fixing.codex import ScriptedCodexCLI
+from autobugfixer.core.models import AuditLog, BugRepo, BugTicket, FixRecord, Task
+from autobugfixer.core.state import TaskState
+from autobugfixer.ingest.ingestion import ingest_bug
+from autobugfixer.intervention.service import InterventionService
+from autobugfixer.ingest.repo_check import check_repo, split_repos
 
 pytestmark = pytest.mark.skipif(shutil.which("git") is None, reason="git 不可用")
 
@@ -114,7 +114,7 @@ def test_missing_repo_blocks_with_repo_supplement(
     orchestrator = make_orchestrator()
     assert orchestrator.run_until_blocked(task_id) == TaskState.WAIT_INFO
 
-    from autobugfixer.models import Intervention, LLMUsage
+    from autobugfixer.core.models import Intervention, LLMUsage
     with session_factory() as s:
         intervention = s.scalar(select(Intervention).where(
             Intervention.task_id == task_id))
@@ -158,7 +158,7 @@ def test_repo_supplement_resolve_wakes(make_orchestrator, session_factory,
     orchestrator = make_orchestrator()
     assert orchestrator.run_until_blocked(task_id) == TaskState.WAIT_INFO
 
-    from autobugfixer.models import Intervention
+    from autobugfixer.core.models import Intervention
     with session_factory() as s:
         intervention = s.scalar(select(Intervention).where(
             Intervention.task_id == task_id, Intervention.status == "pending"))

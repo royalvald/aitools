@@ -7,15 +7,15 @@ developer 通知（B5-2）、admission_hold 审计（B6-1）。
 
 from sqlalchemy import select
 
-from autobugfixer.adapters.notifier import LogNotifier, NoticeMessage
-from autobugfixer.models import AuditLog, BugTicket, StrategyVersion, Task, VerificationPlan
-from autobugfixer.pipeline.schemas import ScoreOutput
-from autobugfixer.pipeline.stage import TaskContext
-from autobugfixer.pipeline.stages.scoring import ScoringStage
-from autobugfixer.pipeline.state import TaskState
-from autobugfixer.services.audit import AuditService
-from autobugfixer.services.env_lock import EnvLockService
-from autobugfixer.services.intervention import InterventionService
+from autobugfixer.intervention.notifier import LogNotifier, NoticeMessage
+from autobugfixer.core.models import AuditLog, BugTicket, StrategyVersion, Task, VerificationPlan
+from autobugfixer.scoring.schemas import ScoreOutput
+from autobugfixer.core.stage import TaskContext
+from autobugfixer.scoring.stage import ScoringStage
+from autobugfixer.core.state import TaskState
+from autobugfixer.core.audit import AuditService
+from autobugfixer.env.lock import EnvLockService
+from autobugfixer.intervention.service import InterventionService
 
 
 def _score_responses(fix: float, verify: float, change: float) -> list:
@@ -39,7 +39,7 @@ def test_low_score_admitted(make_orchestrator, task_id, session_factory):
     orchestrator = make_orchestrator(_score_responses(20, 15, 10))
     final = orchestrator.run_until_blocked(task_id)
     with session_factory() as s:
-        from autobugfixer.models import Task
+        from autobugfixer.core.models import Task
         task = s.get(Task, task_id)
         assert task.priority_score == 15.5
         assert task.score_detail["rationale"] == "测试用评分"
@@ -53,7 +53,7 @@ def test_high_score_to_manual(make_orchestrator, task_id, session_factory):
     final = orchestrator.run_until_blocked(task_id)
     assert final == TaskState.MANUAL
     with session_factory() as s:
-        from autobugfixer.models import Task
+        from autobugfixer.core.models import Task
         task = s.get(Task, task_id)
         assert task.priority_score == 90.0
         assert task.score_detail["threshold"] == 60.0
@@ -131,7 +131,7 @@ class _RecordingLLM:
 
 
 def _make_ctx(session_factory, settings, task_id, platform):
-    from autobugfixer.pipeline.stage import TaskContext
+    from autobugfixer.core.stage import TaskContext
 
     s = session_factory()
     task = s.get(Task, task_id)

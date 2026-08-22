@@ -4,7 +4,7 @@
 |---|---|
 | 涉及状态 | `FIXING`（执行态）；出口 `{DEPLOYING, MANUAL, FAILED, LEARNING}` |
 | 修复驱动 | **`codex exec`（唯一通道，本 spec 已实现）**——headless 子进程，OpenAI Codex CLI |
-| 源码 | `pipeline/stages/fixing.py`、`pipeline/stages/common.py`、`adapters/codex_cli.py`（新增）；遗留移除清单见 §6 |
+| 源码 | `fixing/stage.py`、`fixing/workspace.py + core/bugtext.py + env/resolve.py`、`fixing/codex.py`（新增）；遗留移除清单见 §6 |
 | 提示词 | `prompts/templates/fixing_v1.md`、`fixing_retry_v1.md`（内容不变，codex 对格式无感） |
 | 上游 / 下游 | 评分准入（Spec 04）、验证重试环（Spec 07）→ 部署（Spec 06）、失败经验（Spec 08） |
 
@@ -106,7 +106,7 @@ git diff 失败返回空变更 → 表现为 §5 零变更失败，不抛异常�
 
 ## 6. 通道整合与移除清单（迁移记录）
 
-**新增**：`adapters/codex_cli.py`（`CodexError` + `CodexCLI` 子进程封装 + 事件流解析 + 用量提取）；`pipeline/stages/fixing.py` ⑤ 处改为调用 CodexCLI；配置四项（§2.2）；启动预检补 codex 检查。
+**新增**：`fixing/codex.py`（`CodexError` + `CodexCLI` 子进程封装 + 事件流解析 + 用量提取）；`fixing/stage.py` ⑤ 处改为调用 CodexCLI；配置四项（§2.2）；启动预检补 codex 检查。
 
 **移除**：
 

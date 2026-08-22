@@ -5,8 +5,8 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from autobugfixer.config import Settings
-from autobugfixer.services.llm_gateway import LLMGateway, ScriptedFakeChatModel
+from autobugfixer.core.config import Settings
+from autobugfixer.core.llm import LLMGateway, ScriptedFakeChatModel
 
 
 def _settings(tmp_path, **overrides) -> Settings:
@@ -87,7 +87,7 @@ def test_cli_preflight_blocks_before_import(tmp_path, capsys):
 def test_scheduler_preflight_refuses_to_build(tmp_path):
     """A7：调度器构建即预检，配置错抛 LLMPreflightError。"""
     from autobugfixer.scheduler_cli import build_scheduler
-    from autobugfixer.services.llm_gateway import LLMPreflightError
+    from autobugfixer.core.llm import LLMPreflightError
 
     s = _settings(tmp_path, llm_mode="anthropic", anthropic_api_key=None)
     with pytest.raises(LLMPreflightError, match="ANTHROPIC_API_KEY"):
@@ -97,7 +97,7 @@ def test_scheduler_preflight_refuses_to_build(tmp_path):
 def test_api_static_error_refuses_start(tmp_path):
     """A7：API 静态配置错 -> create_app 拒绝启动。"""
     from autobugfixer.api.app import create_app
-    from autobugfixer.services.llm_gateway import LLMPreflightError
+    from autobugfixer.core.llm import LLMPreflightError
 
     s = _settings(tmp_path, llm_mode="anthropic", anthropic_api_key=None)
     with pytest.raises(LLMPreflightError, match="预检"):

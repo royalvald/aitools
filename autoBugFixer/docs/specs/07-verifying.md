@@ -3,10 +3,10 @@
 | 项 | 值 |
 |---|---|
 | 涉及状态 | `VERIFYING`（执行态）；出口 `{LEARNING, FIXING, FAILED}` |
-| 源码 | `pipeline/stages/verifying.py`、`pipeline/dsl.py::DSLInterpreter`、`pipeline/stages/common.py::resolve_executor` |
+| 源码 | `verifying/stage.py`、`dsl/__init__.py::DSLInterpreter`、`fixing/workspace.py + core/bugtext.py + env/resolve.py::resolve_executor` |
 | 需求 | FR-REG-03（回归验证与证据链）、FR-FIX-02（感知对比）、11.1（临界区收尾）、11.4（DSL）、11.5（重试反馈） |
 | 上游 / 下游 | 部署（Spec 06，锁已持有，OUT-3 交接到本阶段）→ 经验沉淀（Spec 08）或回 AI 修复（Spec 05 重试环） |
-| 消费产物 | 最新版本 `verification_plan`（Spec 03 产出，可能经人工确认 version+1，见 services/intervention.py:110-123） |
+| 消费产物 | 最新版本 `verification_plan`（Spec 03 产出，可能经人工确认 version+1，见 intervention/service.py:110-123） |
 
 ## 1. 目标
 

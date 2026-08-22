@@ -5,9 +5,9 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
-from autobugfixer.adapters.codex_cli import ScriptedCodexCLI
+from autobugfixer.fixing.codex import ScriptedCodexCLI
 from autobugfixer.api.app import create_app
-from autobugfixer.models import Environment
+from autobugfixer.core.models import Environment
 
 
 @pytest.fixture()

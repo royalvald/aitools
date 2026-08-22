@@ -11,7 +11,7 @@ from typing import Any
 
 import httpx
 
-from autobugfixer.pipeline.dsl import DSLStep, _json_path_get  # 复用 DSL 的 json path 取值
+from autobugfixer.dsl import DSLStep, _json_path_get  # 复用 DSL 的 json path 取值
 
 from .base import (
     APICall,

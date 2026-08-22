@@ -12,7 +12,7 @@ from typing import Any, Literal, Protocol
 
 from pydantic import BaseModel, Field
 
-from autobugfixer.pipeline.dsl import DSLStep
+from autobugfixer.dsl import DSLStep
 
 # 快照阶段：修复前基线 / 修复后对比
 PerceptionPhase = Literal["pre_fix", "post_fix"]
