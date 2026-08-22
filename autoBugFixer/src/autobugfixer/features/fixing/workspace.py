@@ -151,13 +151,32 @@ def compute_diff(workspace: Path) -> tuple[list[str], str]:
     for rel in sorted(current_files):
         old_path = baseline / rel
         new_path = workspace / rel
-        old = old_path.read_text(encoding="utf-8").splitlines(keepends=True) if old_path.exists() else []
-        new = new_path.read_text(encoding="utf-8").splitlines(keepends=True)
-        if old != new:
-            changed.append(str(rel).replace("\\", "/"))
-            diffs.append("".join(difflib.unified_diff(
-                old, new, fromfile=f"a/{rel}", tofile=f"b/{rel}")))
+        new_bytes = new_path.read_bytes()
+        old_bytes = old_path.read_bytes() if old_path.exists() else b""
+        if old_bytes == new_bytes:
+            continue
+        rel_name = str(rel).replace("\\", "/")
+        changed.append(rel_name)
+        diffs.append(_diff_one(rel_name, old_bytes, new_bytes))
     return changed, "".join(diffs)
+
+
+def _diff_one(rel: str, old_bytes: bytes, new_bytes: bytes) -> str:
+    """单文件 unified diff：文本按行对比；二进制按字节比对并以哈希摘要表达。
+
+    修复：真实仓库常含二进制文件（图片/依赖包/数据库等），此前 read_text(utf-8)
+    硬解首遇非 UTF-8 字节即 UnicodeDecodeError -> 修复阶段异常落 FAILED。
+    """
+    try:
+        old = old_bytes.decode("utf-8").splitlines(keepends=True)
+        new = new_bytes.decode("utf-8").splitlines(keepends=True)
+        return "".join(difflib.unified_diff(old, new, fromfile=f"a/{rel}", tofile=f"b/{rel}"))
+    except UnicodeDecodeError:
+        old_digest = hashlib.sha256(old_bytes).hexdigest()[:16]
+        new_digest = hashlib.sha256(new_bytes).hexdigest()[:16]
+        status = "new" if not old_bytes else "modified"
+        return (f"diff --git a/{rel} b/{rel}\n"
+                f"Binary file {status}: sha256 {old_digest or '-'} -> {new_digest}\n")
 
 
 def check_forbidden(changed_files: list[str], forbidden: list[str]) -> list[str]:

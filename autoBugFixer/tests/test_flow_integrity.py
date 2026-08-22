@@ -429,3 +429,26 @@ def test_metrics_denominator_excludes_pre_scored_tasks(api_client_factory, sessi
     metrics = api_client_factory().get("/api/metrics/summary").json()
     # 分母为空 -> 0.0 而不是把 MANUAL 算进分母拉低成功率
     assert metrics["auto_fix_rate"] == 0.0
+
+
+# ---------- 冒烟发现的边界（compute_diff 二进制文件） ----------
+
+def test_compute_diff_handles_binary_files(tmp_path):
+    """含二进制文件的仓库（图片/依赖包）：diff 按字节比对并输出哈希摘要，不崩溃。
+
+    冒烟实测：repo 指向真实仓库（含 .venv 二进制）时 read_text(utf-8) 硬解
+    UnicodeDecodeError -> 修复阶段异常落 FAILED。二进制路径必须可走通。
+    """
+    from autobugfixer.features.fixing.workspace import compute_diff
+
+    workspace = tmp_path / "ws"
+    (workspace / ".baseline").mkdir(parents=True)
+    (workspace / ".baseline" / "app.py").write_text("print('v1')\n", encoding="utf-8")
+    (workspace / ".baseline" / "logo.png").write_bytes(b"\x89PNG\r\n\x1a\n-old")
+    (workspace / "app.py").write_text("print('v2')\n", encoding="utf-8")
+    (workspace / "logo.png").write_bytes(b"\x89PNG\r\n\x1a\n-new-binary")
+
+    changed, diff = compute_diff(workspace)
+    assert set(changed) == {"app.py", "logo.png"}
+    assert "print('v2')" in diff  # 文本文件正常行级 diff
+    assert "Binary file" in diff and "sha256" in diff  # 二进制以哈希摘要表达
