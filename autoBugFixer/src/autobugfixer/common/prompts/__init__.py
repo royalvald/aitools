@@ -9,15 +9,16 @@ from importlib import resources
 
 # 模板版本号：变更模板时必须升版本，fix_record.prompt_version 依此留痕
 PROMPT_VERSIONS = {
-    "completeness": "v1",
-    "planning": "v3",  # 四段式 + fix_approach（§9.5）+ 技能库动态段（§8）
-    "scoring": "v1",
-    "scoring_v2": "v1",  # 评分 v2 引擎薄壳（Spec 04 §8.2，rubric 直传）
-    "code_evidence": "v1",  # 评分 v2 代码实证（Spec 04 §8.6）
-    "fixing": "v1",
-    "fixing_retry": "v1",
-    "failure_analysis": "v1",
-    "experience_digest": "v1",  # 成功分支 LLM 归因与分类（Spec 08 §7 已知限制修复）
+    "completeness": "v2",  # 逐项判据 + 正反例 + 输出质量要求（few-shot/grounding）
+    "repo_profile": "v1",  # 关联仓库逐个 LLM 画像（Spec 02 §9，结果随 bug_repo 持久化）
+    "planning": "v4",  # v3 机制不动：示例标签化 + 反例 + 步骤锚定 Bug 原文 + 仓库画像段
+    "scoring": "v2",  # 三维锚点区间 + rationale 可反推要求（v1 引擎默认路径）
+    "scoring_v2": "v2",  # 评分 v2 引擎薄壳：判定流程分步 + 证据引用要求（rubric 直传不变）
+    "code_evidence": "v2",  # 防幻觉约束（路径取片段原文）+ 改动面枚举
+    "fixing": "v2",  # 五步工作流 + 硬性约束 + 自检清单 + 结构化修复说明（借鉴 SWE-agent/Agentless）
+    "fixing_retry": "v2",  # 增量：重试推理链（读证据->复盘->审视工作区->换角度）
+    "failure_analysis": "v2",  # 失败模式归类 + condition_desc 可判定写法
+    "experience_digest": "v2",  # 成功分支：交叉印证 + 模式化表达 + 分类判据
 }
 
 

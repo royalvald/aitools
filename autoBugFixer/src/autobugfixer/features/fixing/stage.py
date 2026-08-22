@@ -20,6 +20,8 @@ from autobugfixer.features.knowledge.experience import ExperienceService
 from autobugfixer.common.core.stage import StageResult, TaskContext
 from autobugfixer.common.core.state import TaskState
 from autobugfixer.common.core.bugtext import build_bug_block
+from autobugfixer.features.completeness.repo_profile import render_repo_profiles
+from autobugfixer.features.ingest.repo_check import load_bug_repos
 from autobugfixer.features.fixing.workspace import (
     check_forbidden,
     compute_diff,
@@ -136,12 +138,23 @@ class FixingStage:
 
     # ---- prompt 组装（含经验复用回路） ----
 
+    @staticmethod
+    def _repo_profile_block(ctx: TaskContext) -> str:
+        """关联仓库画像注入（Spec 02 §9）：完整性阶段逐仓库 LLM 分析结果，
+        作为修复定位的提示上下文（无画像时回退基础仓库信息，不阻断）。"""
+        rows = load_bug_repos(ctx.session, ctx.bug.id)
+        body = render_repo_profiles(rows)
+        if not body:
+            return ""
+        return "关联仓库画像（LLM 预分析，提示而非约束，以实际代码为准）：\n" + body
+
     def _build_prompt(self, ctx: TaskContext, prompt_name: str, attempt: int,
                       perception_note: str = "") -> tuple[str, bool]:
         bug_block = build_bug_block(ctx)
         acceptance = self._acceptance_points(ctx)
         experience_block, experience_hit = self._experience_block(ctx)
         extras = "\n\n".join(part for part in (
+            self._repo_profile_block(ctx),
             self._fix_approach_block(ctx) if prompt_name == "fixing" else "",
             experience_block, perception_note) if part)
         if extras:

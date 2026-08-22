@@ -5,7 +5,7 @@
 | 涉及状态 | `FIXING`（执行态）；出口 `{DEPLOYING, MANUAL, FAILED, LEARNING}` |
 | 修复驱动 | **`codex exec`（唯一通道，本 spec 已实现）**——headless 子进程，OpenAI Codex CLI |
 | 源码 | `fixing/stage.py`、`fixing/workspace.py + core/bugtext.py + env/resolve.py`、`fixing/codex.py`（新增）；遗留移除清单见 §6 |
-| 提示词 | `prompts/templates/fixing_v1.md`、`fixing_retry_v1.md`（内容不变，codex 对格式无感） |
+| 提示词 | `prompts/templates/fixing_v2.md`、`fixing_retry_v2.md`（v2：五步工作流 + 硬性约束 + 自检清单 + 结构化修复说明，借鉴 SWE-agent 默认模板与 Agentless 最小 diff 实证；占位符契约与 v1 一致） |
 | 上游 / 下游 | 评分准入（Spec 04）、验证重试环（Spec 07）→ 部署（Spec 06）、失败经验（Spec 08） |
 
 > 决策记录（2025 走查确认）：修复驱动统一为 Codex；langchain 修复通道、claude_code_cli 通道、fake 修复模拟**全部移除**（范围仅限修复路径；分析类阶段的 LLM 调用与 Fake 结构化输出不受影响，否则无 Key 测试体系崩塌，见 §6 边界）。
@@ -29,7 +29,7 @@
 
 ```
 进入 FIXING
-  ① attempt = retry_count + 1 → 选模板（1→fixing_v1，≥2→fixing_retry_v1）
+  ① attempt = retry_count + 1 → 选模板（1→fixing，≥2→fixing_retry；当前均为 v2）
   ② prepare_workspace → 三形态之一（§3）
   ③ （可选，默认关）pre_fix 感知快照，异常前 10 条做注记；失败不阻断
   ④ 组装 prompt（§4）：bug 块 + 验收点 +（经验块/感知注记/历史反馈）
@@ -65,7 +65,7 @@ codex exec 收到 prompt 后在其内部自主完成"探索（read/grep）→ �
 
 | 步骤 | 动作 | 结果 |
 |---|---|---|
-| ④ | 组装 prompt | fixing_v1 填充：bug 七行块 + 验收点（方案两步 desc + "预期: status 为 ok"） |
+| ④ | 组装 prompt | fixing 模板填充：bug 七行块 + 验收点（方案两步 desc + "预期: status 为 ok"） |
 | ⑤ | codex exec（桩） | 桩在 workspace 内把 `api/health.json` 覆写为 `{"status": "ok"}`，最终消息文件写"修复完成：已将 status 修正为 ok."，事件流含模拟用量事件 |
 | ⑥ | compute_diff | difflib 对比 `.baseline` → `changed_files=["api/health.json"]`，diff 含 `-fail`/`+ok` |
 | ⑦ | FixRecord | attempt=1、branch、prompt 快照、diff、哈希、summary；llm_usage 记录桩用量 |
@@ -87,11 +87,11 @@ codex exec 收到 prompt 后在其内部自主完成"探索（read/grep）→ �
 
 git diff 失败返回空变更 → 表现为 §5 零变更失败，不抛异常。
 
-## 4. 修复指令组装（不变）
+## 4. 修复指令组装
 
-**fixing_v1**（attempt=1）= bug 块（七行结构化 + untrusted 包裹）+ acceptance（最新版方案每步 desc-or-action 一行 + 每条预期一行；无方案占位"(无验证方案)"）；经验块（`find_relevant` 命中注入 `fix_pattern[:200]` + `hit_count+1`）与感知注记拼接在 acceptance 尾部。
+**fixing_v2**（attempt=1）= bug 块（七行结构化 + untrusted 包裹）+ acceptance（最新版方案每步 desc-or-action 一行 + 每条预期一行；无方案占位"(无验证方案)"）；经验块（`find_relevant` 命中注入 `fix_pattern[:200]` + `hit_count+1`）与感知注记拼接在 acceptance 尾部。模板本体 v2 新增：五步工作流（定位→复现→修复→验证→边界）、硬性约束（最小 diff/禁硬编码特判/不改验证脚本，均附动机）、完成前自检清单、修复说明四段结构（根因/改动/自验/风险——summary 下游供经验归因与失败分析消费，结构化前置保证截断后仍有效）。
 
-**fixing_retry_v1**（attempt≥2）额外：`previous_attempts`（历史 FixRecord：attempt/changed_files/summary[:300]/diff[:300] JSON）+ `failure_evidence`（失败 VerifyRecord 的失败步骤 JSON）。
+**fixing_retry_v2**（attempt≥2）额外：`previous_attempts`（历史 FixRecord：attempt/changed_files/summary[:300]/diff[:300] JSON）+ `failure_evidence`（失败 VerifyRecord 的失败步骤 JSON）+ 重试推理链（读证据分类→复盘已试思路→审视工作区→明确思路差异，先推理后动手）。
 
 **Codex 看不到**：仓库全貌（仅工作区副本）、评分结论、DSL 步骤参数原文、代码实证结果（P1 接入）。
 

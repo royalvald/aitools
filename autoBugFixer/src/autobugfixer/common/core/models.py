@@ -44,7 +44,9 @@ class BugTicket(Base):
 class BugRepo(Base):
     """Bug 关联代码仓库（Spec 01 §9：多仓库全量前置 + 接入时可用性校验结果持久化）。
 
-    接入层只校验可用性，不裁剪、不判定相关性（相关仓库由 LLM 在全部关联仓库内定位）。
+    接入层只校验可用性，不裁剪、不判定相关性；完整性阶段通过 LLM 逐仓库
+    生成画像（profile：用途/技术栈/关键目录/与本 Bug 的关联判断）并随本表
+    持久化，供后续阶段（方案生成/自动修复）作为提示上下文注入 prompt。
     """
 
     __tablename__ = "bug_repo"
@@ -58,6 +60,10 @@ class BugRepo(Base):
     status: Mapped[str] = mapped_column(String(20), default="unavailable")  # available/unavailable
     fail_reason: Mapped[str] = mapped_column(String(500), default="")
     checked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    # LLM 仓库画像（Spec 02 §9）：summary/tech_stack/key_dirs/entry_points/bug_relevance；
+    # 重导/补充仓库时行被重建，新行 profile 为空 -> 重新画像
+    profile: Mapped[dict] = mapped_column(JSON, default=dict, nullable=True)
+    profiled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class Task(Base):

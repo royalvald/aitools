@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     daily_token_budget: int = 1_000_000  # 日总量预算
     stage_max_retry: int = 2  # 单 Stage LLM 调用重试次数
 
+    # 关联仓库画像（FR-PRE-02 增补，Spec 02 §9）：完整性通过后逐仓库 LLM 分析，
+    # 结果随 bug_repo 持久化并注入后续 prompt；关闭时下游回退基础仓库信息
+    repo_profile_enabled: bool = True
+
     # 评分（FR-PRE-04）：三维权重 + 准入阈值（v1 引擎，默认）
     score_weight_fix: float = 0.4  # 解决难度
     score_weight_verify: float = 0.3  # 回归验证难度

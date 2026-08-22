@@ -4,7 +4,7 @@
 |---|---|
 | 范围 | **仅验证方案生成阶段**：LLM 产出 DSL 结构化方案 + 风险分级 + 高风险人工确认（评分见 Spec 04，DSL 执行见 Spec 07） |
 | 源码 | `planning/stage.py`（阶段逻辑）、`dsl/__init__.py`（DSL 词表与校验）、`intervention/service.py`（确认回写） |
-| 提示词 | `prompts/templates/planning_v1.md`（占位符 `{bug_block}`）；P1 演进 `planning_v2`（四段式 + 修复思路大纲，见 §9） |
+| 提示词 | `prompts/templates/planning_v4.md`（占位符 `{bug_block}`、`{skill_library}`；v4：v3 机制不动，示例标签化+反例+步骤锚定 Bug 原文） |
 | 参考样例 | `examples/bugs_sample.csv`（CSV 路径恒低风险，落点可复现） |
 
 ## 1. 目标与结果预期
@@ -67,7 +67,7 @@
 
 | 规则 | 环节 | 规格 |
 |---|---|---|
-| B1-1 | Prompt | `planning_v1` 模板填充 `{bug_block}`（七行结构化文本，注入防护同 Spec 02 B2-5：检测留痕 + `<untrusted_bug_data>` 包裹） |
+| B1-1 | Prompt | `planning_v4` 模板填充 `{bug_block}`（七行结构化文本，注入防护同 Spec 02 B2-5：检测留痕 + `<untrusted_bug_data>` 包裹） |
 | B1-2 | 评估任务（模板原文口径） | 角色"测试设计助手"，任务"基于 Bug 信息生成可执行的回归验证方案"；模板内嵌**完整 DSL 词表**并明示"禁止词表外动作" |
 | B1-3 | 调用 | `ctx.llm.analyze(prompt, PlanOutput)` 恰 1 次（不含校验失败重试）；预算/计量/审计口径同 Spec 02 B2-6/B2-7 |
 | B1-4 | 结构化校验 | `steps` 逐条过 `DSLStep` 校验（词表 + 必填参数，见 B2）；失败由 Gateway 重试（`stage_max_retry`=2），耗尽 → `FAILED` |

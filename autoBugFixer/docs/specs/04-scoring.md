@@ -4,7 +4,7 @@
 |---|---|
 | 涉及状态 | `SCORED`（在本状态内执行，而非离开它时） |
 | 源码 | `src/autobugfixer/scoring/stage.py` |
-| 提示词 | `prompts/templates/scoring_v1.md`（占位符 `bug_block`、`plan_summary`） |
+| 提示词 | `prompts/templates/scoring_v2.md`（占位符 `bug_block`、`plan_summary`；v2：三维锚点区间+rationale 可反推） |
 | 需求 | FR-PRE-04（难度评分与准入阈值）、FR-SYS-02（策略版本化）、设计 9.3 |
 | 上游 | 验证方案生成（Spec 03，`PLANNING/WAIT_PLAN → SCORED`） |
 | 下游 | AI 修复（Spec 05，`SCORED → FIXING`）或转人工（`SCORED → MANUAL`） |
@@ -27,10 +27,10 @@
 
 | 部分 | 内容 | 来源与规则 |
 |---|---|---|
-| ① 指令 | 角色一句话 + "从三个维度（各 0-100 分）评估自动化修复难度" | scoring_v1 模板正文 |
+| ① 指令 | 角色一句话 + "从三个维度（各 0-100 分）评估自动化修复难度" | scoring 模板（当前 v2）正文 |
 | ② bug_block | Bug 结构化文本 7 行（标题/描述/复现步骤/期望结果/实际结果/环境版本/影响模块） | `build_bug_block` 拼装；先过 6 正则注入检测（命中留痕不阻断），再包 `<untrusted_bug_data>` 边界 |
 | ③ plan_summary | 最新验证方案可读摘要 | 从库读 `version` 最大的方案；每步取 `desc`（无 desc 则 `action + params JSON`）；末尾拼 `预期: {...}` 一行；**整体截断 500 字符**；无方案时占位"见验证方案"，不阻断 |
-| ④ 维度定义与输出格式 | 一行维度名 + 括号释义 + JSON 输出格式 | scoring_v1 模板末行 |
+| ④ 维度定义与输出格式 | 一行维度名 + 括号释义 + JSON 输出格式 | scoring 模板（当前 v2）末行 |
 
 **评分者看不到**（as-built 事实，写明以免误解）：仓库代码、历史相似 bug、经验库信号、方案的 `function_points`/`regression_scope`/`risk_level`、权重与阈值。
 
@@ -180,9 +180,9 @@
 
 > 状态：**已实现**（`scoring_engine=v2` 开启；默认仍为 v1 照 as-built 运行，双引擎并存）。
 > 实现落点：`prompts/rubrics/scoring_rubric_v1.md` + `prompts/rubric.py` 加载器、
-> `prompts/templates/scoring_v2_v1.md` 薄壳、`各阶段包 schemas.py::JudgmentForm`、
+> `prompts/templates/scoring_v2_v2.md` 薄壳（v2：判定流程分步+证据引用）、`各阶段包 schemas.py::JudgmentForm`、
 > `scoring/v2.py` 本地映射器与代码实证检索、`stages/scoring.py::_run_v2`
-> 四键权重（`SCORE_V2_WEIGHT_*`，0.3/0.3/0.2/0.2）、`code_evidence_v1` 模板。
+> 四键权重（`SCORE_V2_WEIGHT_*`，0.3/0.3/0.2/0.2）、`code_evidence_v2` 模板。
 
 ### 8.1 v1 的结构性问题
 

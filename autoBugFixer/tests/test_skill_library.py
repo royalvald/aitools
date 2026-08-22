@@ -67,6 +67,8 @@ def _ingest(session_factory, settings, repo, bug_id="BUG-SK1") -> int:
 def _planning_responses():
     return [
         {"complete": True, "missing": [], "suggestions": []},
+        {"summary": "fake 画像：健康检查服务仓库", "tech_stack": ["python"],
+         "key_dirs": ["api"], "entry_points": [], "bug_relevance": "包含 /health 接口"},
         PLAN_WITH_PROPOSAL,
     ]
 
@@ -203,6 +205,8 @@ def test_failed_verify_does_not_distill(make_orchestrator, session_factory,
     task_id = _ingest(session_factory, settings, repo, "BUG-SK2")
     failing = [
         {"complete": True, "missing": [], "suggestions": []},
+        {"summary": "fake 画像：健康检查服务仓库", "tech_stack": ["python"],
+         "key_dirs": ["api"], "entry_points": [], "bug_relevance": "包含 /health 接口"},
         {**PLAN_WITH_PROPOSAL, "steps": [
             PLAN_WITH_PROPOSAL["steps"][0],
             PLAN_WITH_PROPOSAL["steps"][1],

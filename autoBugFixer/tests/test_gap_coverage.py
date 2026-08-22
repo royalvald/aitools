@@ -68,6 +68,9 @@ def test_planning_invalid_action_retries_then_succeeds(
     task_id = _ingest(session_factory, settings, repo_url=str(repo))
     orchestrator = make_orchestrator([
         {"complete": True, "missing": [], "suggestions": []},
+        {"summary": "fake 画像：健康检查服务仓库", "tech_stack": ["python"],
+         "key_dirs": ["api"], "entry_points": [],
+         "bug_relevance": "包含 /health 接口实现"},
         INVALID_PLAN_RESPONSE, VALID_PLAN_RESPONSE])
     assert orchestrator.run_until_blocked(task_id) == TaskState.CLOSED
     with session_factory() as s:
@@ -84,6 +87,9 @@ def test_planning_validation_exhausted_goes_failed(
     task_id = _ingest(session_factory, settings, repo_url=str(repo))
     orchestrator = make_orchestrator([
         {"complete": True, "missing": [], "suggestions": []},
+        {"summary": "fake 画像：健康检查服务仓库", "tech_stack": ["python"],
+         "key_dirs": ["api"], "entry_points": [],
+         "bug_relevance": "包含 /health 接口实现"},
         INVALID_PLAN_RESPONSE, INVALID_PLAN_RESPONSE, INVALID_PLAN_RESPONSE])
     assert orchestrator.run_until_blocked(task_id) == TaskState.FAILED
     with session_factory() as s:
@@ -197,6 +203,9 @@ class VaryingCodexCLI:
 
 FAILING_PLAN = [
     {"complete": True, "missing": [], "suggestions": []},
+    {"summary": "fake 画像：健康检查服务仓库", "tech_stack": ["python"],
+     "key_dirs": ["api"], "entry_points": [],
+     "bug_relevance": "包含 /health 接口实现"},
     {"env_requirements": "env",
      "steps": [
          {"action": "input", "params": {"selector": "#env", "value": "v1"}},

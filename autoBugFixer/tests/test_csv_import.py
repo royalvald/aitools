@@ -182,6 +182,8 @@ def test_analysis_high_score_to_manual(settings, session_factory, tmp_path):
         s.commit()
     fake_responses = [
         {"complete": True, "missing": [], "suggestions": []},
+        {"summary": "fake 画像：健康检查服务仓库", "tech_stack": ["python"],
+         "key_dirs": ["api"], "entry_points": [], "bug_relevance": "包含 /health 接口"},
         {"env_requirements": "env", "steps": [
             {"action": "open_page", "params": {"url": "/index"}},
             {"action": "call_api", "params": {"method": "GET", "path": "/health"}},

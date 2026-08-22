@@ -10,6 +10,9 @@ from autobugfixer.features.intervention.service import InterventionService
 # 让验证永远失败的方案（断言一个不可能的值），队列耗尽后走关键字兜底应答
 FAILING_PLAN_RESPONSES = [
     {"complete": True, "missing": [], "suggestions": []},
+    {"summary": "fake 画像：健康检查服务仓库", "tech_stack": ["python"],
+     "key_dirs": ["api"], "entry_points": [],
+     "bug_relevance": "包含 /health 接口实现"},
     {"env_requirements": "env",
      "steps": [
          {"action": "input", "params": {"selector": "#env", "value": "v1"},

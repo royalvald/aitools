@@ -1,9 +1,10 @@
-"""完整性分析阶段（FR-PRE-02）：仓库门禁 + 规则快路径 + LLM 评估，不足则介入补充。"""
+"""完整性分析阶段（FR-PRE-02）：仓库门禁 + 规则快路径 + LLM 评估 + 逐仓库画像，不足则介入补充。"""
 
 from __future__ import annotations
 
 from autobugfixer.common.prompts import load_prompt, prompt_version
 from autobugfixer.features.ingest.repo_check import load_bug_repos, repo_check_summary, repos_ready
+from autobugfixer.features.completeness.repo_profile import analyze_bug_repos
 from autobugfixer.features.completeness.schemas import CompletenessEval
 from autobugfixer.common.core.stage import InterventionRequest, StageResult, TaskContext
 from autobugfixer.common.core.state import TaskState
@@ -39,6 +40,9 @@ class CompletenessStage:
                               "complete": result.complete}, task_id=ctx.task.id)
         if not result.complete:
             return self._need_supplement(ctx, result.missing, suggestions=result.suggestions)
+        # 3) 逐仓库 LLM 画像（Spec 02 §9）：结果随 bug_repo 持久化，供方案生成与
+        #    修复阶段作为提示上下文；已画像的仓库跳过（重析/唤醒不重复消耗）
+        analyze_bug_repos(ctx, repo_rows)
         return StageResult(status="success", next_state=TaskState.PLANNING,
                            message="完整性评估通过")
 

@@ -4,7 +4,7 @@
 |---|---|
 | 涉及状态 | `LEARNING`（执行态）→ `CLOSED`（终态）或 `WAIT_DISCUSS`（阻塞态） |
 | 源码 | `learning/stage.py`、`knowledge/experience.py`、`platform/writeback.py`、`intervention/service.py`、`core/llm.py`、`runtime/orchestrator.py` |
-| 提示词 | `prompts/templates/failure_analysis_v1.md`（四占位符 `bug_block` / `retry_count` / `max_retry` / `failed_steps`） |
+| 提示词 | `prompts/templates/failure_analysis_v2.md`（v2：失败模式归类+condition_desc 可判定；四占位符 `bug_block` / `retry_count` / `max_retry` / `failed_steps`） |
 | 需求 | FR-MEM-01（经验入库与去重）、FR-MEM-02（不适用场景与人工讨论）、11.7（平台回写） |
 | 上游 / 下游 | 回归验证通过或耗尽（Spec 07）、修复相同 diff 提前终止（Spec 05 §5 校验 3）→ 终态 `CLOSED`；或讨论回写 `MANUAL / CLOSED / FIXING` |
 | 介入类型 | `discussion`（指派 `developer`） |
@@ -105,7 +105,7 @@ F1 failed_steps 构造（learning.py:65）
    verify 为 None（无验证记录）→ 空列表
 
 F2 LLM 失败分析（调用链见 §3.2）
-   prompt = failure_analysis_v1.format(
+   prompt = failure_analysis_v2.format(
        bug_block=build_bug_block(ctx)（经 <untrusted_bug_data> 注入防护包裹）,
        retry_count=task.retry_count, max_retry=task.max_retry,
        failed_steps=json.dumps(failed_steps)[:1000])
@@ -232,7 +232,7 @@ Stage 级未捕获异常 → Orchestrator 兜底（orchestrator.py:185-204）：
 
 - ~~**两套 CLOSED 迁移不一致**~~（已修复：`_transition_task` 在 CLOSED 时同步写 `task.closed_at`）；
 - ~~**upsert 无 DB 唯一约束**~~（已修复：`experience` 表增加活跃条目部分唯一索引 `ux_experience_active_dedup`）；
-- ~~`root_cause_pattern` 恒空串~~（已实现：成功分支 LLM 归因总结填充，`experience_digest_v1` 模板，异常回退留空）；
+- ~~`root_cause_pattern` 恒空串~~（已实现：成功分支 LLM 归因总结填充，`experience_digest_v2` 模板，异常回退留空）；
 - ~~分类为关键词五级规则~~（已实现 LLM 分类优先、关键词规则回退）；
 - 环境选择：无 environment_id 时取库中第一条 Environment（Spec 06 §10 同条），applicable_conditions 记录的 env_version 来自 Bug 字段而非实际部署环境；
 - 不适用场景仅入库展示（status=open 无人更新），未反向阻断后续同类任务准入（P2：评分阶段消费 InapplicableCase 抬高难度分）。

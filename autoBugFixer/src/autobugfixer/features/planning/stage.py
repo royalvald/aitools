@@ -18,6 +18,8 @@ from autobugfixer.features.planning.schemas import PlanOutput
 from autobugfixer.common.core.stage import InterventionRequest, StageResult, TaskContext
 from autobugfixer.common.core.state import TaskState
 from autobugfixer.common.core.bugtext import build_bug_block
+from autobugfixer.features.completeness.repo_profile import render_repo_profiles
+from autobugfixer.features.ingest.repo_check import load_bug_repos
 
 
 class PlanningStage:
@@ -28,8 +30,12 @@ class PlanningStage:
     def run(self, ctx: TaskContext) -> StageResult:
         """LLM 生成 DSL 结构化验证方案并落库；命中高风险模块则转人工确认。"""
         skills = SkillService(ctx.session).list_active()
+        # 关联仓库画像（Spec 02 §9）：完整性阶段逐仓库 LLM 分析结果注入定位线索
+        repo_profiles = render_repo_profiles(
+            load_bug_repos(ctx.session, ctx.bug.id)) or "（无关联仓库画像）"
         prompt = load_prompt("planning").format(
             bug_block=build_bug_block(ctx),
+            repo_profiles=repo_profiles,
             skill_library=render_skill_library(skills))
         # DSL 以 JSON Schema 约束输出，校验失败由 Gateway 自动重试（11.4）
         result = ctx.llm.analyze(prompt, PlanOutput,

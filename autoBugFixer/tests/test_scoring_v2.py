@@ -201,9 +201,11 @@ def test_v2_cross_module_triggers_code_evidence(make_orchestrator, session_facto
     settings.scoring_engine = "v2"
     (repo / "api" / "health.py").write_text("def check():\n    健康检查 fail\n",
                                             encoding="utf-8")
-    # 队列按调用顺序消费：完整性 -> 方案 -> 判定表单；代码实证走默认 fake 路由
+    # 队列按调用顺序消费：完整性 -> 仓库画像 -> 方案 -> 判定表单；代码实证走默认 fake 路由
     fake_responses = [
         {"complete": True, "missing": [], "suggestions": []},
+        {"summary": "fake 画像：健康检查服务仓库", "tech_stack": ["python"],
+         "key_dirs": ["api"], "entry_points": [], "bug_relevance": "包含 /health 接口"},
         {"env_requirements": "env", "steps": [
             {"action": "input", "params": {"selector": "#env", "value": "v1"}},
             {"action": "call_api", "params": {"method": "GET", "path": "/health"}},
@@ -250,6 +252,11 @@ def test_v2_code_evidence_prompt_includes_repo_snippet(make_orchestrator, sessio
             if schema.__name__ == "CompletenessEval":
                 from autobugfixer.features.completeness.schemas import CompletenessEval
                 return CompletenessEval(complete=True)
+            if schema.__name__ == "RepoProfile":
+                from autobugfixer.features.completeness.schemas import RepoProfile
+                return RepoProfile(summary="健康检查服务仓库", tech_stack=["python"],
+                                   key_dirs=["api"],
+                                   bug_relevance="包含 /health 接口实现")
             if schema.__name__ == "PlanOutput":
                 from autobugfixer.features.planning.schemas import PlanOutput
                 return PlanOutput(steps=[

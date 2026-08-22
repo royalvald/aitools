@@ -209,6 +209,9 @@ def test_duplicate_diff_goes_learning(make_orchestrator, session_factory,
     stub = ScriptedCodexCLI()  # 每次写相同内容 -> 相同 diff 哈希
     failing_plan = [
         {"complete": True, "missing": [], "suggestions": []},
+        {"summary": "fake 画像：健康检查服务仓库", "tech_stack": ["python"],
+         "key_dirs": ["api"], "entry_points": [],
+         "bug_relevance": "包含 /health 接口实现"},
         {"env_requirements": "env",
          "steps": [
              {"action": "input", "params": {"selector": "#env", "value": "v1"}},

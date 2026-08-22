@@ -139,7 +139,7 @@ ssh/docker 执行器 `query_db` 抛 `NotImplementedError` → 被 §3.3 单步�
 VERIFYING 未过 且 retry_count < max_retry
   → StageResult(status="retry", next_state=FIXING)
   → Orchestrator: task.retry_count += 1（orchestrator.py:153-157）
-  → FIXING（attempt = retry_count+1，改用 fixing_retry_v1 模板：
+  → FIXING（attempt = retry_count+1，改用 fixing_retry 模板（当前 v2）：
      previous_attempts = 历史 FixRecord 摘要、failure_evidence = 全部失败
      VerifyRecord 的失败步骤 JSON，fixing.py:146-154，见 Spec 05 §4）
   → DEPLOYING（重新取锁/健康检查/快照/部署，Spec 06）

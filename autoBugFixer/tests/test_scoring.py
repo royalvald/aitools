@@ -19,9 +19,12 @@ from autobugfixer.features.intervention.service import InterventionService
 
 
 def _score_responses(fix: float, verify: float, change: float) -> list:
-    """按调用顺序编排 fake 应答：完整性 -> 方案 -> 评分（四段式合法方案）。"""
+    """按调用顺序编排 fake 应答：完整性 -> 仓库画像 -> 方案 -> 评分（四段式合法方案）。"""
     return [
         {"complete": True, "missing": [], "suggestions": []},
+        {"summary": "fake 画像：健康检查服务仓库", "tech_stack": ["python"],
+         "key_dirs": ["api"], "entry_points": [],
+         "bug_relevance": "包含 /health 接口实现"},
         {"env_requirements": "本地仿真环境",
          "steps": [{"action": "input", "params": {"selector": "#env", "value": "v1"},
                     "desc": "确认环境版本"},
@@ -113,9 +116,9 @@ def test_scoring_prompt_includes_plan_summary(session_factory, settings, task_id
 # ---------- Spec 04 §7 缺口补充 ----------
 
 def _summary_section(prompt: str) -> str:
-    """从评分 prompt 中切出"验证方案摘要"与"维度"之间的方案摘要段。"""
+    """从评分 prompt 中切出"验证方案摘要"与下一节标题之间的方案摘要段。"""
     _, rest = prompt.split("验证方案摘要：\n", 1)
-    return rest.split("\n\n维度", 1)[0]
+    return rest.split("\n\n## ", 1)[0]
 
 
 class _RecordingLLM:
@@ -182,7 +185,7 @@ def test_out_of_range_score_retries_then_failed(make_orchestrator, task_id,
     """B3-1/B3-2：越界分数被 Schema 拒绝重试，3 次耗尽 -> FAILED 断点续跑。"""
     bad_score = {"fix_difficulty": 120, "verify_difficulty": 15,
                  "change_scale": 10, "rationale": "越界"}
-    orchestrator = make_orchestrator(_score_responses(20, 15, 10)[:2] + [bad_score] * 3)
+    orchestrator = make_orchestrator(_score_responses(20, 15, 10)[:3] + [bad_score] * 3)
     final = orchestrator.run_until_blocked(task_id)
     assert final == TaskState.FAILED
     with session_factory() as s:
