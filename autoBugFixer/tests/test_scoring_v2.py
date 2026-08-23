@@ -14,7 +14,7 @@ from pydantic import ValidationError
 from sqlalchemy import select
 
 from autobugfixer.adapters.platform import BugTicketData
-from autobugfixer.common.core.models import AuditLog, BugRepo, StrategyVersion, Task, VerificationPlan
+from autobugfixer.common.core.models import AuditLog, Repo, StrategyVersion, Task, VerificationPlan
 from autobugfixer.features.scoring.schemas import CodeEvidence, JudgmentForm, LocateSignals
 from autobugfixer.features.scoring.v2 import (
     extract_keywords,
@@ -125,8 +125,7 @@ def test_extract_keywords_and_search_repos(tmp_path):
     keywords = extract_keywords("支付 callback 重复入账")
     assert any("入账" in k or "callback" in k for k in keywords)
 
-    row = BugRepo(bug_ticket_id=1, seq=0, path=str(repo), branch="main",
-                  status="available")
+    row = Repo(path=str(repo), branch="main", status="available")
     snippets = search_repos([row], keywords)
     assert len(snippets) == 1  # 仅命中文本文件
     assert "pay.py" in snippets[0]  # 首个命中行（callback 关键词命中第 1 行）
@@ -137,8 +136,7 @@ def test_search_repos_skips_binary_and_git(tmp_path):
     (repo / ".git").mkdir(parents=True)
     (repo / ".git" / "config").write_text("入账", encoding="utf-8")
     (repo / "logo.png").write_bytes(b"\x89PNG " + "入账".encode("utf-8"))
-    row = BugRepo(bug_ticket_id=1, seq=0, path=str(repo), branch="main",
-                  status="available")
+    row = Repo(path=str(repo), branch="main", status="available")
     assert search_repos([row], ["入账"]) == []
 
 
@@ -255,8 +253,7 @@ def test_v2_code_evidence_prompt_includes_repo_snippet(make_orchestrator, sessio
             if schema.__name__ == "RepoProfile":
                 from autobugfixer.features.completeness.schemas import RepoProfile
                 return RepoProfile(summary="健康检查服务仓库", tech_stack=["python"],
-                                   key_dirs=["api"],
-                                   bug_relevance="包含 /health 接口实现")
+                                   key_dirs=["api"])
             if schema.__name__ == "PlanOutput":
                 from autobugfixer.features.planning.schemas import PlanOutput
                 return PlanOutput(steps=[

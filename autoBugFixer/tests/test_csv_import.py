@@ -153,22 +153,32 @@ def test_import_and_analysis_end_to_end(settings, session_factory, tmp_path):
             assert 0 <= item["priority_score"] < 60
             assert item["admission"] == "入队"
 
-    # 方案与评分落库（仅放行任务）；缺仓库任务 0 次 LLM 调用
+    # 方案与评分落库（仅放行任务）；信息缺失任务 0 次 LLM 调用
     with session_factory() as s:
         plans = s.scalars(select(VerificationPlan)).all()
         assert len(plans) == 1  # 两个 WAIT_INFO 的 Bug 未生成方案
-        from autobugfixer.common.core.models import BugRepo, LLMUsage
+        from autobugfixer.common.core.models import BugRepo, LLMUsage, Repo
 
-        repos = s.scalars(select(BugRepo).order_by(BugRepo.seq)).all()
+        # 事实挂全局登记表（Spec 01 §10）：两 Bug 声明同一仓库 -> 一条登记 + 两条关联
+        repos = s.scalars(select(Repo)).all()
         assert [(r.path, r.branch, r.status) for r in repos] == [
-            (str(repo), "main", "available"),   # BUG-2001
-            (str(repo), "main", "available"),   # BUG-2002
-        ]  # BUG-2003 无关联仓库行
-        # 门禁拦截的两个 WAIT_INFO 任务 0 次 LLM 调用（Spec 01 R6：不消耗 LLM 成本）
-        blocked_task_ids = [t.id for t in s.scalars(select(Task).where(
+            (str(repo), "main", "available")]
+        links = s.scalars(select(BugRepo).order_by(BugRepo.seq)).all()
+        assert [l.repo.path for l in links] == [str(repo), str(repo)]
+        # BUG-2002（信息缺失，规则快路径）0 次 LLM（Spec 01 R6）；
+        # BUG-2003（未声明）走登记表匹配自动选仓，匹配零结果才转 WAIT_INFO（§10）
+        info_blocked = [t.id for t in s.scalars(select(Task).where(
             Task.state == "WAIT_INFO")).all()]
-        used_task_ids = {u.task_id for u in s.scalars(select(LLMUsage)).all()}
-        assert used_task_ids and used_task_ids.isdisjoint(blocked_task_ids)
+        used = {u.task_id for u in s.scalars(select(LLMUsage)).all()}
+        assert used  # BUG-2001 全流程消耗
+        match_blocked = [tid for tid in info_blocked if tid in used]
+        assert len(match_blocked) == 1  # 仅零匹配任务（BUG-2003）既被拦又耗过匹配
+        zero_match = s.scalars(select(Task).where(
+            Task.id.in_(match_blocked))).all()
+        for t in zero_match:
+            stages = [u.stage for u in s.scalars(select(LLMUsage).where(
+                LLMUsage.task_id == t.id)).all()]
+            assert "repo_match" in stages  # 匹配尝试过且零结果
 
 
 def test_analysis_high_score_to_manual(settings, session_factory, tmp_path):

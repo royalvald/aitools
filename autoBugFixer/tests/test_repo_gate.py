@@ -9,7 +9,7 @@ from sqlalchemy import select
 
 from autobugfixer.adapters.platform import BugTicketData
 from autobugfixer.features.fixing.codex import ScriptedCodexCLI
-from autobugfixer.common.core.models import AuditLog, BugRepo, BugTicket, FixRecord, Task
+from autobugfixer.common.core.models import AuditLog, BugRepo, BugTicket, FixRecord, Repo, Task
 from autobugfixer.common.core.state import TaskState
 from autobugfixer.features.ingest.ingestion import ingest_bug
 from autobugfixer.features.intervention.service import InterventionService
@@ -88,7 +88,7 @@ def test_check_repo_statuses(tmp_path, git_repo):
     assert check_repo(str(empty), "main").reason == "空目录"
 
 
-# ---------- 接入持久化 + 审计（§9.3 R6） ----------
+# ---------- 接入持久化 + 审计（§9.3 R6 / §10 登记表） ----------
 
 def test_ingest_persists_repo_rows_and_audit(session_factory, settings, tmp_path):
     repo_a = tmp_path / "svc-a"
@@ -97,10 +97,17 @@ def test_ingest_persists_repo_rows_and_audit(session_factory, settings, tmp_path
     task_id = _ingest(session_factory, _bug(repo_url=f"{repo_a};{tmp_path / 'gone'}"),
                       settings)
     with session_factory() as s:
-        rows = s.scalars(select(BugRepo).order_by(BugRepo.seq)).all()
-        assert [(r.path, r.branch, r.status, r.fail_reason) for r in rows] == [
-            (str(repo_a), "main", "available", ""),
-            (str(tmp_path / "gone"), "main", "unavailable", "路径不存在")]
+        # 事实挂全局登记表（Spec 01 §10）：声明自动登记，逐仓库一条
+        repos = {r.path: r for r in s.scalars(select(Repo)).all()}
+        assert [(repos[str(repo_a)].branch, repos[str(repo_a)].status,
+                 repos[str(repo_a)].fail_reason),
+                (repos[str(tmp_path / "gone")].branch,
+                 repos[str(tmp_path / "gone")].status,
+                 repos[str(tmp_path / "gone")].fail_reason)] == [
+            ("main", "available", ""),
+            ("main", "unavailable", "路径不存在")]
+        links = s.scalars(select(BugRepo).order_by(BugRepo.seq)).all()
+        assert [l.repo.path for l in links] == [str(repo_a), str(tmp_path / "gone")]
         audit = s.scalar(select(AuditLog).where(AuditLog.action == "task_ingest",
                                                 AuditLog.task_id == task_id))
         assert audit.detail["repo_check"][1]["status"] == "unavailable"
@@ -147,7 +154,7 @@ def test_reimport_with_repo_wakes_and_closes(make_orchestrator, session_factory,
         assert task.info_rounds == 1
         assert TaskState(task.state) == TaskState.ANALYZING
         rows = s.scalars(select(BugRepo)).all()
-        assert len(rows) == 1 and rows[0].status == "available"  # 复检通过
+        assert len(rows) == 1 and rows[0].repo.status == "available"  # 复检通过
     assert orchestrator.run_until_blocked(task_id) == TaskState.CLOSED
 
 
@@ -168,7 +175,7 @@ def test_repo_supplement_resolve_wakes(make_orchestrator, session_factory,
         bug = s.scalar(select(BugTicket).where(BugTicket.id == s.get(Task, task_id).bug_ticket_id))
         assert bug.repo_url == str(repo)
         rows = s.scalars(select(BugRepo)).all()
-        assert len(rows) == 1 and rows[0].status == "available"
+        assert len(rows) == 1 and rows[0].repo.status == "available"
     assert orchestrator.run_until_blocked(task_id) == TaskState.CLOSED
 
 

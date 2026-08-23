@@ -246,6 +246,67 @@ async def platform_webhook(request: Request, platform: str):
     return {"task_id": task_id, "created": created, "state": state.value}
 
 
+# ---------- 仓库登记表（Spec 01 §10：独立于 Bug 的全局共享资产） ----------
+
+@router.get("/repos")
+def list_repos_route(request: Request, available_only: bool = False):
+    """登记表列表（含可用性与画像状态）。"""
+    from autobugfixer.features.ingest.repo_check import list_repos
+
+    sf = request.app.state.session_factory
+    with sf() as s:
+        repos = list_repos(s, available_only=available_only)
+        return [{"id": r.id, "path": r.path, "branch": r.branch,
+                 "is_git": r.is_git, "status": r.status, "fail_reason": r.fail_reason,
+                 "profiled": bool(r.profile), "profile_summary": (r.profile or {}).get("summary", ""),
+                 "source": r.source} for r in repos]
+
+
+class RepoRegisterBody(BaseModel):
+    """登记请求体（本地路径 + 分支）。"""
+
+    path: str
+    branch: str = "main"
+    profile: bool = False  # 登记后立即 LLM 画像（默认延后到首次被引用）
+
+
+@router.post("/repos")
+def register_repo_route(request: Request, body: RepoRegisterBody):
+    """登记/复检仓库（本地可用性校验，0 LLM；profile=true 时立即画像）。"""
+    from autobugfixer.features.completeness.repo_profile import profile_repo
+    from autobugfixer.features.ingest.repo_check import register_repo
+
+    sf = request.app.state.session_factory
+    with sf() as s:
+        repo = register_repo(s, body.path, body.branch, source="manual")
+        if body.profile and repo.status == "available":
+            profile_repo(request.app.state.orchestrator.llm, s, repo)
+        s.commit()
+        return {"id": repo.id, "path": repo.path, "branch": repo.branch,
+                "status": repo.status, "fail_reason": repo.fail_reason,
+                "profiled": bool(repo.profile)}
+
+
+@router.post("/repos/{repo_id}/refresh")
+def refresh_repo_route(request: Request, repo_id: int, profile: bool = True):
+    """刷新登记条目：复检可用性；profile=true（默认）重画像。"""
+    from autobugfixer.common.core.models import Repo
+    from autobugfixer.features.completeness.repo_profile import refresh_profile
+    from autobugfixer.features.ingest.repo_check import register_repo
+
+    sf = request.app.state.session_factory
+    with sf() as s:
+        repo = s.get(Repo, repo_id)
+        if repo is None:
+            raise HTTPException(status_code=404, detail=f"仓库条目不存在: {repo_id}")
+        register_repo(s, repo.path, repo.branch, source=repo.source, recheck=True)
+        if profile and repo.status == "available":
+            refresh_profile(request.app.state.orchestrator.llm, s, repo)
+        s.commit()
+        return {"id": repo.id, "status": repo.status, "profiled": bool(repo.profile),
+                "profile_summary": (repo.profile or {}).get("summary", "")}
+
+
 # ---------- CSV 导入 ----------
 
 @router.post("/import/csv")

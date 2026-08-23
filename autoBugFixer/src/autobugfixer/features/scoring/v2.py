@@ -14,7 +14,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from autobugfixer.common.core.models import BugRepo
+from autobugfixer.common.core.models import Repo
 from autobugfixer.common.prompts.rubric import Rubric
 from autobugfixer.features.scoring.schemas import CodeEvidence, JudgmentForm
 
@@ -135,13 +135,13 @@ def extract_keywords(*texts: str, limit: int = 6) -> list[str]:
     return tokens[:limit]
 
 
-def search_repos(repo_rows: list[BugRepo], keywords: list[str]) -> list[str]:
+def search_repos(repos: list[Repo], keywords: list[str]) -> list[str]:
     """全部关联仓库只读检索：返回命中文本片段（不建工作区、不触碰修复链路写权限）。"""
     snippets: list[str] = []
     if not keywords:
         return snippets
     lowered = [k.lower() for k in keywords]
-    for repo in repo_rows:
+    for repo in repos:
         root = Path(repo.path)
         if not root.is_dir():
             continue

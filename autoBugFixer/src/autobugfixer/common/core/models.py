@@ -8,7 +8,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text, text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from autobugfixer.common.core.db import Base
 
@@ -41,29 +41,56 @@ class BugTicket(Base):
     synced_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
-class BugRepo(Base):
-    """Bug 关联代码仓库（Spec 01 §9：多仓库全量前置 + 接入时可用性校验结果持久化）。
+class Repo(Base):
+    """全局仓库登记表（Spec 01 §10）：独立于 Bug 的共享资产。
 
-    接入层只校验可用性，不裁剪、不判定相关性；完整性阶段通过 LLM 逐仓库
-    生成画像（profile：用途/技术栈/关键目录/与本 Bug 的关联判断）并随本表
-    持久化，供后续阶段（方案生成/自动修复）作为提示上下文注入 prompt。
+    仓库信息不挂在单个 Bug 下——登记（CLI/API 手动，或 Bug 声明自动）时做
+    本地可用性校验；LLM 画像（summary/tech_stack/key_dirs/entry_points，
+    仓库固有事实、不含任何 Bug 上下文）一次生成全局复用，手动刷新
+    （Spec 02 §9 v2）。Bug 经 LLM 匹配（repo_match）引用登记表条目。
     """
 
-    __tablename__ = "bug_repo"
+    __tablename__ = "repo"
+    __table_args__ = (
+        Index("ux_repo_path_branch", "path", "branch", unique=True),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    bug_ticket_id: Mapped[int] = mapped_column(ForeignKey("bug_ticket.id"), index=True)
-    seq: Mapped[int] = mapped_column(Integer, default=0)  # 保持给定顺序
     path: Mapped[str] = mapped_column(String(500), default="")
     branch: Mapped[str] = mapped_column(String(200), default="main")
     is_git: Mapped[bool] = mapped_column(Boolean, default=False)
     status: Mapped[str] = mapped_column(String(20), default="unavailable")  # available/unavailable
     fail_reason: Mapped[str] = mapped_column(String(500), default="")
     checked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    # LLM 仓库画像（Spec 02 §9）：summary/tech_stack/key_dirs/entry_points/bug_relevance；
-    # 重导/补充仓库时行被重建，新行 profile 为空 -> 重新画像
+    # LLM 画像（仓库固有事实）：summary/tech_stack/key_dirs/entry_points；
+    # 空表示未画像（登记时未带 LLM / 尚未补齐），首次被引用时补齐
     profile: Mapped[dict] = mapped_column(JSON, default=dict, nullable=True)
     profiled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    source: Mapped[str] = mapped_column(String(20), default="manual")  # manual/auto/migrated
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class BugRepo(Base):
+    """Bug ↔ 全局仓库关联（Spec 01 §10）：链接 + 本 Bug 维度的相关性判定。
+
+    仓库事实（可用性/画像）在全局 repo 表，本表只维护链接：
+    - origin: declared（用户在 Bug 单声明）/ matched（LLM 匹配补选）；
+    - seq: 声明顺序（matched 链接排在声明之后）；
+    - relevance: LLM 匹配调用给出的"该仓库与本 Bug 的关联"判断（提示性）。
+    """
+
+    __tablename__ = "bug_repo"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    bug_ticket_id: Mapped[int] = mapped_column(ForeignKey("bug_ticket.id"), index=True)
+    repo_id: Mapped[int] = mapped_column(ForeignKey("repo.id"), index=True)
+    seq: Mapped[int] = mapped_column(Integer, default=0)  # 保持给定顺序
+    origin: Mapped[str] = mapped_column(String(20), default="declared")
+    relevance: Mapped[str] = mapped_column(String(500), default="")  # 本 Bug 相关性（LLM 判定）
+    matched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    repo: Mapped["Repo"] = relationship(lazy="joined")
 
 
 class Task(Base):

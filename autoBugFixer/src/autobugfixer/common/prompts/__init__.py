@@ -10,7 +10,8 @@ from importlib import resources
 # 模板版本号：变更模板时必须升版本，fix_record.prompt_version 依此留痕
 PROMPT_VERSIONS = {
     "completeness": "v2",  # 逐项判据 + 正反例 + 输出质量要求（few-shot/grounding）
-    "repo_profile": "v1",  # 关联仓库逐个 LLM 画像（Spec 02 §9，结果随 bug_repo 持久化）
+    "repo_profile": "v2",  # 全局仓库事实画像（Spec 02 §9 v2：无 Bug 上下文，挂 repo 表全局复用）
+    "repo_match": "v1",  # Bug x 登记表匹配（相关性判定 + 补选，写 bug_repo.relevance）
     "planning": "v4",  # v3 机制不动：示例标签化 + 反例 + 步骤锚定 Bug 原文 + 仓库画像段
     "scoring": "v2",  # 三维锚点区间 + rationale 可反推要求（v1 引擎默认路径）
     "scoring_v2": "v2",  # 评分 v2 引擎薄壳：判定流程分步 + 证据引用要求（rubric 直传不变）

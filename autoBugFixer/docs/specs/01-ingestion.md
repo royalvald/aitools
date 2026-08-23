@@ -267,3 +267,41 @@ Bug 接入时必须给出其修复可能涉及的**全部**本地代码仓库。
 | 仓库地址形态 | 本期仅本地目录路径；远程 git URL 为演进项（§8） |
 | 仓库数量 | 多仓库全量前置，不在接入层裁剪，由 LLM 自行读取定位 |
 | 校验时机 | 接入时校验一次；修复前不复检，后续异常由修复阶段显式失败兜底 |
+
+## 10. 全局仓库登记表（P2 增补 · 已实现）
+
+> 状态：**已实现**（`models.py::Repo`、`ingest/repo_check.py` 登记函数、`cli/repo_cli.py`、`api/routes.py` /repos）。仓库信息从"单个 Bug 的附庸"改为**独立登记的全局共享资产**（§9 的演进）。
+
+### 10.1 模型与动机
+
+仓库事实（可用性、LLM 画像）不再随 `bug_repo` 行逐 Bug 重复存储，而是集中在 `repo` 表（唯一键 path+branch）：同一仓库被 N 个 Bug 关联只登记/画像一次，画像跨 Bug 复用；`bug_repo` 退化为关联表（链接 + 本 Bug 维度的相关性判定，见 Spec 02 §9 v2）。
+
+| 条目 | 说明 |
+|---|---|
+| 登记来源 | ① 手动：`autobugfixer-repo register <路径> [--branch] [--profile]` 或 `POST /repos`（独立于任何 Bug）；② 自动：Bug 声明的未登记仓库按配置 `repo_auto_register`（默认开）自动登记，画像延后到首次被引用 |
+| 登记动作 | get-or-create + 本地可用性校验（§9.3 同款，0 LLM）；重复登记 = 复检刷新结论 |
+| 画像 | 登记表全局一次生成（`--profile` 立即；默认首次被 Bug 引用时补齐），手动刷新（`refresh` / `POST /repos/{id}/refresh`）；不设 TTL |
+| 迁移 | 旧库 `bug_repo` 事实行按 (path,branch) 归并迁入 `repo`（画像择优继承），旧行补写 repo_id；旧列保留不映射 |
+
+### 10.2 Bug 声明解析（§9.2 约定不变）
+
+- 已登记声明 → 直接链接（复用登记表结论，不重复校验）；
+- 未登记 + 自动登记开 → 登记 + 链接；
+- 未登记 + 自动登记关（`AUTOBUGFIXER_REPO_AUTO_REGISTER=false`）→ 跳过并留痕，完整性门禁以"未在登记表"拦下提示先登记；
+- **未声明仓库的 Bug**：不再直接拦下——登记表非空即放行，由完整性阶段的 LLM 匹配（Spec 02 §9 v2 `repo_match`）从登记表自动选仓；匹配零结果才转 `repo_supplement` 介入。
+
+### 10.3 门禁口径变化（对照 §9.3 B9-6）
+
+| 场景 | 行为 | LLM 成本 |
+|---|---|---|
+| 声明仓库未登记（自动登记关）/ 不可用 | 照旧 `WAIT_INFO` 主动询问 | 0 次 |
+| 未声明 + 登记表为空 | `WAIT_INFO`（"未关联任何修复仓库"） | 0 次 |
+| 未声明 + 登记表非空 | 放行 → 完整性评估 + 仓库匹配 | 评估 1 次 + 匹配 1 次（画像全局缓存命中时 0 次画像） |
+
+### 10.4 配置
+
+| 配置 | 默认 | 说明 |
+|---|---|---|
+| `AUTOBUGFIXER_REPO_AUTO_REGISTER` | `true` | Bug 声明的未登记仓库是否自动登记 |
+| `AUTOBUGFIXER_REPO_PROFILE_ENABLED` | `true` | 全局画像 + 匹配总开关（关闭时下游回退基础仓库信息） |
+| `AUTOBUGFIXER_REPO_MATCH_MAX_CANDIDATES` | `20` | 匹配调用候选仓库上限 |

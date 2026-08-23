@@ -48,8 +48,9 @@ def prepare_workspace(ctx) -> Path:
     """
     from autobugfixer.common.core.models import BugRepo
 
-    repos = list(ctx.session.scalars(select(BugRepo).where(
+    links = list(ctx.session.scalars(select(BugRepo).where(
         BugRepo.bug_ticket_id == ctx.bug.id).order_by(BugRepo.seq)).all())
+    repos = [l.repo for l in links]  # 仓库事实在全局登记表（Spec 01 §10）
     unavailable = [r for r in repos if r.status != "available"]
     if not repos:
         raise RuntimeError(

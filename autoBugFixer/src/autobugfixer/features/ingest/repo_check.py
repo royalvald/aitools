@@ -1,14 +1,13 @@
-"""修复关联仓库校验（Spec 01 §9，P1）。
+"""全局仓库登记 + 修复关联解析（Spec 01 §9/§10）。
 
-- 切分约定（§9.2）：仓库地址与分支均按 `;` 切分（strip、去空项），分支按位
-  对应各仓库，不足位补 main，整列空 = 全部 main；
-- 可用性校验（§9.3）：纯本地检查、不耗 LLM——路径存在且为目录；git 仓库
-  验目标分支存在（rev-parse --verify）；非 git 目录非空即可用；远程 URL
-  本期不支持；
-- 持久化：校验结果逐仓库写 bug_repo 表（接入时执行一次，平台重导时复检）。
-
-全部平台适配器（CSV/Jira/禅道/webhook）共用本逻辑：仓库字段经 BugTicketData
-的 repo_url/repo_branch 单字符串携带，在此统一切分。
+仓库是独立于 Bug 的共享资产（Spec 01 §10）：
+- 登记表 repo：path+branch 唯一；登记时本地可用性校验（0 LLM），
+  LLM 画像一次生成全局复用（画像逻辑在 completeness/repo_profile）；
+- Bug 声明（repo_url/repo_branch 按 `;` 切分、按位对应分支）解析到登记表
+  条目并重建 bug_repo 关联（先删后建，保持声明顺序）；
+- 未登记声明：repo_auto_register 开启时自动登记（画像延后到首次引用），
+  关闭时跳过留痕——由完整性门禁拦下提示先登记；
+- 登记入口：CLI/API 手动登记 + Bug 声明自动登记，全平台适配器共用。
 """
 
 from __future__ import annotations
@@ -22,7 +21,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from autobugfixer.adapters.platform import BugTicketData
-from autobugfixer.common.core.models import BugRepo, BugTicket
+from autobugfixer.common.core.models import BugRepo, BugTicket, Repo, utcnow
 
 
 def split_repos(repo_url: str | None, repo_branch: str | None) -> list[tuple[str, str]]:
@@ -80,37 +79,105 @@ def check_repo(path: str, branch: str) -> RepoStatus:
     return RepoStatus(is_git=False, ok=False, reason="空目录")
 
 
-def sync_bug_repos(session: Session, bug: BugTicket, data: BugTicketData) -> list[BugRepo]:
-    """按接入数据重建 bug_repo 行（先删后建，保持给定顺序；接入/重导复检共用）。"""
+# ---------- 登记表操作（Spec 01 §10） ----------
+
+def get_repo(session: Session, path: str, branch: str = "main") -> Repo | None:
+    """按唯一键 (path, branch) 查登记表条目。"""
+    return session.scalar(select(Repo).where(Repo.path == path, Repo.branch == branch))
+
+
+def register_repo(session: Session, path: str, branch: str = "main", *,
+                  source: str = "manual", recheck: bool = True) -> Repo:
+    """登记/复检仓库（get-or-create + 本地可用性校验，0 LLM）。
+
+    已登记条目复检并刷新校验结论（checked_at/status/fail_reason），
+    画像字段不动（一次画像长期复用，手动刷新走 profile_repo）。
+    """
+    repo = get_repo(session, path, branch)
+    created = repo is None
+    if created:
+        repo = Repo(path=path, branch=branch, source=source)
+        session.add(repo)
+    elif source == "manual":
+        repo.source = source  # 自动登记后被手动登记确认
+    if recheck or created:
+        status = check_repo(path, branch)
+        repo.is_git = status.is_git
+        repo.status = "available" if status.ok else "unavailable"
+        repo.fail_reason = status.reason
+        repo.checked_at = utcnow()
+    session.flush()
+    return repo
+
+
+def list_repos(session: Session, *, available_only: bool = False) -> list[Repo]:
+    """登记表列表（按登记先后）。"""
+    stmt = select(Repo).order_by(Repo.id)
+    if available_only:
+        stmt = stmt.where(Repo.status == "available")
+    return list(session.scalars(stmt).all())
+
+
+def has_available_repo(session: Session) -> bool:
+    """登记表是否存在可用仓库（未声明 Bug 的门禁条件）。"""
+    return session.scalar(select(Repo.id).where(Repo.status == "available").limit(1)) is not None
+
+
+# ---------- Bug 声明 -> 登记表解析 + 关联重建 ----------
+
+def sync_bug_repos(session: Session, bug: BugTicket, data: BugTicketData, *,
+                   auto_register: bool | None = None) -> list[BugRepo]:
+    """按接入数据把声明解析到全局登记表并重建 bug_repo 关联（先删后建）。
+
+    - 已登记：直接链接（登记表结论复用，不重复校验）；
+    - 未登记 + auto_register（默认取配置 repo_auto_register）：自动登记
+      （即时校验一次，画像延后到首次被引用时补齐）；
+    - 未登记 + 不自动登记：跳过该声明（完整性门禁会拦下并提示先登记）。
+    """
+    if auto_register is None:
+        from autobugfixer.common.core.config import get_settings
+        auto_register = get_settings().repo_auto_register
     session.execute(delete(BugRepo).where(BugRepo.bug_ticket_id == bug.id))
-    now = datetime.now(timezone.utc)
+    linked: dict[int, BugRepo] = {}
     rows: list[BugRepo] = []
     for seq, (path, branch) in enumerate(split_repos(data.repo_url, data.repo_branch)):
-        status = check_repo(path, branch)
-        row = BugRepo(
-            bug_ticket_id=bug.id, seq=seq, path=path, branch=branch,
-            is_git=status.is_git,
-            status="available" if status.ok else "unavailable",
-            fail_reason=status.reason, checked_at=now,
-        )
+        repo = get_repo(session, path, branch)
+        if repo is None:
+            if not auto_register:
+                continue
+            repo = register_repo(session, path, branch, source="auto")
+        if repo.id in linked:  # 同一仓库重复声明：保序去重
+            continue
+        row = BugRepo(bug_ticket_id=bug.id, repo_id=repo.id, seq=seq, origin="declared")
         session.add(row)
+        linked[repo.id] = row
         rows.append(row)
     session.flush()
     return rows
 
 
 def load_bug_repos(session: Session, bug_id: int) -> list[BugRepo]:
-    """按给定顺序取 Bug 关联仓库行。"""
+    """按给定顺序取 Bug 关联仓库链接（含 repo joined，仓库名单见 .repo）。"""
     return list(session.scalars(select(BugRepo).where(
         BugRepo.bug_ticket_id == bug_id).order_by(BugRepo.seq)).all())
 
 
+def unresolved_declarations(session: Session, bug: BugTicket) -> list[dict]:
+    """声明了但未链接到登记表的仓库（auto_register 关闭时的门禁输入）。"""
+    linked = {(l.repo.path, l.repo.branch) for l in load_bug_repos(session, bug.id)}
+    return [{"path": p, "branch": b, "status": "unavailable",
+             "reason": "未在登记表中（请先登记该仓库）"}
+            for p, b in split_repos(bug.repo_url, bug.repo_branch)
+            if (p, b) not in linked]
+
+
 def repo_check_summary(rows: list[BugRepo]) -> list[dict]:
-    """repo_check 审计摘要（随 task_ingest 携带）。"""
-    return [{"path": r.path, "branch": r.branch, "status": r.status,
-             "reason": r.fail_reason} for r in rows]
+    """repo_check 审计摘要（随 task_ingest 携带，读登记表事实）。"""
+    return [{"path": r.repo.path, "branch": r.repo.branch,
+             "status": r.repo.status, "reason": r.repo.fail_reason}
+            for r in rows]
 
 
 def repos_ready(rows: list[BugRepo]) -> bool:
-    """放行条件（§9.1 要求 3）：>=1 个关联仓库且全部可用。"""
-    return bool(rows) and all(r.status == "available" for r in rows)
+    """放行条件（§9.1 要求 3）：>=1 个关联仓库且登记表结论全部可用。"""
+    return bool(rows) and all(r.repo.status == "available" for r in rows)

@@ -111,12 +111,14 @@ class ScriptedFakeChatModel(BaseChatModel):
         """按提示词模板标题路由的兜底应答（队列耗尽时使用）。"""
         if "# Bug 完整性评估" in text:
             return {"complete": True, "missing": [], "suggestions": []}
-        if "# 关联仓库画像分析" in text:
-            # 逐仓库画像（Spec 02 §9）：fake 应答给出可注入下游 prompt 的画像
+        if "# 仓库全局画像分析" in text:
+            # 全局仓库事实画像（Spec 02 §9 v2）：无 Bug 上下文，挂 repo 表全局复用
             return {"summary": "fake 画像：健康检查服务仓库",
                     "tech_stack": ["python"], "key_dirs": ["api"],
-                    "entry_points": [],
-                    "bug_relevance": "包含 /health 接口实现，为本 Bug 主要怀疑仓库"}
+                    "entry_points": []}
+        if "# Bug 仓库匹配" in text:
+            # Bug x 登记表匹配（Spec 02 §9 v2）：默认不补选（声明链接强制保留）
+            return {"matches": [], "note": ""}
         if "# 回归验证方案生成" in text:
             # 四段式五步方案（Spec 03 §9.5：Fake 应答同步升级，保证新校验下可落库）
             return {

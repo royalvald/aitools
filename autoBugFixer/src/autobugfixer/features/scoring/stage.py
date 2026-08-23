@@ -144,7 +144,7 @@ class ScoringStage:
         repo_rows = list(ctx.session.scalars(select(BugRepo).where(
             BugRepo.bug_ticket_id == ctx.bug.id).order_by(BugRepo.seq)).all())
         keywords = extract_keywords(ctx.bug.title, ctx.bug.description, form.type_evidence)
-        snippets = search_repos(repo_rows, keywords)
+        snippets = search_repos([l.repo for l in repo_rows], keywords)
         prompt = load_prompt("code_evidence").format(
             bug_block=build_bug_block(ctx),
             snippets="\n".join(snippets) or "(未检索到相关片段)")
