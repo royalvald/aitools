@@ -72,6 +72,8 @@ import type { Backlink, EditorMode, KbDocAnnotation, KnowledgeBaseDoc } from '..
 
 interface KbDocEditorProps {
   doc: KnowledgeBaseDoc
+  /** 面包屑前置段（知识库名 + 父级目录链），由 KbDetail 计算；缺省时仅显示文档名 */
+  breadcrumbBase?: string[]
   onChange: (partial: Partial<KnowledgeBaseDoc>) => void
   onSave: (doc: KnowledgeBaseDoc) => Promise<KnowledgeBaseDoc>
   onDelete: (docId: string) => void
@@ -117,7 +119,7 @@ function docTypeLabel(docType?: string): string {
   }
 }
 
-export function KbDocEditor({ doc, onChange, onSave, onDelete, onOpenNote, onAnnotationsMutation, onPresent, isFavorite, onToggleFavorite }: KbDocEditorProps) {
+export function KbDocEditor({ doc, breadcrumbBase, onChange, onSave, onDelete, onOpenNote, onAnnotationsMutation, onPresent, isFavorite, onToggleFavorite }: KbDocEditorProps) {
   const { linkedNotes, loadLinkedNotes, removeLink } = useLinks()
   const { annotations, create, update, deleteAnnotation, addReply, deleteReply } = useKbDocAnnotations(
     doc.kbId,
@@ -141,7 +143,10 @@ export function KbDocEditor({ doc, onChange, onSave, onDelete, onOpenNote, onAnn
   // editorMode：编辑器模式（REQ-001）：所见 / 即时 / 源码 / 预览 四档统一管理。
   // 阅读优先：默认与文档切换时进入 'preview'（阅读态）；点「编辑」进入所见即所得，「完成」回到预览。
   const [editorMode, setLocalEditorMode] = useState<EditorMode>('preview')
-  const preview = editorMode === 'preview'
+  // REQ-207 只读锁定：锁定时同步派生为预览态（不再用 effect 弹回，避免闪烁）；
+  // 编辑档位在 EditorModeSwitcher 中直接禁用（disableEdit），与 NoteDetail 同一方案。
+  const effectiveMode: EditorMode = doc.locked ? 'preview' : editorMode
+  const preview = effectiveMode === 'preview'
   const [menu, setMenu] = useState<MenuState | null>(null)
   const [input, setInput] = useState<InputState | null>(null)
   const [savedFlash, setSavedFlash] = useState(false)
@@ -205,7 +210,7 @@ export function KbDocEditor({ doc, onChange, onSave, onDelete, onOpenNote, onAnn
   })
   const activeController: FindReplaceController | null = preview
     ? null
-    : editorMode === 'wysiwyg'
+    : effectiveMode === 'wysiwyg'
       ? milkController
       : sourceController
 
@@ -475,17 +480,10 @@ export function KbDocEditor({ doc, onChange, onSave, onDelete, onOpenNote, onAnn
     setInput(null)
   }, [doc.id])
 
-  // REQ-207 文档只读锁定：锁定时强制进入预览态，禁止编辑
-  useEffect(() => {
-    if (doc.locked && editorMode !== 'preview') {
-      setLocalEditorMode('preview')
-    }
-  }, [doc.locked, editorMode])
-
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col">
       <DocPageHeader
-        breadcrumb={[doc.name || '未命名文档']}
+        breadcrumb={[...(breadcrumbBase ?? []), doc.name || '未命名文档']}
         editing={viewMode === 'editor' && !preview}
         onEnterEdit={() => setLocalEditorMode('wysiwyg')}
         onExitEdit={() => setLocalEditorMode('preview')}
@@ -526,10 +524,11 @@ export function KbDocEditor({ doc, onChange, onSave, onDelete, onOpenNote, onAnn
             {viewMode === 'editor' && !preview && (
               <>
                 <EditorModeSwitcher
-                  mode={editorMode}
+                  mode={effectiveMode}
+                  disableEdit={!!doc.locked}
                   onChange={handleEditorModeChange}
                 />
-                {editorMode !== 'wysiwyg' && (
+                {effectiveMode !== 'wysiwyg' && (
                   <button
                     onClick={() => setMdLivePreview((v) => !v)}
                     className="btn-icon"
@@ -782,7 +781,7 @@ export function KbDocEditor({ doc, onChange, onSave, onDelete, onOpenNote, onAnn
                     <FrontMatterCard content={doc.content} />
                   </div>
                   <div ref={editorContainerRef} className="doc-content-col flex min-h-0 w-full flex-1 flex-col pb-4">
-                    {editorMode === 'wysiwyg' ? (
+                    {effectiveMode === 'wysiwyg' ? (
                       <div className="min-h-0 flex-1">
                         <MilkdownEditor
                           key={doc.id}
@@ -801,7 +800,7 @@ export function KbDocEditor({ doc, onChange, onSave, onDelete, onOpenNote, onAnn
                         <NoteEditor
                           value={doc.content}
                           onChange={(value) => onChange({ content: value })}
-                          preview={mdLivePreview || editorMode === 'instant' ? 'live' : 'edit'}
+                          preview={mdLivePreview || effectiveMode === 'instant' ? 'live' : 'edit'}
                           hideToolbar
                           placeholder="在此输入 Markdown 源码…"
                           assetScope={{ scope: 'kb', ownerId: doc.kbId }}
@@ -889,7 +888,7 @@ export function KbDocEditor({ doc, onChange, onSave, onDelete, onOpenNote, onAnn
           </div>
 
           {/* REQ-105 表格浮动工具栏（仅在 WYSIWYG 编辑态显示） */}
-          {!preview && editorMode === 'wysiwyg' && <TableToolbar api={milkApi} />}
+          {!preview && effectiveMode === 'wysiwyg' && <TableToolbar api={milkApi} />}
 
           {/* 底部抽屉「关联与待办」：关联小记（可管理）+ 被提及（@提及，只读）+ 待办任务；
               三块内容均为空时不允许展开 */}

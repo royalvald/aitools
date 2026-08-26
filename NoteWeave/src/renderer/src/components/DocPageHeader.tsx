@@ -1,7 +1,7 @@
 import {
+  Check,
   ChevronLeft,
   ChevronRight,
-  Eye,
   Lock,
   LockOpen,
   PanelRight,
@@ -34,8 +34,9 @@ export interface DocPageHeaderProps {
 }
 
 /**
- * 语雀式文档页头：面包屑 + 右侧操作区（收藏 / 锁定 / 大纲 / 更多 / 编辑·预览）。
- * 阅读优先：阅读态主操作是「编辑」，编辑态主操作是「预览」（返回阅读）。
+ * 语雀式文档页头：面包屑 + 右侧操作区（收藏 / 锁定 / 大纲 / 更多 / 编辑·完成）。
+ * 阅读优先：阅读态主操作是「编辑」，编辑态主操作是「完成」（返回阅读）；
+ * REQ-207 锁定只读时「编辑」按钮隐藏（UE_DESIGN §5.1）。
  */
 export function DocPageHeader({
   breadcrumb,
@@ -120,20 +121,17 @@ export function DocPageHeader({
         {moreActions}
 
         {editing ? (
-          <button onClick={onExitEdit} className="btn-primary" title="完成编辑，返回预览">
-            <Eye className="h-4 w-4" />
-            预览
+          <button onClick={onExitEdit} className="btn-primary" title="完成编辑，返回阅读">
+            <Check className="h-4 w-4" />
+            完成
           </button>
         ) : (
-          <button
-            onClick={onEnterEdit}
-            disabled={locked}
-            className="btn-primary"
-            title={locked ? '文档已锁定' : '编辑'}
-          >
-            <Pencil className="h-4 w-4" />
-            编辑
-          </button>
+          !locked && (
+            <button onClick={onEnterEdit} className="btn-primary" title="编辑">
+              <Pencil className="h-4 w-4" />
+              编辑
+            </button>
+          )
         )}
       </div>
     </div>

@@ -38,6 +38,8 @@ interface NoteDetailProps {
   note: Note | null
   isLoading: boolean
   groups: NoteGroup[]
+  /** 面包屑前置段（UE-04：工作台 / 小记 / 标题）；从知识库上下文打开时传 ['知识库', '小记'] */
+  breadcrumbBase?: string[]
   onChange: (partial: Partial<Note>) => void
   onSave: (note: Note) => Promise<Note>
   onDelete: (id: string) => void
@@ -49,7 +51,7 @@ interface NoteDetailProps {
   onBack?: () => void
 }
 
-export function NoteDetail({ note, isLoading, groups, onChange, onSave, onDelete, onOpenKbDoc, isFavorite, onToggleFavorite, onBack }: NoteDetailProps) {
+export function NoteDetail({ note, isLoading, groups, breadcrumbBase, onChange, onSave, onDelete, onOpenKbDoc, isFavorite, onToggleFavorite, onBack }: NoteDetailProps) {
   const { settings, setEditorMode } = useSettings()
   // 编辑器模式（REQ-001）：所见 / 即时 / 源码 / 预览 四档统一管理。
   // 阅读优先：默认与切换笔记时进入 'preview'（阅读态）；点「编辑」进入所见即所得，「完成」回到预览。
@@ -240,7 +242,7 @@ export function NoteDetail({ note, isLoading, groups, onChange, onSave, onDelete
   return (
     <div className="relative flex h-full min-h-0 min-w-0 flex-col">
       <DocPageHeader
-        breadcrumb={['小记', note.title || '无标题']}
+        breadcrumb={[...(breadcrumbBase ?? ['工作台', '小记']), note.title || '无标题']}
         onBack={onBack}
         editing={!preview}
         onEnterEdit={() => setLocalEditorMode('wysiwyg')}

@@ -1,20 +1,32 @@
 import { useEffect, useState } from 'react'
+import { Download, FileInput, FolderOpen, Info, Upload } from 'lucide-react'
 import { Modal } from './Modal'
 import { useSettings } from '../hooks/useSettings'
 import type { ThemeSummary } from '../types'
 
 // REQ-111/113/114/118 等：应用设置面板（开关项 + 主题选择 + 自定义主题入口）。
 
+/** 与 package.json version 保持同步（渲染进程无法直接读取包信息）。 */
+const APP_VERSION = '1.0.0'
+
 interface SettingsDialogProps {
   open: boolean
   onClose: () => void
+  /** UE-18「数据」分区：导出全量 ZIP 备份 */
+  onExport?: () => void
+  /** UE-18「数据」分区：导入 ZIP 还原备份 */
+  onImport?: () => void
+  /** UE-18「数据」分区：导入外部文件（.docx/.html/.md/Notion ZIP） */
+  onImportExternal?: () => void
 }
 
-export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
+export function SettingsDialog({ open, onClose, onExport, onImport, onImportExternal }: SettingsDialogProps) {
   const { settings, update } = useSettings()
   const [themes, setThemes] = useState<ThemeSummary[]>([])
   const [java, setJava] = useState<{ available: boolean; version?: string } | null>(null)
   const [graphviz, setGraphviz] = useState<{ available: boolean } | null>(null)
+  // UE-18「数据」分区：数据目录路径展示
+  const [dataDir, setDataDir] = useState('')
   // REQ-208 应用锁屏
   const [lockEnabled, setLockEnabled] = useState<boolean>(!!settings.appLock?.enabled)
   const [pwd, setPwd] = useState('')
@@ -30,6 +42,8 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
     // REQ-115：检测本地渲染后端可用性，给用户明确反馈
     window.electronAPI.checkJava().then(setJava)
     window.electronAPI.checkGraphviz().then(setGraphviz)
+    // UE-18 数据分区：展示数据目录
+    window.electronAPI.getDataDir().then(setDataDir).catch(() => {})
   }, [open])
 
   if (!open) return null
@@ -375,6 +389,58 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
         <section>
           <div className="text-xs text-[var(--color-muted-foreground)]">
             版本历史保留上限：{settings.maxHistoryVersions} 版
+          </div>
+        </section>
+
+        {/* UE-18「数据」分区：NavRail 数据菜单按新 UE 收进设置对话框 */}
+        <section className="divide-y divide-[var(--color-border)] border-t border-[var(--color-border)]">
+          <div className="py-2">
+            <div className="mb-1 text-sm font-medium">数据</div>
+            <div className="mb-2 break-all text-xs text-[var(--color-muted-foreground)]">
+              数据目录：{dataDir || '…'}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {onExport && (
+                <button className="btn-secondary" onClick={onExport}>
+                  <Download className="h-4 w-4" />
+                  导出 ZIP
+                </button>
+              )}
+              {onImport && (
+                <button className="btn-secondary" onClick={onImport}>
+                  <Upload className="h-4 w-4" />
+                  导入 ZIP
+                </button>
+              )}
+              {onImportExternal && (
+                <button className="btn-secondary" onClick={onImportExternal}>
+                  <FileInput className="h-4 w-4" />
+                  导入外部文件
+                </button>
+              )}
+              <button
+                className="btn-secondary"
+                onClick={() => void window.electronAPI.openDataDir()}
+              >
+                <FolderOpen className="h-4 w-4" />
+                打开目录
+              </button>
+            </div>
+            <div className="mt-1 text-xs text-[var(--color-muted-foreground)]">
+              导入前会自动对当前数据做全量 ZIP 备份；所有数据仅保存在本机。
+            </div>
+          </div>
+        </section>
+
+        {/* UE-18「关于」分区 */}
+        <section>
+          <div className="flex items-center gap-2 py-1 text-sm">
+            <Info className="h-4 w-4 text-[var(--color-muted-foreground)]" />
+            <span>织记 NoteWeave</span>
+            <span className="text-xs text-[var(--color-muted-foreground)]">版本 {APP_VERSION}</span>
+          </div>
+          <div className="text-xs text-[var(--color-muted-foreground)]">
+            本地优先 · Markdown 原生 · 数据不出本机。
           </div>
         </section>
       </div>

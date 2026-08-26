@@ -95,7 +95,7 @@ src/
 
 核心组件/Hook（按模块）：
 
-- **应用骨架（语雀式）**：`AppNavRail`（左侧图标导航栏：工作台/知识库 + 搜索/数据/资源/回收站/主题/设置）→ `main` 区按状态渲染：小记详情覆盖层（`NoteDetail`）/ `Dashboard`（工作台：问候 + 快捷新建 + 最近/收藏/小记/待办 Tab）/ `KbGridPage`（知识库卡片网格）/ `KbDetail`（KB 内部：目录树 + 文档区）。App 一级视图仅 `'dashboard' | 'knowledge-base'`。
+- **应用骨架（语雀式）**：`AppNavRail`（左侧图标导航栏：工作台/知识库 + 搜索/资源/回收站/主题/设置；数据导入导出收进设置对话框「数据」分区，配套 `data:getDir`/`data:openDir` IPC）→ `main` 区按状态渲染：小记详情覆盖层（`NoteDetail`）/ `Dashboard`（工作台：问候 + 快捷新建 + 最近/收藏/小记/待办 Tab）/ `KbGridPage`（知识库卡片网格）/ `KbDetail`（KB 内部：目录树 + 文档区）。App 一级视图仅 `'dashboard' | 'knowledge-base'`。
 - **Note（小记）**：`NoteGroupTree` / `NoteListItem` / `NoteDetail`（面包屑 + 阅读优先，`DocPageHeader`）/ `useNotes` / `useNoteGroups`
 - **KB Doc**：`KbGridPage` / `KbDocTree` / `KbDocListItem` / `KbDetail` / `KbDocEditor`（阅读优先，`DocPageHeader` + 右侧大纲抽屉）/ `useKnowledgeBases` / `useKnowledgeBaseDocs`
 - **待办（Todo）**：`TodoList` / `TodoPanel` / `TodoEditorDialog` / `useTodos` / `useTodosForTarget`

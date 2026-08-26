@@ -535,9 +535,6 @@ function App() {
           onOpenTrash={() => setShowTrash(true)}
           onOpenAssets={() => setShowAssets(true)}
           onOpenSettings={() => setShowSettings(true)}
-          onExport={handleExport}
-          onImport={handleImport}
-          onImportExternal={() => handleImportExternal(null)}
         />
         <main className="min-w-0 flex-1">
           {selectedNoteId ? (
@@ -545,6 +542,7 @@ function App() {
               note={selectedNote}
               isLoading={isNoteLoading}
               groups={noteGroups}
+              breadcrumbBase={view === 'knowledge-base' ? ['知识库', '小记'] : undefined}
               onChange={changeNote}
               onSave={saveNote}
               onDelete={deleteNote}
@@ -766,7 +764,15 @@ function App() {
 
       {showAssets && <AssetManagerPanel onClose={() => setShowAssets(false)} />}
 
-      {showSettings && <SettingsDialog open={showSettings} onClose={() => setShowSettings(false)} />}
+      {showSettings && (
+        <SettingsDialog
+          open={showSettings}
+          onClose={() => setShowSettings(false)}
+          onExport={handleExport}
+          onImport={handleImport}
+          onImportExternal={() => handleImportExternal(null)}
+        />
+      )}
 
       {presentingContent && (
         <PresentationMode

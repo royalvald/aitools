@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useWindowWidth } from '../hooks/useWindowWidth'
 import {
   ChevronLeft,
@@ -74,6 +74,24 @@ export function KbDetail({
   const windowWidth = useWindowWidth()
   const treeWidthClass = windowWidth < 1200 ? 'w-56' : 'w-72'
 
+  // UE-03/05 面包屑：知识库名 + 父级目录链（自根向叶），文档名由 KbDocEditor 自行追加。
+  // visited 防御 parentId 成环导致死循环。
+  const breadcrumbBase = useMemo(() => {
+    if (!kb) return []
+    const byId = new Map(docs.map((d) => [d.id, d]))
+    const chain: string[] = []
+    const visited = new Set<string>()
+    let pid = selectedDoc?.parentId ?? null
+    while (pid && !visited.has(pid)) {
+      visited.add(pid)
+      const parent = byId.get(pid)
+      if (!parent) break
+      chain.unshift(parent.name || '未命名文档')
+      pid = parent.parentId ?? null
+    }
+    return [kb.name, ...chain]
+  }, [kb, docs, selectedDoc])
+
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center text-[var(--color-muted-foreground)]">加载中…</div>
@@ -99,6 +117,14 @@ export function KbDetail({
       {/* 左侧常驻文档树列（宽度随窗口自适应） */}
       <div className={`flex ${treeWidthClass} flex-shrink-0 flex-col border-r border-[var(--color-border)] bg-[var(--color-surface)]`}>
         <div className="flex flex-shrink-0 items-center gap-1.5 border-b border-[var(--color-border)] px-2 py-2">
+          {/* UE-03：返回知识库网格列表 */}
+          <button
+            onClick={onBackToKbGrid}
+            className="btn-icon flex-shrink-0"
+            title="返回知识库列表"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
           <button
             onClick={() => onSelectDoc(null)}
             className="btn-icon flex-shrink-0"
@@ -172,6 +198,7 @@ export function KbDetail({
             ) : (
               <KbDocEditor
                 doc={selectedDoc}
+                breadcrumbBase={breadcrumbBase}
                 onChange={onChangeDoc}
                 onSave={onSaveDoc}
                 onDelete={onDeleteDoc}

@@ -1,4 +1,4 @@
-import { ipcMain, clipboard, nativeImage, shell } from 'electron'
+import { app, ipcMain, clipboard, nativeImage, shell } from 'electron'
 import {
   addLink,
   createKbDoc,
@@ -234,6 +234,17 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('data:importExternal', async (_, kbId: string | null) =>
     importExternalFiles(kbId)
   )
+
+  // UE-18 设置·数据分区：数据目录展示与「打开目录」
+  ipcMain.handle('data:getDir', () => app.getPath('userData'))
+  ipcMain.handle('data:openDir', async () => {
+    try {
+      const result = await shell.openPath(app.getPath('userData'))
+      return result === ''
+    } catch {
+      return false
+    }
+  })
 
   // REQ-210 批量导出整个知识库
   ipcMain.handle('kb:export', async (_, kbId: string, options) =>

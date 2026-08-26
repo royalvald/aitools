@@ -117,6 +117,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Import / Export
   exportAllData: (): Promise<ExportResult> => ipcRenderer.invoke('data:export'),
   importData: (): Promise<ImportResult> => ipcRenderer.invoke('data:import'),
+  getDataDir: (): Promise<string> => ipcRenderer.invoke('data:getDir'),
+  openDataDir: (): Promise<boolean> => ipcRenderer.invoke('data:openDir'),
   importExternalFiles: (kbId: string | null): Promise<ImportExternalResult> =>
     ipcRenderer.invoke('data:importExternal', kbId),
   exportKnowledgeBase: (

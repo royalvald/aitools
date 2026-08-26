@@ -1,6 +1,5 @@
 import { House, Images, Library, Search, Settings, Trash2 } from 'lucide-react'
 import { cn } from '../lib/utils'
-import { DataMenuButton } from './DataMenuButton'
 import { ThemeToggle } from './ThemeToggle'
 
 export interface AppNavRailProps {
@@ -10,22 +9,17 @@ export interface AppNavRailProps {
   onOpenTrash: () => void
   onOpenAssets: () => void
   onOpenSettings: () => void
-  onExport: () => void
-  onImport: () => void
-  onImportExternal: () => void
 }
 
 // 语雀式左侧固定图标导航栏：顶部 logo，中间主导航，底部工具入口。
+// UE-01/§2.1：无「数据」入口——数据导入导出收进设置对话框「数据」分区（UE-18）。
 export function AppNavRail({
   view,
   onNavigate,
   onOpenSearch,
   onOpenTrash,
   onOpenAssets,
-  onOpenSettings,
-  onExport,
-  onImport,
-  onImportExternal
+  onOpenSettings
 }: AppNavRailProps) {
   return (
     <aside className="nav-rail">
@@ -69,12 +63,6 @@ export function AppNavRail({
         >
           <Search className="h-5 w-5" />
         </button>
-        <DataMenuButton
-          withLabel={false}
-          onImport={onImport}
-          onExport={onExport}
-          onImportExternal={onImportExternal}
-        />
         <button
           type="button"
           className="nav-rail-item"

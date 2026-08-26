@@ -645,6 +645,10 @@ export interface ElectronAPI {
   // Import / Export
   exportAllData: () => Promise<ExportResult>
   importData: () => Promise<ImportResult>
+  /** UE-18 设置·数据分区：获取数据目录（userData 根）路径用于展示 */
+  getDataDir: () => Promise<string>
+  /** UE-18 设置·数据分区：在文件管理器中打开数据目录 */
+  openDataDir: () => Promise<boolean>
   /** REQ-209 批量导入外部文件（.docx/.html/.md/.txt/Notion ZIP）到指定知识库 */
   importExternalFiles: (
     kbId: string | null
