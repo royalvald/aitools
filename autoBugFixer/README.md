@@ -41,6 +41,7 @@ python -m venv .venv
 |---|---|---|
 | `DATABASE_URL` | `sqlite:///./autobugfixer.db` | 数据库连接 |
 | `LLM_MODE` | `fake` | `fake` / `anthropic`（后者需 `ANTHROPIC_API_KEY`） |
+| `LLM_MAX_TOKENS` | `4096` | 分析类 LLM 调用输出上限（planning 固定放宽到 8192 防 JSON 截断） |
 | `CODEX_EXECUTABLE` / `CODEX_MODEL` | `codex` / — | codex exec 修复通道（需 `OPENAI_API_KEY` 或 `codex login`） |
 | `CODEX_TIMEOUT` / `CODEX_SANDBOX` | `600` / `workspace-write` | codex 调用超时与沙箱（只能写工作区，禁网） |
 | `BUG_PLATFORM` | `mock` | `mock` / `jira` / `zentao`（CSV 走导入通道） |

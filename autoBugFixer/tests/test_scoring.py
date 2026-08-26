@@ -79,7 +79,7 @@ def test_scoring_prompt_includes_plan_summary(session_factory, settings, task_id
         def __init__(self):
             self.prompts = []
 
-        def analyze(self, prompt, schema, *, task_id, stage, session=None):
+        def analyze(self, prompt, schema, *, task_id, stage, session=None, system=None, max_tokens=None):
             self.prompts.append(prompt)
             return schema(fix_difficulty=20, verify_difficulty=15,
                           change_scale=10, rationale="测试评分")
@@ -116,9 +116,9 @@ def test_scoring_prompt_includes_plan_summary(session_factory, settings, task_id
 # ---------- Spec 04 §7 缺口补充 ----------
 
 def _summary_section(prompt: str) -> str:
-    """从评分 prompt 中切出"验证方案摘要"与下一节标题之间的方案摘要段。"""
+    """从评分 prompt 中切出"验证方案摘要"段（数据后置版模板：摘要段与后续说明以空行分隔）。"""
     _, rest = prompt.split("验证方案摘要：\n", 1)
-    return rest.split("\n\n## ", 1)[0]
+    return rest.split("\n\n", 1)[0]
 
 
 class _RecordingLLM:
@@ -127,7 +127,7 @@ class _RecordingLLM:
     def __init__(self):
         self.prompts: list[str] = []
 
-    def analyze(self, prompt, schema, *, task_id, stage, session=None):
+    def analyze(self, prompt, schema, *, task_id, stage, session=None, system=None, max_tokens=None):
         self.prompts.append(prompt)
         return schema(fix_difficulty=20, verify_difficulty=15,
                       change_scale=10, rationale="测试评分")

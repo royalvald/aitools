@@ -15,11 +15,12 @@ from sqlalchemy import select
 
 from autobugfixer.features.fixing.codex import CodexCLI, CodexError
 from autobugfixer.common.core.models import FixRecord, VerificationPlan, VerifyRecord
-from autobugfixer.common.prompts import load_prompt, prompt_version
+from autobugfixer.common.prompts import prompt_version, render_prompt
 from autobugfixer.features.knowledge.experience import ExperienceService
 from autobugfixer.common.core.stage import StageResult, TaskContext
 from autobugfixer.common.core.state import TaskState
 from autobugfixer.common.core.bugtext import build_bug_block
+from autobugfixer.common.security.injection import wrap_untrusted
 from autobugfixer.features.completeness.repo_profile import render_repo_profiles
 from autobugfixer.features.fixing.workspace import (
     check_forbidden,
@@ -158,8 +159,9 @@ class FixingStage:
         if extras:
             acceptance = f"{acceptance}\n\n{extras}"
         if prompt_name == "fixing":
-            return load_prompt("fixing").format(
-                bug_block=bug_block, acceptance=acceptance), experience_hit
+            system, user = render_prompt("fixing", bug_block=bug_block, acceptance=acceptance)
+            # codex 通道无 system 消息：切分后拼回（模型可见内容不变，仅剥离标记）
+            return f"{system}\n\n{user}", experience_hit
         # 11.5：第 N 次（N>=2）修复增量注入失败反馈（结构化摘要，控制 token）
         previous = []
         for r in ctx.session.scalars(select(FixRecord).where(
@@ -172,10 +174,12 @@ class FixingStage:
                 VerifyRecord.conclusion == "failed")).all():
             failed_steps = [s for s in v.step_results if not s.get("passed")]
             evidence.append({"attempt": v.attempt, "failed_steps": failed_steps})
-        return load_prompt("fixing_retry").format(
+        system, user = render_prompt(
+            "fixing_retry",
             attempt=attempt, bug_block=bug_block, acceptance=acceptance,
             previous_attempts=json.dumps(previous, ensure_ascii=False, indent=1),
-            failure_evidence=json.dumps(evidence, ensure_ascii=False, indent=1)), experience_hit
+            failure_evidence=json.dumps(evidence, ensure_ascii=False, indent=1))
+        return f"{system}\n\n{user}", experience_hit
 
     def _fix_approach_block(self, ctx: TaskContext) -> str:
         """修复思路大纲注入（Spec 03 §9.4，仅首轮）：从最新方案读取，提示而非约束。"""
@@ -205,13 +209,16 @@ class FixingStage:
                                      keywords=keywords, limit=3)
         if not hits:
             return "", False
-        lines = ["历史修复经验（可参考，须结合本次 Bug 判断适用性）："]
+        entries = []
         for e in hits:
             service.hit(e.id)
-            lines.append(f"- [{e.category}] {e.problem_signature}: {e.fix_pattern[:200]}")
+            entries.append(f"- [{e.category}] {e.problem_signature}: {e.fix_pattern[:200]}")
         ctx.audit.log(action="experience_hit", target=f"task:{ctx.task.id}",
                       detail={"experience_ids": [e.id for e in hits]}, task_id=ctx.task.id)
-        return "\n".join(lines), True
+        # 经验条目来自历史修复产物（二阶外部数据，11.2 输入侧）：包裹边界
+        block = ("历史修复经验（可参考，须结合本次 Bug 判断适用性）：\n"
+                 + wrap_untrusted("\n".join(entries)))
+        return block, True
 
     @staticmethod
     def _acceptance_points(ctx: TaskContext) -> str:

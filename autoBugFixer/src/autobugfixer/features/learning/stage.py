@@ -10,7 +10,7 @@ from sqlalchemy import select
 
 from autobugfixer.features.intervention.notifier import NoticeMessage
 from autobugfixer.common.core.models import FixRecord, InapplicableCase, VerifyRecord
-from autobugfixer.common.prompts import load_prompt
+from autobugfixer.common.prompts import render_prompt
 from autobugfixer.features.knowledge.experience import ExperienceService
 from autobugfixer.features.learning.schemas import FailureAnalysis
 from autobugfixer.common.core.stage import InterventionRequest, StageResult, TaskContext
@@ -70,12 +70,13 @@ class LearningStage:
 
         verification_points = "; ".join(
             s.get("desc") or s.get("action", "") for s in (verify.step_results or []))[:300]
-        prompt = load_prompt("experience_digest").format(
+        system, user = render_prompt(
+            "experience_digest",
             bug_block=build_bug_block(ctx),
             fix_pattern=(fix.summary if fix else "")[:500],
             verification_points=verification_points)
         try:
-            result = ctx.llm.analyze(prompt, ExperienceDigest,
+            result = ctx.llm.analyze(user, ExperienceDigest, system=system,
                                      task_id=ctx.task.id, stage=self.name,
                                      session=ctx.session)
             assert isinstance(result, ExperienceDigest)
@@ -143,12 +144,13 @@ class LearningStage:
         """LLM 结构化汇总失败全过程；调用失败时回退规则模板。"""
         import json
 
-        prompt = load_prompt("failure_analysis").format(
+        system, user = render_prompt(
+            "failure_analysis",
             bug_block=build_bug_block(ctx),
             retry_count=ctx.task.retry_count, max_retry=ctx.task.max_retry,
             failed_steps=json.dumps(failed_steps, ensure_ascii=False)[:1000])
         try:
-            result = ctx.llm.analyze(prompt, FailureAnalysis,
+            result = ctx.llm.analyze(user, FailureAnalysis, system=system,
                                      task_id=ctx.task.id, stage=self.name,
                                      session=ctx.session)
             assert isinstance(result, FailureAnalysis)

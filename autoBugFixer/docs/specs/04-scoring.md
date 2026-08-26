@@ -4,7 +4,7 @@
 |---|---|
 | 涉及状态 | `SCORED`（在本状态内执行，而非离开它时） |
 | 源码 | `src/autobugfixer/scoring/stage.py` |
-| 提示词 | `prompts/templates/scoring_v2.md`（占位符 `bug_block`、`plan_summary`；v2：三维锚点区间+rationale 可反推） |
+| 提示词 | `prompts/templates/scoring_v3.md`（占位符 `bug_block`、`plan_summary`；v3：锚点区间+rationale 可反推 + 数据后置分通道与合法 JSON 尾注） |
 | 需求 | FR-PRE-04（难度评分与准入阈值）、FR-SYS-02（策略版本化）、设计 9.3 |
 | 上游 | 验证方案生成（Spec 03，`PLANNING/WAIT_PLAN → SCORED`） |
 | 下游 | AI 修复（Spec 05，`SCORED → FIXING`）或转人工（`SCORED → MANUAL`） |

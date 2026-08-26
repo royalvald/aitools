@@ -19,7 +19,7 @@ from typing import Any
 
 from langchain_core.callbacks import CallbackManagerForLLMRun
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import AIMessage, BaseMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
 from langchain_core.runnables import Runnable
 from pydantic import BaseModel
@@ -73,6 +73,20 @@ def _extract_json(text: str) -> str:
     if m:
         return m.group(1)
     return text
+
+
+def _error_summary(exc: Exception, limit: int = 600) -> str:
+    """压缩校验错误为可注入 prompt 的摘要（pydantic 逐字段错误优先，总量截断）。"""
+    errors = getattr(exc, "errors", None)
+    if callable(errors):
+        parts = []
+        for e in errors()[:8]:
+            loc = ".".join(str(x) for x in e.get("loc", ()))
+            parts.append(f"{loc}: {e.get('msg', e)}")
+        text = "; ".join(parts) or str(exc)
+    else:
+        text = str(exc)
+    return text[:limit]
 
 
 class _StructuredRunnable(Runnable):
@@ -239,7 +253,7 @@ class LLMGateway:
 
     # ---- 模型 ----
 
-    def _chat_model(self) -> BaseChatModel:
+    def _chat_model(self, max_tokens: int | None = None) -> BaseChatModel:
         """按 llm_mode 构造聊天模型：anthropic 走真实 API，否则用脚本化 Fake 模型。"""
         if self.settings.llm_mode == "anthropic":
             from langchain_anthropic import ChatAnthropic
@@ -247,7 +261,7 @@ class LLMGateway:
             return ChatAnthropic(
                 model=self.settings.anthropic_model,
                 api_key=self.settings.anthropic_api_key,
-                max_tokens=4096,
+                max_tokens=max_tokens or self.settings.llm_max_tokens,
             )
         # 共享可变队列：构造后赋值以保留引用（pydantic 初始化可能拷贝列表）
         model = ScriptedFakeChatModel()
@@ -257,21 +271,40 @@ class LLMGateway:
     # ---- 结构化分析（完整性评估 / 方案生成 / 评分） ----
 
     def analyze(self, prompt: str, schema: type[BaseModel], *,
-                task_id: int | None, stage: str, session: Session | None = None) -> BaseModel:
-        """结构化分析调用：with_structured_output(Schema)，校验失败按配置重试。"""
+                task_id: int | None, stage: str, session: Session | None = None,
+                system: str | None = None, max_tokens: int | None = None) -> BaseModel:
+        """结构化分析调用：with_structured_output(Schema)，校验失败按配置重试。
+
+        - system：模板 system 段（角色/规则），进入 system 通道（提示词工程约定：
+          规则与外部数据分离，降低数据内容覆盖指令的风险）；缺省整体走 user；
+        - 重试不是原样重发：附上一次的结构校验错误摘要，让模型知道改什么
+          （确定性校验失败原样重发大概率得到同样答案）；
+        - max_tokens：输出上限覆盖（如 planning 8192），缺省用配置。
+        """
         self._check_budget(task_id, session)
-        model = self._chat_model()
+        model = self._chat_model(max_tokens)
         structured = model.with_structured_output(schema)
+        messages: Any = prompt
+        if system:
+            messages = [SystemMessage(content=system), HumanMessage(content=prompt)]
+        attempt_prompt = prompt
         last_error: Exception | None = None
-        for _ in range(self.settings.stage_max_retry + 1):
+        for attempt in range(self.settings.stage_max_retry + 1):
             try:
-                result = structured.invoke(prompt)
-                self._record_usage(task_id, stage, prompt, json.dumps(
+                result = structured.invoke(messages)
+                self._record_usage(task_id, stage, attempt_prompt, json.dumps(
                     result.model_dump(), ensure_ascii=False), session)
                 return result
-            except Exception as exc:  # JSON/Schema 校验失败重试
+            except Exception as exc:  # JSON/Schema 校验失败：附错误反馈后重试
                 last_error = exc
-                logger.warning("LLM 结构化输出校验失败，重试: %s", exc)
+                if attempt < self.settings.stage_max_retry:
+                    feedback = (f"\n\n---\n（第 {attempt + 1} 次输出未通过结构校验，错误："
+                                f"{_error_summary(exc)}。请严格按上方要求的 JSON 格式"
+                                f"重新输出，仅输出 JSON 本体，不要附加说明。）")
+                    attempt_prompt = prompt + feedback
+                    messages = ([SystemMessage(content=system), HumanMessage(content=attempt_prompt)]
+                                if system else attempt_prompt)
+                    logger.warning("LLM 结构化输出校验失败，附错误反馈重试: %s", exc)
         raise ValueError(f"LLM 结构化输出多次校验失败: {last_error}")
 
     # ---- 修复通道的预算与计量入口（Spec 05：codex 事件流用量统一走本网关） ----

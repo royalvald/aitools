@@ -57,9 +57,9 @@ Stage 内未捕获异常由 Orchestrator 兜底：写 `stage_exception` 审计�
 
 1. **审计留痕**（`core/audit.py`）：追加写 `audit_log`，关键动作（状态迁移、LLM 调用、命令执行、介入、注入检测、经验命中、锁操作）均留痕，保留 ≥180 天。
 2. **平台状态回写**（`platform/writeback.py`，11.7）：每次状态迁移后按 `status_map` 映射回写缺陷平台；失败重试一次后告警（`platform_writeback_failed`），**绝不阻塞主流程**。默认仅映射 `CLOSED/WAIT_INFO/MANUAL`。
-3. **提示词注入防护**（11.2 输入侧）：Bug 文本进入任何 LLM prompt 前必须经 `build_bug_block()`：`detect_injection` 模式检测（命中写 `injection_detected` 审计，不阻断）+ `wrap_untrusted` 不可信边界包裹。
-4. **LLM 预算治理**（11.3）：所有 LLM 调用走 `LLMGateway.analyze()/run_fix_agent()` 统一入口，调用前检查单任务/日预算（超限抛 `BudgetExceededError`），调用后计量写 `llm_usage`。
-5. **提示词版本化**：模板存放于 `prompts/templates/<name>_v1.md`，`load_prompt(name)` 加载、`prompt_version(name)` 取版本号，随记录落库供审计回放。
+3. **提示词注入防护**（11.2 输入侧）：Bug 文本进入任何 LLM prompt 前必须经 `build_bug_block()`：`detect_injection` 模式检测（命中写 `injection_detected` 审计，不阻断）+ `wrap_untrusted` 不可信边界包裹 + 超长字段截断。仓库代码检索片段（code_evidence）、候选画像清单、技能库、经验条目等二阶外部数据同口径包裹。
+4. **LLM 预算治理**（11.3）：所有 LLM 调用走 `LLMGateway.analyze()/run_fix_agent()` 统一入口，调用前检查单任务/日预算（超限抛 `BudgetExceededError`），调用后计量写 `llm_usage`；结构校验失败的重试**附校验错误反馈**（非原样重发），输出上限 `LLM_MAX_TOKENS` 可配（planning 放宽 8192）。
+5. **提示词版本化**：模板存放于 `prompts/templates/<name>_<version>.md`，`load_prompt(name)` 加载、`render_prompt(name, **fields)` 渲染并按 `<<<SYSTEM_END>>>` 标记切分 system/user 通道（规则进 system、数据进 user；标记本身不进入 prompt，仅插标记不升版本），`prompt_version(name)` 取版本号随记录落库供审计回放。
 6. **通知**（`intervention/notifier.py`）：角色包括 `tester / developer / tech_lead / ops / manager`；实现 `log`（默认）与 `im`（企业微信/钉钉 webhook）。
 7. **环境锁**（11.1，详见 06/07 spec）：`environment_id` 粒度 DB 行互斥，带租约（默认 30 分钟）；临界区 = DEPLOYING 起持锁、VERIFYING 结束释放。
 

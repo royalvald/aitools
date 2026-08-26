@@ -232,7 +232,7 @@ Stage 级未捕获异常 → Orchestrator 兜底（orchestrator.py:185-204）：
 
 - ~~**两套 CLOSED 迁移不一致**~~（已修复：`_transition_task` 在 CLOSED 时同步写 `task.closed_at`）；
 - ~~**upsert 无 DB 唯一约束**~~（已修复：`experience` 表增加活跃条目部分唯一索引 `ux_experience_active_dedup`）；
-- ~~`root_cause_pattern` 恒空串~~（已实现：成功分支 LLM 归因总结填充，`experience_digest_v2` 模板，异常回退留空）；
+- ~~`root_cause_pattern` 恒空串~~（已实现：成功分支 LLM 归因总结填充，`experience_digest_v3` 模板含归类/模式化正反例，异常回退留空）；
 - ~~分类为关键词五级规则~~（已实现 LLM 分类优先、关键词规则回退）；
 - 环境选择：无 environment_id 时取库中第一条 Environment（Spec 06 §10 同条），applicable_conditions 记录的 env_version 来自 Bug 字段而非实际部署环境；
 - 不适用场景仅入库展示（status=open 无人更新），未反向阻断后续同类任务准入（P2：评分阶段消费 InapplicableCase 抬高难度分）。

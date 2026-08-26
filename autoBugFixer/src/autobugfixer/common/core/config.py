@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     llm_mode: str = "fake"  # fake / anthropic
     anthropic_model: str = "claude-sonnet-4-5"
     anthropic_api_key: str | None = None
+    llm_max_tokens: int = 4096  # 分析类调用输出上限（调用方按需覆盖，如 planning 8192）
 
     # 预算治理（11.3）
     task_token_budget: int = 100_000  # 单任务 token 预算，超限转人工

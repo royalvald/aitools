@@ -23,7 +23,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from autobugfixer.common.core.models import BugRepo, Repo, utcnow
-from autobugfixer.common.prompts import load_prompt, prompt_version
+from autobugfixer.common.prompts import prompt_version, render_prompt
 from autobugfixer.common.security.injection import detect_injection, wrap_untrusted
 
 logger = logging.getLogger(__name__)
@@ -113,8 +113,8 @@ def profile_repo(llm, session: Session, repo: Repo, *,
     if report.flagged and audit is not None:  # 仓库内容含注入模式：留痕不阻断
         audit.log(action="injection_detected", target=f"repo:{repo.path}",
                   detail={"matched": report.matched_patterns}, task_id=task_id)
-    prompt = load_prompt("repo_profile").format(repo_digest=digest)
-    result = llm.analyze(prompt, RepoProfile,
+    system, user = render_prompt("repo_profile", repo_digest=digest)
+    result = llm.analyze(user, RepoProfile, system=system,
                          task_id=task_id, stage="repo_profile", session=session)
     assert isinstance(result, RepoProfile)
     repo.profile = result.model_dump()
@@ -214,10 +214,11 @@ def match_bug_repos(ctx) -> list[BugRepo]:
 
     candidates = [l.repo for l in links] + extras
     ensure_profiles(ctx, candidates)  # 候选先补齐画像（全局缓存，已画像零成本）
-    prompt = load_prompt("repo_match").format(
+    system, user = render_prompt(
+        "repo_match",
         bug_block=build_bug_block(ctx),
-        repo_library=_candidate_block(candidates))
-    result = ctx.llm.analyze(prompt, RepoMatch,
+        repo_library=wrap_untrusted(_candidate_block(candidates)))
+    result = ctx.llm.analyze(user, RepoMatch, system=system,
                              task_id=ctx.task.id, stage="repo_match",
                              session=ctx.session)
     assert isinstance(result, RepoMatch)
@@ -298,6 +299,8 @@ def render_repo_profiles(session: Session, bug_id: int) -> str:
         if r.relevance:
             parts.append("关联判断: " + r.relevance)
         lines.append(base + (": " + " | ".join(parts) if parts else ""))
-    if len(rows) > 1:
-        lines.append("（多仓库工作区按仓库名子目录布局，修复时请先确认目标仓库子目录）")
-    return "\n".join(lines)
+    # 画像/相关性为 LLM 产物（二阶外部数据，11.2 输入侧）：条目包裹边界；
+    # 多仓库布局说明是系统指令，保持在边界外
+    note = ("\n（多仓库工作区按仓库名子目录布局，修复时请先确认目标仓库子目录）"
+            if len(rows) > 1 else "")
+    return wrap_untrusted("\n".join(lines)) + note

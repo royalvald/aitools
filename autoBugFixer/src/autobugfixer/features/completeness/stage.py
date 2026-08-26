@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from autobugfixer.common.prompts import load_prompt, prompt_version
+from autobugfixer.common.prompts import prompt_version, render_prompt
 from autobugfixer.features.ingest.repo_check import (
     has_available_repo,
     load_bug_repos,
@@ -44,8 +44,8 @@ class CompletenessStage:
         if missing:
             return self._need_supplement(ctx, missing, rule_based=True)
         # 2) LLM 评估：文本质量与可修复性
-        prompt = load_prompt("completeness").format(bug_block=build_bug_block(ctx))
-        result = ctx.llm.analyze(prompt, CompletenessEval,
+        system, user = render_prompt("completeness", bug_block=build_bug_block(ctx))
+        result = ctx.llm.analyze(user, CompletenessEval, system=system,
                                  task_id=ctx.task.id, stage=self.name, session=ctx.session)
         assert isinstance(result, CompletenessEval)
         ctx.audit.log(action="llm_call", target=f"task:{ctx.task.id}",

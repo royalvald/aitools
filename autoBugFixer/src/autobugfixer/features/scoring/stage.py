@@ -15,13 +15,14 @@ import json
 from sqlalchemy import select
 
 from autobugfixer.common.core.models import BugRepo, StrategyVersion, VerificationPlan
-from autobugfixer.common.prompts import load_prompt, prompt_version
+from autobugfixer.common.prompts import prompt_version, render_prompt
 from autobugfixer.common.prompts.rubric import load_rubric
 from autobugfixer.features.scoring.schemas import CodeEvidence, JudgmentForm, ScoreOutput
 from autobugfixer.features.scoring.v2 import CODE_EVIDENCE_TYPES, map_judgment, search_repos, extract_keywords
 from autobugfixer.common.core.stage import StageResult, TaskContext
 from autobugfixer.common.core.state import TaskState
 from autobugfixer.common.core.bugtext import build_bug_block
+from autobugfixer.common.security.injection import detect_injection, wrap_untrusted
 
 WEIGHT_VERSION = "v1"  # v1 权重配置版本，评分解释留痕用
 WEIGHT_VERSION_V2 = "v2"  # v2 四维权重配置版本
@@ -43,9 +44,10 @@ class ScoringStage:
     def _run_v1(self, ctx: TaskContext) -> StageResult:
         """LLM 三维评分后按策略权重合成（Spec 04 §3 as-built 行为）。"""
         plan_summary = self._plan_summary(ctx)
-        prompt = load_prompt("scoring").format(
+        system, user = render_prompt(
+            "scoring",
             bug_block=build_bug_block(ctx), plan_summary=plan_summary or "见验证方案")
-        result = ctx.llm.analyze(prompt, ScoreOutput,
+        result = ctx.llm.analyze(user, ScoreOutput, system=system,
                                  task_id=ctx.task.id, stage=self.name, session=ctx.session)
         assert isinstance(result, ScoreOutput)
 
@@ -85,12 +87,13 @@ class ScoringStage:
         """AI 按评价标准逐项判定，本地映射器产出四维分（LLM 不产出分数）。"""
         rubric = load_rubric()
         plan = self._latest_plan(ctx)
-        prompt = load_prompt("scoring_v2").format(
+        system, user = render_prompt(
+            "scoring_v2",
             bug_block=build_bug_block(ctx),
             fix_approach_block=self._fix_approach_block(plan),
             rubric_version=rubric.version,
             rubric_block=rubric.source_text)
-        form = ctx.llm.analyze(prompt, JudgmentForm,
+        form = ctx.llm.analyze(user, JudgmentForm, system=system,
                                task_id=ctx.task.id, stage=self.name, session=ctx.session)
         assert isinstance(form, JudgmentForm)
         ctx.audit.log(action="llm_call", target=f"task:{ctx.task.id}",
@@ -145,10 +148,18 @@ class ScoringStage:
             BugRepo.bug_ticket_id == ctx.bug.id).order_by(BugRepo.seq)).all())
         keywords = extract_keywords(ctx.bug.title, ctx.bug.description, form.type_evidence)
         snippets = search_repos([l.repo for l in repo_rows], keywords)
-        prompt = load_prompt("code_evidence").format(
+        # 仓库代码原文与 Bug 单同级外部数据（11.2 输入侧）：统一包裹边界 + 注入检测留痕
+        snippet_text = "\n".join(snippets)
+        report = detect_injection(snippet_text)
+        if report.flagged:
+            ctx.audit.log(action="injection_detected", target=f"task:{ctx.task.id}",
+                          detail={"source": "code_search",
+                                  "matched": report.matched_patterns}, task_id=ctx.task.id)
+        system, user = render_prompt(
+            "code_evidence",
             bug_block=build_bug_block(ctx),
-            snippets="\n".join(snippets) or "(未检索到相关片段)")
-        result = ctx.llm.analyze(prompt, CodeEvidence,
+            snippets=wrap_untrusted(snippet_text) if snippet_text else "(未检索到相关片段)")
+        result = ctx.llm.analyze(user, CodeEvidence, system=system,
                                  task_id=ctx.task.id, stage=self.name, session=ctx.session)
         assert isinstance(result, CodeEvidence)
         ctx.audit.log(action="code_evidence", target=f"task:{ctx.task.id}",

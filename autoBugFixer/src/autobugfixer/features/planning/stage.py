@@ -11,7 +11,7 @@ from __future__ import annotations
 from sqlalchemy import select
 
 from autobugfixer.common.core.models import VerificationPlan
-from autobugfixer.common.prompts import load_prompt, prompt_version
+from autobugfixer.common.prompts import prompt_version, render_prompt
 from autobugfixer.features.knowledge.skill import SkillService, render_skill_library
 from autobugfixer.common.dsl import DSL_VERSION
 from autobugfixer.features.planning.schemas import PlanOutput
@@ -31,12 +31,14 @@ class PlanningStage:
         skills = SkillService(ctx.session).list_active()
         # 关联仓库（Spec 02 §9 v2）：全局登记表画像 + 本 Bug 相关性注入定位线索
         repo_profiles = render_repo_profiles(ctx.session, ctx.bug.id) or "（无关联仓库画像）"
-        prompt = load_prompt("planning").format(
+        system, user = render_prompt(
+            "planning",
             bug_block=build_bug_block(ctx),
             repo_profiles=repo_profiles,
             skill_library=render_skill_library(skills))
-        # DSL 以 JSON Schema 约束输出，校验失败由 Gateway 自动重试（11.4）
-        result = ctx.llm.analyze(prompt, PlanOutput,
+        # DSL 以 JSON Schema 约束输出，校验失败由 Gateway 附错误反馈重试（11.4）；
+        # 方案含多步骤与技能提议，输出上限放宽到 8192 防 JSON 截断
+        result = ctx.llm.analyze(user, PlanOutput, system=system, max_tokens=8192,
                                  task_id=ctx.task.id, stage=self.name, session=ctx.session)
         assert isinstance(result, PlanOutput)
 

@@ -78,13 +78,18 @@ def _steps_match_template(steps: list[dict], template: list[dict]) -> bool:
 
 
 def render_skill_library(skills: list[VerificationSkill]) -> str:
-    """渲染 {skill_library} 动态段（名称/参数签名/描述 + 步骤模板）。"""
+    """渲染 {skill_library} 动态段（名称/参数签名/描述 + 步骤模板）。
+
+    技能为 LLM 提议 + 人工确认的二阶外部数据（11.2 输入侧）：条目包裹边界。
+    """
     if not skills:
         return "(暂无可用技能)"
     import json
+
+    from autobugfixer.common.security.injection import wrap_untrusted
 
     lines = []
     for skill in skills:
         lines.append(f"- {skill.name}({skill.params_signature}): {skill.desc}")
         lines.append(f"  步骤模板: {json.dumps(skill.template_steps, ensure_ascii=False)}")
-    return "\n".join(lines)
+    return wrap_untrusted("\n".join(lines))

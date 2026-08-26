@@ -239,8 +239,9 @@ def test_v2_code_evidence_prompt_includes_repo_snippet(make_orchestrator, sessio
     prompts: list[str] = []
 
     class RecordingLLM:
-        def analyze(self, prompt, schema, *, task_id, stage, session=None):
-            prompts.append(prompt)
+        def analyze(self, prompt, schema, *, task_id, stage, session=None, system=None, max_tokens=None):
+            # system/user 分通道后仍按整体录制（模板标题在 system 段，断言依赖全文）
+            prompts.append((system or "") + "\n" + prompt)
             if schema.__name__ == "JudgmentForm":
                 return JudgmentForm(bug_type="cross_module",
                                     type_evidence="契约不一致",
@@ -295,3 +296,6 @@ def test_v2_code_evidence_prompt_includes_repo_snippet(make_orchestrator, sessio
     evidence_prompts = [p for p in prompts if "# 代码实证" in p]
     assert evidence_prompts, "复杂类型必须触发代码实证第二次调用"
     assert "health.py" in evidence_prompts[0]  # 只读检索片段注入 prompt
+    # 仓库代码原文为外部数据（11.2）：片段统一包裹 untrusted 边界后注入
+    assert "<untrusted_bug_data>" in evidence_prompts[0]
+    assert "health.py" in evidence_prompts[0].split("<untrusted_bug_data>", 1)[1]

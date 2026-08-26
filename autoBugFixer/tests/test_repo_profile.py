@@ -173,8 +173,9 @@ def test_single_declared_repo_skips_match_call(
 def _recording_llm(prompts, matches):
     """按 Schema 路由的录制 LLM：匹配调用返回给定 matches，其余给可通过应答。"""
     class RecordingLLM:
-        def analyze(self, prompt, schema, *, task_id, stage, session=None):
-            prompts.append(prompt)
+        def analyze(self, prompt, schema, *, task_id, stage, session=None, system=None, max_tokens=None):
+            # system/user 分通道后仍按整体录制（模板标题在 system 段，断言依赖全文）
+            prompts.append((system or "") + "\n" + prompt)
             name = schema.__name__
             if name == "CompletenessEval":
                 from autobugfixer.features.completeness.schemas import CompletenessEval
