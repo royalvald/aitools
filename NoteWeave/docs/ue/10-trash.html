@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>UE-10 回收站</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<div class="wf-title">UE-10 回收站 TrashPanel</div>
+<div class="wf-desc">从 NavRail 进入。删除的小记/文档/知识库在此保留，可还原或彻底删除。<a class="back" href="index.html">← 返回索引</a></div>
+
+<div class="wf-screen">
+  <div class="row grow" style="gap:0">
+    <div class="navrail">
+      <div class="nav-item">🧶<small>织记</small></div>
+      <div class="nav-item">🏠<small>工作台</small></div>
+      <div class="nav-item">📚<small>知识库</small></div>
+      <div class="nav-item">🔍<small>搜索</small></div>
+      <div class="nav-item">🗂<small>资源</small></div>
+      <div class="nav-item active">🗑<small>回收站</small></div>
+      <div class="spacer"></div>
+      <div class="nav-item">🌗<small>主题</small></div>
+      <div class="nav-item">⚙<small>设置</small></div>
+    </div>
+    <div class="grow col" style="gap:0">
+      <div class="topbar">
+        <span class="crumb"><b>回收站</b></span>
+        <span class="grow"></span>
+        <span class="input" style="width:200px">🔍 筛选已删内容…</span>
+        <span class="btn ghost" style="color:#c0392b">清空回收站</span>
+      </div>
+      <div class="grow col" style="padding:20px 36px">
+        <div class="box solid row" style="align-items:center">
+          <span style="font-size:16px">📝</span>
+          <span class="grow">旧版周报草稿 <span class="meta" style="color:#999;font-size:11px">小记 · 删除于 06-10 15:02</span></span>
+          <span class="btn">还原</span>
+          <span class="btn ghost" style="color:#c0392b">彻底删除</span>
+        </div>
+        <div class="box solid row" style="align-items:center">
+          <span style="font-size:16px">📄</span>
+          <span class="grow">v1.0 复盘（已过时）<span class="meta" style="color:#999;font-size:11px">文档 · 产品方案 · 删除于 06-08 09:41</span></span>
+          <span class="btn">还原</span>
+          <span class="btn ghost" style="color:#c0392b">彻底删除</span>
+        </div>
+        <div class="box solid row" style="align-items:center">
+          <span style="font-size:16px">📗</span>
+          <span class="grow">试验性知识库 <span class="meta" style="color:#999;font-size:11px">知识库 · 含 5 篇文档 · 删除于 06-01 18:20</span></span>
+          <span class="btn">还原</span>
+          <span class="btn ghost" style="color:#c0392b">彻底删除</span>
+        </div>
+        <div class="box center" style="margin-top:8px; color:#999">
+          空态：「回收站是空的」· 删除的内容会先放在这里，可随时还原。
+        </div>
+      </div>
+      <div class="statusbar"><span>3 项已删除内容</span><span class="grow"></span><span>本地数据已就绪</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="annotation-list">
+  <b>交互说明</b>
+  <ol>
+    <li>「还原」：恢复到原位置（小记→原分组、文档→原知识库目录树位置），关联关系一并恢复。</li>
+    <li>「彻底删除 / 清空回收站」：二次确认对话框（红色危险按钮），级联清理 sidecar 文件（批注/评论/白板/思维导图）、独占资产与反向关联，不可恢复。</li>
+    <li>列表按删除时间倒序；类型以图标区分（小记 / 文档 / 知识库）。</li>
+  </ol>
+</div>
+</body>
+</html>

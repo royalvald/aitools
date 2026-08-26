@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>UE-02 知识库首页</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<div class="wf-title">UE-02 知识库首页 KbGridPage</div>
+<div class="wf-desc">知识库卡片网格。新建 / 挂载外部库入口在右上。<a class="back" href="index.html">← 返回索引</a></div>
+
+<div class="wf-screen">
+  <div class="row grow" style="gap:0">
+    <div class="navrail">
+      <div class="nav-item">🧶<small>织记</small></div>
+      <div class="nav-item">🏠<small>工作台</small></div>
+      <div class="nav-item active">📚<small>知识库</small></div>
+      <div class="nav-item">🔍<small>搜索</small></div>
+      <div class="nav-item">🗂<small>资源</small></div>
+      <div class="nav-item">🗑<small>回收站</small></div>
+      <div class="spacer"></div>
+      <div class="nav-item">🌗<small>主题</small></div>
+      <div class="nav-item">⚙<small>设置</small></div>
+    </div>
+    <div class="grow col" style="gap:0">
+      <div class="topbar">
+        <span class="crumb"><b>知识库</b></span>
+        <span class="grow"></span>
+        <span class="btn ghost">⛓ 挂载外部库</span>
+        <span class="btn primary">＋ 新建知识库</span>
+      </div>
+      <div class="grow" style="padding:28px 36px">
+        <div class="row" style="flex-wrap:wrap; gap:16px">
+          <div class="card" style="width:240px;height:132px">
+            <div class="icon">📗</div><div class="name">产品方案</div>
+            <div class="meta">12 篇文档 · 更新于 10:24</div>
+          </div>
+          <div class="card" style="width:240px;height:132px">
+            <div class="icon">📘</div><div class="name">技术学习</div>
+            <div class="meta">34 篇文档 · 更新于 昨天</div>
+          </div>
+          <div class="card" style="width:240px;height:132px; position:relative">
+            <span class="chip" style="position:absolute;top:8px;right:8px">只读<span class="note-tag">外部库角标</span></span>
+            <div class="icon">📙</div><div class="name">团队共享盘</div>
+            <div class="meta">外部 · /Volumes/share/docs</div>
+          </div>
+          <div class="card new" style="width:240px;height:132px">＋ 新建知识库</div>
+        </div>
+        <div class="box" style="margin-top:24px; color:#999">
+          空态（无任何知识库时）：插画 + 「知识库用于沉淀成体系的文档」+ [新建知识库] [挂载外部库]
+        </div>
+      </div>
+      <div class="statusbar"><span>共 3 个知识库</span><span class="grow"></span><span>本地数据已就绪</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="annotation-list">
+  <b>交互说明</b>
+  <ol>
+    <li>卡片悬停浮现操作菜单：重命名 / 批量导出（ExportKbDialog）/ 删除。</li>
+    <li>删除知识库 → 确认对话框，文案说明级联清理（文档、批注、评论、白板、关联、资产）→ 删除后入回收站可还原。</li>
+    <li>外部知识库卡片带「只读」角标，进入后编辑类入口禁用；外部库内容变更经 <code>externalKb:changed</code> 通知刷新。</li>
+    <li>点击卡片 → 进入 KbDetail（UE-03）。</li>
+  </ol>
+</div>
+</body>
+</html>

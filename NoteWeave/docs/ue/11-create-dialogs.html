@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>UE-11 新建系列对话框</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<div class="wf-title">UE-11 新建系列对话框（新建小记 / 知识库 / 文档 / 待办 / 分组）</div>
+<div class="wf-desc">五类「新建」入口统一弹出的模态对话框集合，一屏并列展示。<a class="back" href="index.html">← 返回索引</a></div>
+
+<div class="wf-screen" style="min-height:auto; padding:20px">
+  <div class="row" style="align-items:flex-start; flex-wrap:wrap; gap:16px; justify-content:center">
+
+    <!-- 新建小记 -->
+    <div class="dialog" style="width:340px; position:relative; box-shadow:none">
+      <div style="font-size:14px;font-weight:600;margin-bottom:10px">新建小记<span class="note-tag">默认模板：空白</span></div>
+      <div class="col">
+        <div>
+          <div class="label">标题</div>
+          <div class="input" style="width:100%">输入小记标题…</div>
+        </div>
+        <div>
+          <div class="label">分组</div>
+          <div class="input" style="width:100%">📁 工作 ▾</div>
+        </div>
+        <div>
+          <div class="label">模板</div>
+          <div class="row">
+            <span class="chip" style="border:2px solid #333;font-weight:600">空白</span>
+            <span class="chip">会议纪要</span>
+            <span class="chip">读书笔记</span>
+          </div>
+        </div>
+        <div class="row" style="justify-content:flex-end; margin-top:6px">
+          <span class="btn">取消</span>
+          <span class="btn primary">创建</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 新建知识库 -->
+    <div class="dialog" style="width:340px; box-shadow:none">
+      <div style="font-size:14px;font-weight:600;margin-bottom:10px">新建知识库</div>
+      <div class="col">
+        <div>
+          <div class="label">名称</div>
+          <div class="input" style="width:100%">输入知识库名称…</div>
+        </div>
+        <div>
+          <div class="label">分类</div>
+          <div class="input" style="width:100%">输入分类（如：产品 / 技术）…</div>
+        </div>
+        <div class="row" style="justify-content:flex-end; margin-top:6px">
+          <span class="btn">取消</span>
+          <span class="btn primary">创建</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 新建文档 -->
+    <div class="dialog" style="width:340px; box-shadow:none">
+      <div style="font-size:14px;font-weight:600;margin-bottom:10px">新建文档<span class="note-tag">支持层级父级</span></div>
+      <div class="col">
+        <div>
+          <div class="label">所属知识库</div>
+          <div class="input" style="width:100%">📗 产品方案 ▾</div>
+        </div>
+        <div>
+          <div class="label">父级文档</div>
+          <div class="input" style="width:100%">需求管理 ▾（可选，支持层级）</div>
+        </div>
+        <div>
+          <div class="label">名称</div>
+          <div class="input" style="width:100%">输入文档名称…</div>
+        </div>
+        <div>
+          <div class="label">类型</div>
+          <div class="row">
+            <span class="chip" style="border:2px solid #333;font-weight:600">◉ Markdown</span>
+            <span class="chip">○ 思维导图</span>
+          </div>
+        </div>
+        <div>
+          <div class="label">模板</div>
+          <div class="input" style="width:100%">空白文档 ▾</div>
+        </div>
+        <div class="row" style="justify-content:flex-end; margin-top:6px">
+          <span class="btn">取消</span>
+          <span class="btn primary">创建</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 新建待办 -->
+    <div class="dialog" style="width:340px; box-shadow:none">
+      <div style="font-size:14px;font-weight:600;margin-bottom:10px">新建待办</div>
+      <div class="col">
+        <div>
+          <div class="label">标题</div>
+          <div class="input" style="width:100%">输入待办标题…</div>
+        </div>
+        <div>
+          <div class="label">优先级</div>
+          <div class="row">
+            <span class="chip" style="border:2px solid #333;font-weight:600">◉ 高</span>
+            <span class="chip">○ 中</span>
+            <span class="chip">○ 低</span>
+          </div>
+        </div>
+        <div>
+          <div class="label">截止时间</div>
+          <div class="input" style="width:100%">📅 选择日期…</div>
+        </div>
+        <div>
+          <div class="label">关联目标<span class="note-tag">可选</span></div>
+          <div class="input" style="width:100%">选择小记 / 文档（可选）…</div>
+        </div>
+        <div class="row" style="justify-content:flex-end; margin-top:6px">
+          <span class="btn">取消</span>
+          <span class="btn primary">创建</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 新建分组 -->
+    <div class="dialog" style="width:340px; box-shadow:none">
+      <div style="font-size:14px;font-weight:600;margin-bottom:10px">新建分组</div>
+      <div class="col">
+        <div>
+          <div class="label">名称</div>
+          <div class="input" style="width:100%">输入分组名称…</div>
+        </div>
+        <div>
+          <div class="label">父分组</div>
+          <div class="input" style="width:100%">📁 学习 ▾（可选，作为子分组）</div>
+        </div>
+        <div class="row" style="justify-content:flex-end; margin-top:6px">
+          <span class="btn">取消</span>
+          <span class="btn primary">创建</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="annotation-list">
+  <b>交互说明</b>
+  <ol>
+    <li>空小记标题自动存为「无标题」，空文档名自动存为「未命名文档」，不阻断创建流程。</li>
+    <li>创建成功后直接进入对应详情 / 编辑器：小记→NoteDetail，文档→KbDocEditor，待办→TodoList 高亮新条目。</li>
+    <li>「新建文档」的父级文档下拉按层级缩进展示，选中后作为子文档挂载（REQ-006）；思维导图类型进入 MindmapEditor。</li>
+    <li>「新建待办」的关联目标可选小记或文档，保存后出现在对方「关联与反链」抽屉中。</li>
+    <li>「新建分组」的父分组下拉支持多级嵌套；取消或点击遮罩直接关闭，不产生数据。</li>
+  </ol>
+</div>
+</body>
+</html>

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>UE-15 模板选择 TemplatePickerDialog</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<div class="wf-title">UE-15 模板选择 TemplatePickerDialog</div>
+<div class="wf-desc">新建小记/文档时选模板，或编辑器内「⋯→从模板新建」弹出的模板选择对话框。<a class="back" href="index.html">← 返回索引</a></div>
+
+<div class="wf-screen rel">
+  <!-- 底层页面压暗 -->
+  <div style="filter:brightness(.8)">
+    <div class="topbar">
+      <span class="crumb">📗 产品方案 / 需求管理 / <b>需求池整理</b></span>
+      <span class="grow"></span>
+      <span class="btn">▤ 大纲</span>
+      <span class="btn">💬 讨论</span>
+      <span class="btn">🔗 关联</span>
+      <span class="btn">🕘 历史</span>
+      <span class="btn">⋯<span class="note-tag">从模板新建入口</span></span>
+      <span class="btn primary" style="background:#2e7d32;border-color:#2e7d32">✓ 完成</span>
+    </div>
+    <div style="padding:20px 40px">
+      <div style="font-size:20px;font-weight:700;margin-bottom:10px">需求池整理</div>
+      <div class="text-line w90"></div>
+      <div class="text-line w80"></div>
+      <div class="text-line w60"></div>
+    </div>
+    <div class="statusbar"><span>1,036 字</span><span class="grow"></span><span>已保存 10:24</span><span>富文本</span></div>
+  </div>
+
+  <!-- 前景对话框 -->
+  <div class="overlay-mask">
+    <div class="dialog" style="width:760px">
+      <div class="row" style="align-items:center; margin-bottom:12px">
+        <b style="font-size:15px">从模板新建</b>
+        <span class="note-tag">新建小记/文档时弹出；编辑器「⋯→从模板新建」亦可触发</span>
+        <span class="grow"></span>
+        <span class="btn ghost">✕</span>
+      </div>
+      <div class="row grow" style="align-items:stretch; gap:12px">
+        <!-- 左侧分类 -->
+        <div class="col" style="width:140px; border-right:1px solid #eee; padding-right:8px">
+          <span class="chip" style="border:2px solid #333;font-weight:600">全部</span>
+          <span class="chip">会议</span>
+          <span class="chip">笔记</span>
+          <span class="chip">项目管理</span>
+          <span class="chip">自定义</span>
+        </div>
+        <!-- 右侧模板卡片网格 -->
+        <div class="grow">
+          <div class="row" style="flex-wrap:wrap; gap:12px">
+            <div class="card" style="width:180px; height:130px">
+              <div class="name">会议纪要</div>
+              <div class="text-line w80" style="margin:2px 0"></div>
+              <div class="text-line w60" style="margin:2px 0"></div>
+              <div class="meta"><span class="btn primary" style="padding:2px 10px;font-size:11px">使用</span></div>
+            </div>
+            <div class="card" style="width:180px; height:130px">
+              <div class="name">周报</div>
+              <div class="text-line w80" style="margin:2px 0"></div>
+              <div class="text-line w60" style="margin:2px 0"></div>
+              <div class="meta"><span class="btn primary" style="padding:2px 10px;font-size:11px">使用</span></div>
+            </div>
+            <div class="card" style="width:180px; height:130px">
+              <div class="name">读书笔记</div>
+              <div class="text-line w80" style="margin:2px 0"></div>
+              <div class="text-line w60" style="margin:2px 0"></div>
+              <div class="meta"><span class="btn primary" style="padding:2px 10px;font-size:11px">使用</span></div>
+            </div>
+            <div class="card" style="width:180px; height:130px">
+              <div class="name">康奈尔笔记</div>
+              <div class="text-line w80" style="margin:2px 0"></div>
+              <div class="text-line w60" style="margin:2px 0"></div>
+              <div class="meta"><span class="btn primary" style="padding:2px 10px;font-size:11px">使用</span></div>
+            </div>
+            <div class="card" style="width:180px; height:130px">
+              <div class="name">项目复盘</div>
+              <div class="text-line w80" style="margin:2px 0"></div>
+              <div class="text-line w60" style="margin:2px 0"></div>
+              <div class="meta"><span class="btn primary" style="padding:2px 10px;font-size:11px">使用</span></div>
+            </div>
+            <div class="card new" style="width:180px; height:130px">
+              <span style="font-size:13px">空白<br>（不使用模板）</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- 底部入口 -->
+      <div class="row" style="margin-top:12px; border-top:1px solid #eee; padding-top:10px">
+        <span class="btn ghost">＋ 将当前文档保存为模板</span>
+        <span class="btn ghost">🗂 管理模板（templates/ 目录）</span>
+        <span class="grow"></span>
+        <span class="btn">取消</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="annotation-list">
+  <b>交互说明</b>
+  <ol>
+    <li>模板以 Markdown 文件形式存于 userData/templates/ 目录，「管理模板」直接打开该目录。</li>
+    <li>点击模板卡片「使用」后直接以模板内容创建新文档并进入编辑器，无二次确认。</li>
+    <li>左侧分类为虚拟分组（按模板 front-matter 的 category 字段），「自定义」显示用户自存模板。</li>
+    <li>「将当前文档保存为模板」会把当前正文另存为 templates/ 下的新模板文件，自动归入「自定义」。</li>
+    <li>「空白」卡片跳过模板，等价于普通新建流程。</li>
+  </ol>
+</div>
+</body>
+</html>

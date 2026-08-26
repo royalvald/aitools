@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>UE-05 KB 文档编辑器</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<div class="wf-title">UE-05 KB 文档编辑器 KbDocEditor（编辑态 + 讨论面板）</div>
+<div class="wf-desc">编辑态：档位切换 + 选区气泡 + 右侧讨论面板（批注+评论）+ 底部关联抽屉。<a class="back" href="index.html">← 返回索引</a></div>
+
+<div class="wf-screen">
+  <div class="col grow" style="gap:0">
+    <div class="topbar">
+      <span class="crumb">📗 产品方案 / 需求管理 / <b>需求池整理</b></span>
+      <span class="grow"></span>
+      <span class="btn">▤ 大纲</span>
+      <span class="btn primary">💬 讨论<span class="badge" style="background:#fff;color:#333">2</span></span>
+      <span class="btn">🔗 关联</span>
+      <span class="btn">🕘 历史</span>
+      <span class="btn">⋯</span>
+      <span class="btn primary" style="background:#2e7d32;border-color:#2e7d32">✓ 完成</span>
+    </div>
+    <div class="row grow" style="gap:0">
+      <!-- 编辑区 -->
+      <div class="grow col" style="gap:0">
+        <div class="row" style="padding:8px 24px; border-bottom:1px solid #eee; align-items:center">
+          <span class="chip" style="border:2px solid #333;font-weight:600">富文本</span>
+          <span class="chip">Markdown</span>
+          <span class="note-tag">档位切换</span>
+          <span class="grow"></span>
+          <span class="btn ghost">🔍 查找替换 Ctrl+F</span>
+        </div>
+        <div class="grow" style="padding:20px 40px">
+          <div style="font-size:20px;font-weight:700;margin-bottom:10px">需求池整理</div>
+          <div class="text-line w90"></div>
+          <div class="box" style="margin:10px 0; background:#fff">
+            本季度共收集 <b>47</b> 条需求，其中 <span class="hl">高优先级 12 条<span class="note-tag">选区气泡：B I S 高亮 代码 🔗</span></span> 需在 v2.0 完成…
+          </div>
+          <div class="text-line w80"></div>
+          <div class="text-line w60"></div>
+          <div class="box" style="margin-top:10px">/ 斜杠菜单（SlashMenu）：标题 / 表格 / 代码块 / Mermaid / 公式…</div>
+        </div>
+        <!-- 底部关联抽屉 -->
+        <div style="border-top:1px solid #ddd; background:#fafafa; padding:10px 24px" class="col">
+          <div class="row" style="align-items:center">
+            <b style="font-size:12px">▾ 关联与反链</b>
+            <span class="note-tag">底部抽屉，可收起</span>
+          </div>
+          <div class="row">
+            <span class="chip">📝 会议纪要 0612 ✕</span>
+            <span class="btn ghost" style="padding:1px 10px;font-size:11px">＋ 关联小记</span>
+            <span style="font-size:11px;color:#999;margin-left:8px">反链：被「周会汇总」@提及 1 次</span>
+          </div>
+        </div>
+        <div class="statusbar"><span>1,036 字</span><span>已选 12 字</span><span class="grow"></span><span style="color:#c0392b">● 保存中…</span><span>富文本</span></div>
+      </div>
+      <!-- 讨论面板 -->
+      <div class="col" style="width:300px; border-left:1px solid #ddd; background:#fcfcfc; padding:12px">
+        <div class="label">批注（按选区偏移记录）<span class="note-tag">即时保存</span></div>
+        <div class="annot">
+          <b>高优先级 12 条</b>
+          <div style="margin:4px 0">需要再拆一轮，部分可降级到 v2.1。</div>
+          <div style="font-size:11px;color:#999">回复(1) · 解决 · 删除</div>
+        </div>
+        <div class="annot invalid">
+          <b>（原文已变更）</b>
+          <div style="margin:4px 0">这条批注定位失效…</div>
+          <div style="font-size:11px">失效 · 清理</div>
+        </div>
+        <div class="label" style="margin-top:10px">评论（顶层=问题，回复=回答）</div>
+        <div class="box solid">
+          <b style="font-size:12px">Q：需求来源渠道要补充吗？</b>
+          <div style="font-size:11px;color:#999;margin-top:4px">回答(2) · 输入回答…</div>
+        </div>
+        <div class="input">💬 提出一个文档问题…</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="annotation-list">
+  <b>交互说明</b>
+  <ol>
+    <li>自动保存 500ms 防抖，状态栏三态：未保存 → 保存中 → 已保存 HH:mm:ss（统一由 save-state 上报）。</li>
+    <li>批注按字符偏移记录；正文修改后按原文 text 重定位，失败标记失效（灰色）。</li>
+    <li>大纲 / 讨论 / 历史抽屉互斥展开；「⋯」含导出多格式、版本历史对比、Lint 面板、锁定、删除。</li>
+    <li>图片右键支持 OCR 文字识别搜索；@ 触发 MentionSelector 提及其他小记/文档形成反链。</li>
+  </ol>
+</div>
+</body>
+</html>

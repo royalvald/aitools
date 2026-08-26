@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>UE-01 工作台 Dashboard</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<div class="wf-title">UE-01 工作台 Dashboard</div>
+<div class="wf-desc">默认首页。问候语 + 快捷新建 + 四 Tab（最近访问 / 收藏 / 小记 / 待办）。<a class="back" href="index.html">← 返回索引</a></div>
+
+<div class="wf-screen">
+  <div class="row grow" style="gap:0">
+    <!-- 导航栏 -->
+    <div class="navrail">
+      <div class="nav-item">🧶<small>织记</small></div>
+      <div class="nav-item active">🏠<small>工作台</small></div>
+      <div class="nav-item">📚<small>知识库</small></div>
+      <div class="nav-item">🔍<small>搜索</small></div>
+      <div class="nav-item">🗂<small>资源</small></div>
+      <div class="nav-item">🗑<small>回收站</small></div>
+      <div class="spacer"></div>
+      <div class="nav-item">🌗<small>主题</small></div>
+      <div class="nav-item">⚙<small>设置</small></div>
+    </div>
+    <!-- 主区 -->
+    <div class="grow col" style="gap:0">
+      <div class="topbar"><span class="crumb"><b>工作台</b></span></div>
+      <div class="grow col" style="padding:28px 36px; gap:18px">
+        <div>
+          <div style="font-size:22px;font-weight:600">下午好，👋</div>
+          <div style="font-size:12px;color:#999;margin-top:4px">今天也要好好记录呀<span class="note-tag">问候语按时段变化</span></div>
+        </div>
+        <div class="row">
+          <span class="btn primary">📝 新建小记</span>
+          <span class="btn primary">📚 新建知识库</span>
+          <span class="btn primary">📄 新建文档</span>
+          <span class="btn primary">✅ 新建待办</span>
+          <span class="note-tag" style="align-self:center">最高视觉权重 · 快捷新建</span>
+        </div>
+        <div class="col grow box" style="padding:0; background:#fff">
+          <div class="tabs" style="padding:0 12px">
+            <div class="tab active">最近访问</div>
+            <div class="tab">收藏</div>
+            <div class="tab">小记</div>
+            <div class="tab">待办<span class="badge">3</span><span class="note-tag">未完成数徽标</span></div>
+          </div>
+          <div style="padding:16px" class="col">
+            <div class="label">📌 固定（卡片网格，悬停可取消固定）</div>
+            <div class="row">
+              <div class="card"><div class="icon">📝</div><div class="name">周报思路</div><div class="meta">小记 · 更新于 10:24</div></div>
+              <div class="card"><div class="icon">📄</div><div class="name">产品路线图</div><div class="meta">文档 · 产品方案库</div></div>
+              <div class="card"><div class="icon">📝</div><div class="name">读书笔记</div><div class="meta">小记 · 昨天</div></div>
+            </div>
+            <div class="label" style="margin-top:8px">🕘 最近（按访问时间倒序）</div>
+            <div class="box solid row" style="justify-content:space-between"><span>📝 会议纪要 0612</span><span class="meta">10:24</span></div>
+            <div class="box solid row" style="justify-content:space-between"><span>📄 需求池整理</span><span class="meta">昨天</span></div>
+            <div class="box solid row" style="justify-content:space-between"><span>📝 灵感速记</span><span class="meta">周一</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="statusbar"><span>织记 v1.0.0</span><span class="grow"></span><span>本地数据已就绪</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="annotation-list">
+  <b>交互说明</b>
+  <ol>
+    <li>「小记」Tab 内嵌标签筛选条（TagFilterBar）；「收藏」Tab 空态引导：「在小记或文档上点击星标，即可加入收藏」。</li>
+    <li>点击小记 → 覆盖层打开 NoteDetail（UE-04）；点击知识库 → 进入 KbDetail（UE-03），NavRail 高亮切换到「知识库」。</li>
+    <li>待办 Tab 支持勾选完成、点击进入 TodoEditorDialog；待办数据为独立模块。</li>
+  </ol>
+</div>
+</body>
+</html>

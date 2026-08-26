@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>UE-24 待办 TodoPanel + TodoEditorDialog</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<div class="wf-title">UE-24 待办 TodoPanel + TodoEditorDialog</div>
+<div class="wf-desc">上部待办面板（分组 + 优先级 + 关联），下部待办编辑对话框。<a class="back" href="index.html">← 返回索引</a></div>
+
+<div class="wf-screen">
+  <div class="col" style="padding:20px 24px; gap:20px">
+
+    <!-- 上部：待办面板 -->
+    <div class="col" style="width:720px; gap:8px">
+      <div class="row" style="align-items:center">
+        <b style="font-size:14px">☑ 待办</b>
+        <span class="grow"></span>
+        <span class="btn primary">＋ 新建待办</span>
+      </div>
+      <!-- 今天 -->
+      <div class="label" style="margin-top:4px">今天</div>
+      <div class="box solid row" style="align-items:center; background:#fff">
+        <span>☐</span>
+        <span class="grow">完成评审意见</span>
+        <span class="chip" style="color:#c0392b; border-color:#c0392b">🔴 高</span>
+        <span style="font-size:11px;color:#888">17:00</span>
+        <span style="font-size:11px;color:#888">关联 📄 需求池整理</span>
+        <span style="font-size:11px;color:#bbb">✎ 编辑 · 🗑</span>
+      </div>
+      <div class="box solid row" style="align-items:center; background:#fff">
+        <span>☐</span>
+        <span class="grow">回复评论</span>
+        <span class="chip">🟡 中</span>
+        <span class="note-tag">悬停显示：编辑 / 删除</span>
+      </div>
+      <!-- 稍后 -->
+      <div class="label" style="margin-top:8px">稍后</div>
+      <div class="box solid row" style="align-items:center; background:#fff">
+        <span>☐</span>
+        <span class="grow">整理读书笔记</span>
+        <span class="chip">⚪ 低</span>
+        <span style="font-size:11px;color:#888">周五</span>
+      </div>
+      <!-- 已完成 -->
+      <div class="label" style="margin-top:8px">已完成</div>
+      <div class="box solid row" style="align-items:center; background:#fafafa; color:#999">
+        <span>☑</span>
+        <span class="grow" style="text-decoration:line-through; color:#aaa">发布 v1.0</span>
+        <span style="font-size:11px;color:#bbb">✎ · 🗑</span>
+      </div>
+    </div>
+
+    <!-- 下部：待办编辑对话框 -->
+    <div class="rel">
+      <div class="box" style="height:24px; margin:0; border:none; background:transparent; padding:0">
+        <div class="label">待办编辑对话框 TodoEditorDialog（约 520px）</div>
+      </div>
+      <div class="dialog" style="width:520px; margin:0">
+        <div class="row" style="align-items:center; margin-bottom:12px">
+          <b style="font-size:13px">编辑待办</b>
+          <span class="grow"></span>
+          <span class="btn ghost" style="padding:1px 8px">✕</span>
+        </div>
+        <div class="col" style="gap:10px">
+          <div>
+            <div class="label">标题</div>
+            <span class="input" style="display:block; color:#333">完成评审意见</span>
+          </div>
+          <div>
+            <div class="label">详情（支持 Markdown）</div>
+            <div class="box" style="background:#fafafa">
+              <div class="text-line w90"></div>
+              <div class="text-line w60"></div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="grow">
+              <div class="label">优先级</div>
+              <div class="row">
+                <span class="chip" style="border:2px solid #333; font-weight:600">高</span>
+                <span class="chip">中</span>
+                <span class="chip">低</span>
+              </div>
+            </div>
+            <div>
+              <div class="label">截止时间</div>
+              <span class="input" style="color:#333">今天 17:00 ▾</span>
+            </div>
+          </div>
+          <div>
+            <div class="label">关联目标</div>
+            <span class="input" style="display:inline-block; min-width:220px; color:#333">📄 文档 · 需求池整理 ▾</span>
+            <span style="font-size:11px;color:#999; margin-left:8px">可选：小记 / 文档</span>
+          </div>
+        </div>
+        <div class="row" style="margin-top:14px; justify-content:flex-end">
+          <span class="btn ghost">取消</span>
+          <span class="btn primary">保存</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="annotation-list">
+  <b>交互说明</b>
+  <ol>
+    <li>待办为独立数据模块（todo:* IPC），不依附于小记/文档存在；支持标题、详情（Markdown）、优先级、截止时间、关联目标。</li>
+    <li>Dashboard 待办 Tab 显示未完成数徽标；面板按「今天 / 稍后 / 已完成」分组，已完成项划线灰显。</li>
+    <li>行悬停显示「编辑 / 删除」快捷操作；点复选框即时切换完成状态。</li>
+    <li>关联目标可下拉选择小记或文档，从待办可一键跳转被关联对象。</li>
+    <li>支持从白板便签「转待办」（数据层能力），生成待办并自动关联来源。</li>
+  </ol>
+</div>
+</body>
+</html>

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>UE-19 查找替换 FindReplaceBar</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<div class="wf-title">UE-19 查找替换 FindReplaceBar（浮条展开态）</div>
+<div class="wf-desc">编辑器（富文本态）为背景，顶部浮条展开：查找 + 匹配计数 + 上/下导航 + 大小写/全词开关 + 替换行。<a class="back" href="index.html">← 返回索引</a></div>
+
+<div class="wf-screen">
+  <div class="col grow" style="gap:0">
+    <div class="topbar">
+      <span class="crumb">📗 产品方案 / 需求管理 / <b>需求池整理</b></span>
+      <span class="grow"></span>
+      <span class="chip" style="border:2px solid #333;font-weight:600">富文本</span>
+      <span class="chip">Markdown</span>
+      <span class="btn">🕘 历史</span>
+    </div>
+    <div class="grow col" style="gap:0">
+      <!-- 查找替换浮条（展开态） -->
+      <div class="box solid" style="margin:12px 40px 0; padding:8px 12px; background:#fff">
+        <div class="row" style="align-items:center">
+          <span class="input grow" style="color:#333">需求</span>
+          <span style="font-size:12px;color:#333;white-space:nowrap"><b>3/12</b><span class="note-tag">当前第 3 处</span></span>
+          <span class="btn" style="padding:2px 8px">↑</span>
+          <span class="btn" style="padding:2px 8px">↓</span>
+          <span class="chip" style="border:2px solid #333;font-weight:600">Aa</span>
+          <span class="chip">全词</span>
+          <span class="btn ghost" style="padding:2px 8px">展开替换 ▾</span>
+          <span class="note-tag">Ctrl+F 唤起 · Esc 关闭</span>
+        </div>
+        <div class="row" style="align-items:center; margin-top:8px">
+          <span class="input grow">替换为…</span>
+          <span class="btn">替换</span>
+          <span class="btn primary">全部替换</span>
+          <span class="btn ghost" style="padding:2px 8px">✕</span>
+        </div>
+      </div>
+      <!-- 正文（富文本编辑区，背景压暗衬托浮条） -->
+      <div class="grow" style="padding:20px 80px; filter:brightness(.92)">
+        <div style="font-size:20px;font-weight:700;margin-bottom:10px">需求池整理</div>
+        <div class="text-line w90"></div>
+        <div style="font-size:13px; line-height:2; color:#444">
+          本季度共收集 47 条<span class="hl">需求</span>，其中高优先级 12 条需在 v2.0 完成。产品侧对每条
+          <span class="hl">需求</span><span class="note-tag">当前</span>逐条评估了实现成本与收益…
+        </div>
+        <div class="text-line w80"></div>
+        <div style="font-size:13px; line-height:2; color:#444">
+          下周评审会前需确认所有 <span class="hl">需求</span> 的责任人，并同步到版本规划文档。
+        </div>
+        <div class="text-line w60"></div>
+      </div>
+      <div class="statusbar"><span>1,036 字</span><span class="grow"></span><span>● 已保存 14:32:08</span><span>富文本</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="annotation-list">
+  <b>交互说明</b>
+  <ol>
+    <li>Ctrl+F 唤起浮条（自动填入选中文本），Esc 关闭；阅读 / 富文本 / Markdown 三种模式行为一致。</li>
+    <li>匹配计数「N/M」实时更新；↑/↓ 或 Enter/Shift+Enter 在命中项间切换，当前项以深色描边强调。</li>
+    <li>富文本模式支持「第 N 处定位」：切换命中项时编辑区平滑滚动跳转并短暂闪烁提示。</li>
+    <li>「Aa」大小写开关与「全词」开关注入匹配逻辑（lib/find-replace.ts）；「展开替换 ▾」展开第二行替换输入。</li>
+    <li>「全部替换」弹出确认对话框（影响 N 处），确认后一次性完成并关闭确认框。</li>
+  </ol>
+</div>
+</body>
+</html>

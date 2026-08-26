@@ -26,6 +26,7 @@
 ## 文档
 
 - [技术设计文档](docs/DESIGN.md) — 架构、数据模型、组件设计、构建打包
+- [UE 设计文档](docs/UE_DESIGN.md) — 信息架构、页面线框图、用户流程、交互规范（低保真原型见 `docs/ue/`）
 - [用户使用手册](docs/USER_GUIDE.md) — 安装、小记/知识库/白板使用、Markdown 语法、备份迁移
 - [IPC API 文档](docs/IPC_API.md) — 主进程与渲染进程通信接口
 

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>UE-17 资源管理 AssetManagerPanel</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<div class="wf-title">UE-17 资源管理 AssetManagerPanel</div>
+<div class="wf-desc">整页资源管理：范围筛选 + 搜索 + 未引用清理，缩略图网格展示图片与引用关系。<a class="back" href="index.html">← 返回索引</a></div>
+
+<div class="wf-screen">
+  <div class="row grow" style="gap:0">
+    <!-- NavRail -->
+    <div class="navrail">
+      <div class="nav-item">🏠<small>工作台</small></div>
+      <div class="nav-item">📚<small>知识库</small></div>
+      <div class="nav-item spacer" style="height:0"></div>
+      <div class="nav-item">🔍<small>搜索</small></div>
+      <div class="nav-item">🗄<small>数据</small></div>
+      <div class="nav-item active">🖼<small>资源</small></div>
+      <div class="nav-item">🗑<small>回收站</small></div>
+      <div class="nav-item">🎨<small>主题</small></div>
+      <div class="nav-item">⚙️<small>设置</small></div>
+    </div>
+    <div class="col grow" style="gap:0">
+      <!-- 顶栏 -->
+      <div class="topbar">
+        <b style="font-size:15px">资源管理</b>
+        <span class="input">范围：全部 ▾<span class="note-tag">全部 / 按文档 / 按小记</span></span>
+        <span class="input grow" style="max-width:260px">🔍 搜索文件名…</span>
+        <span class="grow"></span>
+        <span class="btn" style="border-color:#c0392b;color:#c0392b">🧹 清理未引用资源</span>
+      </div>
+      <!-- 统计条 -->
+      <div style="padding:8px 16px; border-bottom:1px solid #eee; font-size:12px; color:#666; background:#fafafa">
+        共 86 个文件 · 42.3 MB · 未引用 7 个 <span class="note-tag">清理入口只删未引用项</span>
+      </div>
+      <!-- 缩略图网格 -->
+      <div class="grow" style="padding:16px; overflow:auto">
+        <div class="row" style="flex-wrap:wrap; gap:14px">
+          <div class="card" style="width:250px; height:170px">
+            <div class="box center grow" style="height:80px">🖼 缩略图</div>
+            <div class="name" style="font-size:12px">screenshot-0612.png</div>
+            <div style="font-size:11px;color:#999">248 KB</div>
+            <div class="row" style="align-items:center">
+              <span class="chip" style="border-color:#2e7d32;color:#2e7d32">被 需求池整理 引用</span>
+              <span class="grow"></span>
+            </div>
+            <div class="row">
+              <span class="btn ghost" style="padding:1px 8px;font-size:11px">复制引用链接</span>
+              <span class="btn ghost" style="padding:1px 8px;font-size:11px">在文件夹中显示</span>
+            </div>
+          </div>
+          <div class="card" style="width:250px; height:170px">
+            <div class="box center grow" style="height:80px">🖼 缩略图</div>
+            <div class="name" style="font-size:12px">架构图-v2.png</div>
+            <div style="font-size:11px;color:#999">512 KB</div>
+            <span class="chip" style="border-color:#2e7d32;color:#2e7d32">被 需求池整理 引用</span>
+            <div class="row">
+              <span class="btn ghost" style="padding:1px 8px;font-size:11px">复制引用链接</span>
+              <span class="btn ghost" style="padding:1px 8px;font-size:11px">在文件夹中显示</span>
+            </div>
+          </div>
+          <div class="card" style="width:250px; height:170px; border-style:dashed">
+            <div class="box center grow" style="height:80px">🖼 缩略图</div>
+            <div class="name" style="font-size:12px">旧-logo.png</div>
+            <div style="font-size:11px;color:#999">36 KB</div>
+            <span class="chip" style="border-color:#c0392b;color:#c0392b">未引用</span>
+            <div class="row">
+              <span class="btn ghost" style="padding:1px 8px;font-size:11px">复制引用链接</span>
+              <span class="btn ghost" style="padding:1px 8px;font-size:11px">在文件夹中显示</span>
+              <span class="btn" style="padding:1px 8px;font-size:11px;border-color:#c0392b;color:#c0392b">删除</span>
+            </div>
+          </div>
+          <div class="card" style="width:250px; height:170px">
+            <div class="box center grow" style="height:80px">🖼 缩略图</div>
+            <div class="name" style="font-size:12px">会议看板.jpg</div>
+            <div style="font-size:11px;color:#999">190 KB</div>
+            <span class="chip" style="border-color:#2e7d32;color:#2e7d32">被 需求池整理 引用</span>
+            <div class="row">
+              <span class="btn ghost" style="padding:1px 8px;font-size:11px">复制引用链接</span>
+              <span class="btn ghost" style="padding:1px 8px;font-size:11px">在文件夹中显示</span>
+            </div>
+          </div>
+          <div class="card" style="width:250px; height:170px">
+            <div class="box center grow" style="height:80px">🖼 缩略图</div>
+            <div class="name" style="font-size:12px">白板导出.png</div>
+            <div style="font-size:11px;color:#999">1.2 MB</div>
+            <span class="chip" style="border-color:#2e7d32;color:#2e7d32">被 周会汇总 引用</span>
+            <div class="row">
+              <span class="btn ghost" style="padding:1px 8px;font-size:11px">复制引用链接</span>
+              <span class="btn ghost" style="padding:1px 8px;font-size:11px">在文件夹中显示</span>
+            </div>
+          </div>
+          <div class="card" style="width:250px; height:170px">
+            <div class="box center grow" style="height:80px">🖼 缩略图</div>
+            <div class="name" style="font-size:12px">需求草图.png</div>
+            <div style="font-size:11px;color:#999">96 KB</div>
+            <span class="chip" style="border-color:#2e7d32;color:#2e7d32">被 需求池整理 引用</span>
+            <div class="row">
+              <span class="btn ghost" style="padding:1px 8px;font-size:11px">复制引用链接</span>
+              <span class="btn ghost" style="padding:1px 8px;font-size:11px">在文件夹中显示</span>
+            </div>
+          </div>
+          <div class="card" style="width:250px; height:170px; border-style:dashed">
+            <div class="box center grow" style="height:80px">🖼 缩略图</div>
+            <div class="name" style="font-size:12px">temp-剪贴板.png</div>
+            <div style="font-size:11px;color:#999">58 KB</div>
+            <span class="chip" style="border-color:#c0392b;color:#c0392b">未引用</span>
+            <div class="row">
+              <span class="btn ghost" style="padding:1px 8px;font-size:11px">复制引用链接</span>
+              <span class="btn ghost" style="padding:1px 8px;font-size:11px">在文件夹中显示</span>
+              <span class="btn" style="padding:1px 8px;font-size:11px;border-color:#c0392b;color:#c0392b">删除</span>
+            </div>
+          </div>
+          <div class="card" style="width:250px; height:170px">
+            <div class="box center grow" style="height:80px">📎 附件</div>
+            <div class="name" style="font-size:12px">调研数据.xlsx</div>
+            <div style="font-size:11px;color:#999">76 KB</div>
+            <span class="chip" style="border-color:#2e7d32;color:#2e7d32">被 需求池整理 引用</span>
+            <div class="row">
+              <span class="btn ghost" style="padding:1px 8px;font-size:11px">复制引用链接</span>
+              <span class="btn ghost" style="padding:1px 8px;font-size:11px">在文件夹中显示</span>
+            </div>
+          </div>
+        </div>
+        <div class="box center" style="margin-top:14px; color:#aaa">… 其余 78 个资源（分页加载）</div>
+      </div>
+      <div class="statusbar"><span>资源</span><span>未引用 7 个</span><span class="grow"></span><span>noteweave-asset: 协议加载预览</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="annotation-list">
+  <b>交互说明</b>
+  <ol>
+    <li>资源存于 assets/notes/{noteId}（小记）与 assets/knowledge-bases/{kbId}（KB 文档），按来源归属目录。</li>
+    <li>删除文档时通过 findExclusiveAssets 找出仅被该文档引用的独占资产并级联清理；多文档共享的资产保留。</li>
+    <li>图片/附件预览统一经 noteweave-asset: 自定义协议加载，仅可访问 userData/assets 目录。</li>
+    <li>「清理未引用资源」仅删除未被任何正文引用的文件，执行前弹确认框并列出清单。</li>
+    <li>「删除」按钮仅对未引用资源可用（红色）；「复制引用链接」返回 noteweave-asset: URL 便于正文引用。</li>
+  </ol>
+</div>
+</body>
+</html>

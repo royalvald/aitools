@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>UE-07 全局搜索浮层</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<div class="wf-title">UE-07 全局搜索浮层 GlobalSearch（三合一）</div>
+<div class="wf-desc">search（Ctrl+Shift+F）/ quick（Ctrl+P）/ command（Ctrl+Shift+P）共用浮层。<a class="back" href="index.html">← 返回索引</a></div>
+
+<div class="wf-screen rel">
+  <div class="row grow" style="gap:0; filter:brightness(.8)">
+    <div class="navrail">
+      <div class="nav-item">🧶<small>织记</small></div>
+      <div class="nav-item active">🏠<small>工作台</small></div>
+      <div class="nav-item">📚<small>知识库</small></div>
+      <div class="nav-item">🔍<small>搜索</small></div>
+      <div class="spacer"></div>
+      <div class="nav-item">⚙<small>设置</small></div>
+    </div>
+    <div class="grow box center" style="border:none;background:#eee;color:#aaa">（底层页面压暗）</div>
+  </div>
+  <div class="overlay-mask" style="padding-top:80px">
+    <div class="dialog">
+      <div class="tabs" style="margin-bottom:10px">
+        <div class="tab active">搜索 <span style="color:#bbb;font-size:11px">Ctrl+Shift+F</span></div>
+        <div class="tab">快速打开 <span style="color:#bbb;font-size:11px">Ctrl+P</span></div>
+        <div class="tab">命令 <span style="color:#bbb;font-size:11px">Ctrl+Shift+P</span></div>
+      </div>
+      <div class="input" style="font-size:14px; padding:10px 12px; color:#333">需求<span style="color:#bbb">▏</span>
+        <span style="float:right;font-size:11px;color:#bbb">支持语法：tag:会议 type:doc "精确短语"</span>
+      </div>
+      <div class="col" style="margin-top:10px; max-height:340px; overflow:hidden">
+        <div class="label">📝 小记（2）</div>
+        <div class="box solid row"><span class="grow">需求池周报<span style="color:#c0392b"> — …本季度<b>需求</b>共 47 条…</span></span><span class="meta">昨天</span></div>
+        <div class="box solid row"><span class="grow">会议纪要 0612<span style="color:#c0392b"> — …<b>需求</b>优先级…</span></span><span class="meta">10:24</span></div>
+        <div class="label">📄 知识库文档（3）</div>
+        <div class="box solid row"><span class="grow">需求池整理 · 产品方案<span style="color:#c0392b"> — 命中正文</span></span><span class="meta">10:24</span></div>
+        <div class="box solid row"><span class="grow">评审纪要 · 产品方案<span style="color:#c0392b"> — 命中图片 OCR 文本</span><span class="note-tag">OCR 搜索</span></span></div>
+        <div class="label">🕘 搜索历史</div>
+        <div class="row"><span class="chip">路线图</span><span class="chip">tag:会议</span><span class="chip">白板</span></div>
+      </div>
+      <div class="row" style="margin-top:10px; font-size:11px; color:#999; gap:16px">
+        <span>↑↓ 选择</span><span>Enter 打开</span><span>Tab 切换模式</span><span>Esc 关闭</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="annotation-list">
+  <b>交互说明</b>
+  <ol>
+    <li>三种模式共用浮层骨架；命令模式列出应用命令（切换主题 / 导出数据 / 打开回收站 / 专注模式 / 打字机模式…），模糊匹配（fuzzy）。</li>
+    <li>全文搜索覆盖小记与 KB 文档正文、标题、标签；开启 OCR 后图片文字一并命中。</li>
+    <li>打开结果后：小记以覆盖层打开，KB 文档跳转到所属库并定位；命中关键词在预览中高亮。</li>
+  </ol>
+</div>
+</body>
+</html>

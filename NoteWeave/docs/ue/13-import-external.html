@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>UE-13 批量导入外部格式 ImportExternalDialog</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<div class="wf-title">UE-13 批量导入外部格式 ImportExternalDialog</div>
+<div class="wf-desc">分步对话框：①选择文件 → ②确认与目标 → ③导入结果；支持 docx/html/txt/md 批量转换。<a class="back" href="index.html">← 返回索引</a></div>
+
+<div class="wf-screen rel">
+  <!-- 底层页面压暗 -->
+  <div class="col grow" style="gap:0; filter:brightness(.8)">
+    <div class="topbar">
+      <span class="crumb">工作台</span>
+      <span class="grow"></span>
+      <span class="btn">＋ 新建</span>
+      <span class="btn">⇪ 导入</span>
+    </div>
+    <div class="grow" style="padding:24px">
+      <div style="font-size:18px;font-weight:700;margin-bottom:12px">👋 下午好，织记</div>
+      <div class="row">
+        <div class="card"><span class="icon">📝</span><span class="name">小记</span><span class="meta">共 36 条</span></div>
+        <div class="card"><span class="icon">📗</span><span class="name">产品方案</span><span class="meta">12 篇文档</span></div>
+        <div class="card"><span class="icon">📘</span><span class="name">技术学习</span><span class="meta">34 篇文档</span></div>
+      </div>
+    </div>
+    <div class="statusbar"><span>就绪</span></div>
+  </div>
+
+  <!-- 前景：导入对话框 -->
+  <div class="overlay-mask">
+    <div class="dialog" style="width:720px">
+      <!-- 步骤条 -->
+      <div class="row" style="align-items:center; margin-bottom:12px; font-size:12px">
+        <span class="chip" style="border:2px solid #333;font-weight:600">① 选择文件</span>
+        <span style="color:#bbb">────</span>
+        <span class="chip" style="border:2px solid #333;font-weight:600">② 确认与目标</span>
+        <span style="color:#bbb">────</span>
+        <span class="chip">③ 导入结果</span>
+        <span class="grow"></span>
+        <span class="note-tag">当前：第②步确认态（第①步高亮入口）</span>
+      </div>
+
+      <div class="row" style="align-items:flex-start; gap:12px">
+        <!-- 左：文件选择 + 列表 -->
+        <div class="col grow">
+          <div class="row">
+            <span class="btn">📄 选择文件</span>
+            <span class="btn">🗂 选择文件夹</span>
+            <span class="note-tag">第①步入口</span>
+          </div>
+          <div class="label" style="margin-top:8px">已选文件（12）</div>
+          <div class="box col grow" style="max-height:230px; overflow:hidden; gap:4px">
+            <div class="row" style="font-size:11px"><span>季度汇报.docx</span><span class="chip" style="margin-left:auto">docx</span><span style="color:#999;width:56px;text-align:right">1.2 MB</span></div>
+            <div class="row" style="font-size:11px"><span>需求调研.html</span><span class="chip" style="margin-left:auto">html</span><span style="color:#999;width:56px;text-align:right">340 KB</span></div>
+            <div class="row" style="font-size:11px"><span>会议纪要 0612.md</span><span class="chip" style="margin-left:auto">md</span><span style="color:#999;width:56px;text-align:right">12 KB</span></div>
+            <div class="row" style="font-size:11px"><span>随想.txt</span><span class="chip" style="margin-left:auto">txt</span><span style="color:#999;width:56px;text-align:right">4 KB</span></div>
+            <div class="row" style="font-size:11px"><span>接口文档.docx</span><span class="chip" style="margin-left:auto">docx</span><span style="color:#999;width:56px;text-align:right">880 KB</span></div>
+            <div class="row" style="font-size:11px;color:#999">…（共 12 个，含 docx · html · txt · md 徽标）</div>
+          </div>
+        </div>
+        <!-- 右：目标区 -->
+        <div class="col" style="width:220px">
+          <div class="label">导入到</div>
+          <div class="input" style="width:100%">📗 技术学习 ▾（知识库）</div>
+          <div class="input" style="width:100%">父级文档 ▾（可选）</div>
+          <div class="box" style="font-size:11px">或选择：○ 小记分组（📁 工作 / 学习 / 未分组）</div>
+          <div class="row" style="font-size:12px; align-items:center">
+            <span class="chip">☑</span><span>保留目录结构</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 进度与结果预览 -->
+      <div class="col" style="margin-top:12px">
+        <div class="row" style="font-size:11px; color:#777">
+          <span>导入进度 60%</span>
+          <span class="grow"></span>
+          <span>成功 9 / 失败 1<span class="note-tag">失败行可展开原因</span></span>
+        </div>
+        <div style="border:1px solid #bbb; border-radius:4px; height:8px; background:#f4f4f4">
+          <div style="width:60%; height:100%; background:#777; border-radius:3px"></div>
+        </div>
+        <div class="box" style="font-size:11px; margin-top:6px">▾ 失败：旧版档案.docx —— 转换超时（mammoth 解析失败，可重试 / 跳过）</div>
+      </div>
+
+      <div class="row" style="justify-content:flex-end; margin-top:10px">
+        <span class="btn">上一步</span>
+        <span class="btn primary">开始导入</span>
+        <span class="btn">完成</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="annotation-list">
+  <b>交互说明</b>
+  <ol>
+    <li>三步流程：①选择文件/文件夹 → ②确认与导入目标（知识库+父级文档，或小记分组）→ ③结果页；步骤条实时高亮。</li>
+    <li>点击「开始导入」前弹出确认框，并自动对现有数据做 ZIP 备份，失败可回滚。</li>
+    <li>格式转换：docx 经 mammoth、html 经 turndown 转为 Markdown 后入库（main/import-external.ts）。</li>
+    <li>勾选「保留目录结构」时按源目录层级创建父级文档；失败项可展开原因并单独重试或跳过。</li>
+    <li>导入完成后主进程发送 menu:import-complete，渲染端刷新知识库/小记列表。</li>
+  </ol>
+</div>
+</body>
+</html>

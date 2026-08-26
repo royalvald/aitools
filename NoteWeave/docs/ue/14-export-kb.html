@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>UE-14 批量导出知识库 ExportKbDialog</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<div class="wf-title">UE-14 批量导出知识库 ExportKbDialog</div>
+<div class="wf-desc">多选知识库、选择导出格式与内容选项，批量导出为 Markdown 目录树 / ZIP / HTML 站点。<a class="back" href="index.html">← 返回索引</a></div>
+
+<div class="wf-screen rel">
+  <!-- 底层页面压暗 -->
+  <div class="col grow" style="gap:0; filter:brightness(.8)">
+    <div class="topbar">
+      <span class="crumb">知识库</span>
+      <span class="grow"></span>
+      <span class="btn">＋ 新建知识库</span>
+      <span class="btn">⇩ 批量导出</span>
+    </div>
+    <div class="grow" style="padding:24px">
+      <div class="row">
+        <div class="card"><span class="icon">📗</span><span class="name">产品方案</span><span class="meta">12 篇 · 更新于 06-10</span></div>
+        <div class="card"><span class="icon">📘</span><span class="name">技术学习</span><span class="meta">34 篇 · 更新于 06-12</span></div>
+        <div class="card"><span class="icon">📙</span><span class="name">团队共享盘</span><span class="meta">外部挂载 · 只读</span></div>
+      </div>
+    </div>
+    <div class="statusbar"><span>3 个知识库</span></div>
+  </div>
+
+  <!-- 前景：导出对话框 -->
+  <div class="overlay-mask">
+    <div class="dialog" style="width:640px">
+      <div style="font-size:14px;font-weight:600;margin-bottom:10px">批量导出知识库</div>
+
+      <div class="row" style="align-items:flex-start; gap:12px">
+        <!-- 左：知识库多选 -->
+        <div class="col" style="width:260px">
+          <div class="label">选择知识库（可多选）</div>
+          <div class="box col" style="gap:6px">
+            <div class="row" style="font-size:12px; align-items:center"><span class="chip">☑</span><span>📗 产品方案</span><span style="margin-left:auto;color:#999">12 篇</span></div>
+            <div class="row" style="font-size:12px; align-items:center"><span class="chip">☑</span><span>📘 技术学习</span><span style="margin-left:auto;color:#999">34 篇</span></div>
+            <div class="row" style="font-size:12px; align-items:center; color:#999"><span class="chip" style="opacity:.5">☐</span><span>📙 团队共享盘</span><span class="note-tag" style="margin-left:auto">外部 · 只读，也可导出</span><span style="color:#999">28 篇</span></div>
+          </div>
+        </div>
+        <!-- 右：格式与选项 -->
+        <div class="col grow">
+          <div class="label">导出格式</div>
+          <div class="col" style="font-size:12px; gap:4px">
+            <div class="row" style="align-items:center"><span class="chip" style="border:2px solid #333;font-weight:600">◉</span><span>Markdown 目录树（含层级）</span></div>
+            <div class="row" style="align-items:center"><span class="chip">○</span><span>ZIP 打包</span></div>
+            <div class="row" style="align-items:center"><span class="chip">○</span><span>HTML 站点</span></div>
+          </div>
+          <div class="label" style="margin-top:8px">内容选项</div>
+          <div class="col" style="font-size:12px; gap:4px">
+            <div class="row" style="align-items:center"><span class="chip">☑</span><span>包含图片附件</span></div>
+            <div class="row" style="align-items:center"><span class="chip">☑</span><span>包含批注与评论</span></div>
+            <div class="row" style="align-items:center"><span class="chip">☐</span><span>包含版本历史</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 输出路径 -->
+      <div class="row" style="margin-top:12px; align-items:center">
+        <div class="input grow">📂 /Users/iris/Documents/NoteWeave 导出</div>
+        <span class="btn">浏览…</span>
+      </div>
+
+      <!-- 结果行 -->
+      <div class="row" style="margin-top:12px; align-items:center; font-size:12px">
+        <span class="box solid grow">✓ 已导出 2 个知识库（46 篇文档）</span>
+        <span class="btn">打开目录</span>
+        <span class="btn primary">开始导出</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="annotation-list">
+  <b>交互说明</b>
+  <ol>
+    <li>知识库支持 checkbox 多选；外部挂载库（只读）置灰标注但允许勾选导出。</li>
+    <li>导出格式三选一：Markdown 目录树按文档层级生成文件夹结构；ZIP 打包与 HTML 站点由 main/kb-export.ts 生成。</li>
+    <li>输出路径经系统 dialog 选择；「开始导出」后按钮变为进度态，完成后显示结果行。</li>
+    <li>内容选项默认勾选图片附件与批注评论，版本历史默认不包含（体积考虑）。</li>
+    <li>结果行提供「打开目录」直达导出位置；失败的知识库单独列出错误原因。</li>
+  </ol>
+</div>
+</body>
+</html>

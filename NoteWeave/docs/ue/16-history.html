@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>UE-16 版本历史 HistoryPanel</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<div class="wf-title">UE-16 版本历史 HistoryPanel</div>
+<div class="wf-desc">文档编辑器右侧 380px 抽屉：版本时间线 + 版本对比双栏预览 + 恢复二次确认。<a class="back" href="index.html">← 返回索引</a></div>
+
+<div class="wf-screen rel">
+  <!-- 底层编辑器 -->
+  <div class="col grow" style="gap:0; filter:brightness(.8)">
+    <div class="topbar">
+      <span class="crumb">📗 产品方案 / 需求管理 / <b>需求池整理</b></span>
+      <span class="grow"></span>
+      <span class="btn">▤ 大纲</span>
+      <span class="btn">💬 讨论</span>
+      <span class="btn">🔗 关联</span>
+      <span class="btn primary">🕘 历史<span class="note-tag">入口</span></span>
+      <span class="btn">⋯</span>
+      <span class="btn primary" style="background:#2e7d32;border-color:#2e7d32">✓ 完成</span>
+    </div>
+    <div class="grow" style="padding:20px 40px">
+      <div style="font-size:20px;font-weight:700;margin-bottom:10px">需求池整理</div>
+      <div class="text-line w90"></div>
+      <div class="text-line w80"></div>
+      <div class="text-line w60"></div>
+    </div>
+    <div class="statusbar"><span>1,036 字</span><span class="grow"></span><span>已保存 10:24</span><span>富文本</span></div>
+  </div>
+
+  <!-- 右侧 380px 抽屉 -->
+  <div style="position:absolute; top:0; right:0; bottom:0; width:380px; background:#fff; border-left:1px solid #999; box-shadow:-4px 0 16px rgba(0,0,0,.15); display:flex; flex-direction:column; padding:12px; gap:8px">
+    <div class="row" style="align-items:center">
+      <b style="font-size:14px">版本历史</b>
+      <span class="grow"></span>
+      <span class="btn ghost">✕</span>
+    </div>
+    <div class="label">时间线（时间倒序）</div>
+    <div class="box solid" style="border:2px solid #555; color:#111">
+      <b>2025-06-12 10:24 · 1,036 字 · 自动保存</b> <span class="chip" style="border-color:#2e7d32;color:#2e7d32">当前</span>
+      <div class="row" style="margin-top:4px"><span class="btn ghost" style="padding:1px 8px;font-size:11px">查看</span><span class="btn ghost" style="padding:1px 8px;font-size:11px">恢复</span></div>
+    </div>
+    <div class="box">
+      <b>2025-06-12 09:58 · 998 字</b>
+      <div class="row" style="margin-top:4px"><span class="btn ghost" style="padding:1px 8px;font-size:11px">查看</span><span class="btn ghost" style="padding:1px 8px;font-size:11px">恢复</span></div>
+    </div>
+    <div class="box">
+      <b>昨天 17:30 · 860 字</b>
+      <div class="row" style="margin-top:4px"><span class="btn ghost" style="padding:1px 8px;font-size:11px">查看</span><span class="btn ghost" style="padding:1px 8px;font-size:11px">恢复</span></div>
+    </div>
+    <div class="box" style="color:#999">前天 14:02 · 612 字 · 手动快照</div>
+    <div class="box" style="color:#999">2025-06-09 11:20 · 403 字</div>
+
+    <div class="label" style="margin-top:6px">版本对比</div>
+    <div class="row">
+      <span class="input grow">版本 A：09:58</span>
+      <span style="font-size:11px;color:#999">vs</span>
+      <span class="input grow">版本 B：当前</span>
+    </div>
+    <div class="row" style="gap:6px">
+      <div class="box grow" style="background:#fff">
+        <div class="label">版本 A</div>
+        <div class="text-line w90" style="margin:4px 0"></div>
+        <div class="text-line w80" style="margin:4px 0"></div>
+        <div style="font-size:11px"><span class="hl">本季度共收集 39 条需求</span></div>
+      </div>
+      <div class="box grow" style="background:#fff">
+        <div class="label">版本 B</div>
+        <div class="text-line w90" style="margin:4px 0"></div>
+        <div class="text-line w80" style="margin:4px 0"></div>
+        <div style="font-size:11px"><span class="hl">本季度共收集 47 条需求，其中高优先级 12 条</span></div>
+      </div>
+    </div>
+    <span class="note-tag" style="align-self:flex-start">差异行高亮（.hl）</span>
+    <span class="btn primary" style="align-self:flex-start">↩ 恢复此版本</span>
+    <!-- 二次确认小图 -->
+    <div class="box solid" style="border:1px solid #999; background:#fafafa; margin-top:2px">
+      <div class="label">恢复确认（文字示意）</div>
+      <div style="font-size:12px">对话框：「确定恢复到 09:58 的版本？当前内容将先自动备份为一个新版本快照，可随时找回。」[取消] [恢复]</div>
+    </div>
+  </div>
+</div>
+
+<div class="annotation-list">
+  <b>交互说明</b>
+  <ol>
+    <li>历史快照存于 history/{notes,kbDocs}/{refId}/index.json 及对应快照文件，按时间倒序展示。</li>
+    <li>自动保存按节流策略生成快照（间隔内的连续编辑合并为一条），也可手动创建快照。</li>
+    <li>「版本对比」任选 A/B 两个版本，双栏并排显示，差异行用高亮标记；B 默认为当前版本。</li>
+    <li>「恢复此版本」需二次确认，恢复前自动把当前内容备份为新版本，操作可回退。</li>
+    <li>「查看」以只读预览打开所选版本，不改动当前正文。</li>
+  </ol>
+</div>
+</body>
+</html>

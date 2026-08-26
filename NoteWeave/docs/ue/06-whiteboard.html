@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>UE-06 白板（仅浏览模式）</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<div class="wf-title">UE-06 白板 Whiteboard（仅浏览模式）</div>
+<div class="wf-desc">无限画布只读查看：平移/缩放/内容卡片跳转/框架演示/导出。<a class="back" href="index.html">← 返回索引</a></div>
+
+<div class="wf-screen rel">
+  <div class="topbar">
+    <span class="btn ghost">← 返回</span>
+    <span class="crumb">🧩 白板 · <b>需求池整理</b></span>
+    <span class="grow"></span>
+    <span class="btn">↶</span><span class="btn">↷</span>
+    <span class="btn">{ } 源码</span>
+    <span class="btn">▶ 框架演示</span>
+    <span class="btn">📄 导出 PDF</span>
+    <span class="btn">⤓ 导出</span>
+    <span class="btn">⏱ 计时器</span>
+    <span class="chip">− 100% ＋</span>
+    <span class="btn">⛶ 适应</span>
+  </div>
+  <div class="grow rel" style="background:
+      linear-gradient(#eee 1px, transparent 1px) 0 0/24px 24px,
+      linear-gradient(90deg,#eee 1px, transparent 1px) 0 0/24px 24px, #fdfdfd">
+    <span class="note-tag" style="position:absolute;top:10px;left:12px">左键拖拽平移 · 滚轮缩放 · 元素不可选中/编辑</span>
+    <!-- 元素模拟 -->
+    <div class="box" style="position:absolute; left:90px; top:80px; width:150px; background:#fff7c2; border-style:solid">🟡 便签<br>跟进渠道数据</div>
+    <div class="box" style="position:absolute; left:320px; top:60px; width:220px; height:130px; border:2px solid #888; background:transparent">
+      <span class="chip">框架 1 · 现状</span>
+      <div class="box solid" style="margin-top:8px; width:80px">▭ 形状</div>
+      <div style="font-size:16px; color:#888; margin-top:6px">→ 连线</div>
+    </div>
+    <div class="box" style="position:absolute; left:640px; top:110px; width:200px; background:#fff; border:2px solid #666">
+      📄 内容卡片：需求池整理
+      <div class="meta" style="font-size:11px;color:#999;margin-top:4px">点击跳转到文档<span class="note-tag">保留交互</span></div>
+    </div>
+    <div class="box" style="position:absolute; left:220px; top:300px; width:180px; background:transparent; border:none; color:#999; font-style:italic">✏️ 手绘笔画（正常渲染）</div>
+    <div class="box" style="position:absolute; left:520px; top:330px; width:230px; height:110px; border:2px solid #888; background:transparent"><span class="chip">框架 2 · 方案</span></div>
+    <div class="box solid" style="position:absolute; left:860px; top:260px; width:140px">🟦 文本：评审结论</div>
+    <!-- 小地图 -->
+    <div style="position:absolute; right:16px; bottom:16px; width:150px; height:100px; border:1px solid #999; background:#fff; border-radius:4px" class="center">
+      <span style="font-size:10px;color:#999">小地图 Minimap</span>
+    </div>
+  </div>
+  <div class="statusbar"><span>元素 12 · 与文档双向同步</span><span class="grow"></span><span>仅浏览模式</span></div>
+</div>
+
+<div class="annotation-list">
+  <b>交互说明</b>
+  <ol>
+    <li>工具调色板已裁剪：无选择/便签/形状/框架等创建工具；旧数据元素（便签/形状/连线/手绘/框架/内容卡片）全部正常渲染。</li>
+    <li>「框架演示」按框架分页播放（FramePresentation），支持导出 PDF；「导出」支持 PNG / SVG / Markdown。</li>
+    <li>「源码」查看白板 JSON；计时器用于个人记录场景（白板转待办能力在数据层保留）。</li>
+    <li>入口：KB 文档「⋯ → 白板」、内容卡片所在文档；独立「展示窗口」功能已整体移除。</li>
+  </ol>
+</div>
+</body>
+</html>

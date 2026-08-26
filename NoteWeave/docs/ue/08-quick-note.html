@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>UE-08 快捷小记浮窗</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<div class="wf-title">UE-08 快捷小记浮窗 QuickNoteWindow</div>
+<div class="wf-desc">独立小窗（?quicknote=1），由系统托盘唤起，用于零打扰速记。<a class="back" href="index.html">← 返回索引</a></div>
+
+<div style="width:1200px; margin:0 auto 32px; display:flex; gap:40px; align-items:flex-start">
+  <!-- 浮窗 -->
+  <div class="wf-screen" style="width:420px; min-height:300px; margin:0">
+    <div class="topbar" style="height:36px; -webkit-app-region:drag">
+      <span style="font-size:12px">⚡ 快捷小记</span>
+      <span class="grow"></span>
+      <span class="btn ghost" style="padding:0 8px">─</span>
+      <span class="btn ghost" style="padding:0 8px">✕</span>
+    </div>
+    <div class="grow col" style="padding:12px">
+      <div class="input grow" style="min-height:150px; text-align:left; vertical-align:top">直接输入想法…（支持 Markdown）</div>
+      <div class="row" style="justify-content:space-between; align-items:center">
+        <span class="chip">📁 默认分组</span>
+        <span class="btn primary">保存 Ctrl+Enter</span>
+      </div>
+    </div>
+  </div>
+  <!-- 托盘 -->
+  <div class="col">
+    <div class="box" style="width:280px">
+      <div class="label">系统托盘（Windows 任务栏右下角）</div>
+      <div style="font-size:20px">🧶</div>
+      <div style="font-size:12px; margin-top:6px">左键：打开主窗口<br>右键菜单：快捷小记 / 打开主窗口 / 退出</div>
+    </div>
+    <div class="box" style="width:280px">
+      <div class="label">保存后</div>
+      <div style="font-size:12px">生成一条普通小记（标题取首行，空则为「无标题」），浮窗清空待下一条；可在主窗口继续编辑。</div>
+    </div>
+  </div>
+</div>
+
+<div class="annotation-list">
+  <b>交互说明</b>
+  <ol>
+    <li>设计目标：不离开当前工作即可完成速记，打断成本最小。</li>
+    <li>窗口无边框/置顶（按平台能力），Esc 或 ✕ 关闭不保存。</li>
+  </ol>
+</div>
+</body>
+</html>

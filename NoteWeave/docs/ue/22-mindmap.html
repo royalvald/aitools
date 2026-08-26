@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>UE-22 思维导图编辑器 MindmapEditor</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<div class="wf-title">UE-22 思维导图编辑器 MindmapEditor</div>
+<div class="wf-desc">整屏：顶栏面包屑 + 画布操作，中心主题向右三支主分支，右侧节点操作小面板。<a class="back" href="index.html">← 返回索引</a></div>
+
+<div class="wf-screen">
+  <div class="col grow" style="gap:0">
+    <div class="topbar">
+      <span class="crumb">📗 产品方案 / 脑图：<b>产品全景</b></span>
+      <span class="grow"></span>
+      <span class="btn">适应画布</span>
+      <span class="btn">收起全部</span>
+      <span class="btn">展开全部</span>
+      <span class="btn">导出</span>
+      <span class="chip" style="border:2px solid #333;font-weight:600">思维导图</span>
+      <span class="note-tag">档位注记：区别于 Markdown 文档</span>
+    </div>
+
+    <div class="row grow" style="gap:0">
+      <!-- 画布 -->
+      <div class="grow rel" style="background:#fbfbfb; background-image:radial-gradient(#ddd 1px, transparent 1px); background-size:24px 24px; padding:24px">
+        <!-- 中心主题 -->
+        <div class="box primary" style="position:absolute; left:60px; top:250px; width:130px; text-align:center; padding:12px">产品全景</div>
+        <!-- 连接线（div 模拟） -->
+        <div style="position:absolute; left:190px; top:272px; width:60px; height:2px; background:#999"></div>
+        <div style="position:absolute; left:250px; top:120px; width:2px; height:154px; background:#999"></div>
+        <div style="position:absolute; left:250px; top:272px; width:2px; height:120px; background:#999"></div>
+        <!-- 主分支 1：需求管理 -->
+        <div class="box solid" style="position:absolute; left:250px; top:110px; width:110px; text-align:center">需求管理</div>
+        <div style="position:absolute; left:360px; top:130px; width:50px; height:2px; background:#aaa"></div>
+        <div style="position:absolute; left:360px; top:160px; width:50px; height:2px; background:#aaa"></div>
+        <div class="box" style="position:absolute; left:410px; top:118px">需求收集</div>
+        <div class="box" style="position:absolute; left:410px; top:150px">优先级评审</div>
+        <!-- 主分支 2：版本规划 -->
+        <div class="box solid" style="position:absolute; left:250px; top:262px; width:110px; text-align:center">版本规划<span class="note-tag">双击编辑</span></div>
+        <div style="position:absolute; left:360px; top:250px; width:50px; height:2px; background:#aaa"></div>
+        <div style="position:absolute; left:360px; top:280px; width:50px; height:2px; background:#aaa"></div>
+        <div style="position:absolute; left:360px; top:310px; width:50px; height:2px; background:#aaa"></div>
+        <div class="box" style="position:absolute; left:410px; top:238px">v2.0 里程碑</div>
+        <div class="box" style="position:absolute; left:410px; top:270px">发版节奏</div>
+        <div class="box" style="position:absolute; left:410px; top:302px">回归清单</div>
+        <!-- 主分支 3：数据指标 -->
+        <div class="box solid" style="position:absolute; left:250px; top:380px; width:110px; text-align:center">数据指标</div>
+        <div style="position:absolute; left:360px; top:368px; width:50px; height:2px; background:#aaa"></div>
+        <div style="position:absolute; left:360px; top:398px; width:50px; height:2px; background:#aaa"></div>
+        <div class="box" style="position:absolute; left:410px; top:356px">留存率</div>
+        <div class="box" style="position:absolute; left:410px; top:388px">活跃度</div>
+        <span class="note-tag" style="position:absolute; right:300px; bottom:16px">选中节点：↩收起子树</span>
+      </div>
+
+      <!-- 右侧节点操作小面板 -->
+      <div class="col" style="width:190px; border-left:1px solid #ddd; background:#fcfcfc; padding:12px; gap:8px">
+        <div class="label">节点操作</div>
+        <span class="btn">＋ 子节点</span>
+        <span class="btn">＋ 兄弟节点</span>
+        <span class="btn">🗑 删除</span>
+        <span class="btn ghost">↩ 收起</span>
+        <span class="note-tag" style="margin-top:auto">Tab=子节点 · Enter=兄弟节点</span>
+      </div>
+    </div>
+
+    <div class="statusbar"><span>11 个节点</span><span>缩放 100%</span><span class="grow"></span><span>● 已保存</span><span>思维导图</span></div>
+  </div>
+</div>
+
+<div class="annotation-list">
+  <b>交互说明</b>
+  <ol>
+    <li>思维导图为独立文档类型，数据存 {docId}.mindmap.json（main/mindmap-doc.ts）；目录树中以专用图标区分（见 UE-03）。</li>
+    <li>双击节点进入行内编辑，Enter 确认；Tab 新建子节点，Enter 新建兄弟节点，Delete 删除节点（子树级联）。</li>
+    <li>支持与 Markdown 大纲互转：Markdown 标题层级 ↔ 节点层级，便于从既有文档生成脑图。</li>
+    <li>画布支持平移/缩放；「适应画布」自动缩放至全图可见，「收起/展开全部」批量折叠或展开子树。</li>
+    <li>「导出」支持 PNG 图片；右侧小面板在选中节点时可用，「↩收起」折叠该节点子树。</li>
+  </ol>
+</div>
+</body>
+</html>

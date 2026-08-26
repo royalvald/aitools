@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>UE-03 知识库详情</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<div class="wf-title">UE-03 知识库详情 KbDetail</div>
+<div class="wf-desc">左侧目录树（层级/子文档）+ 右侧文档区（阅读态）。<a class="back" href="index.html">← 返回索引</a></div>
+
+<div class="wf-screen">
+  <div class="row grow" style="gap:0">
+    <div class="navrail">
+      <div class="nav-item">🧶<small>织记</small></div>
+      <div class="nav-item">🏠<small>工作台</small></div>
+      <div class="nav-item active">📚<small>知识库</small></div>
+      <div class="nav-item">🔍<small>搜索</small></div>
+      <div class="nav-item">🗂<small>资源</small></div>
+      <div class="nav-item">🗑<small>回收站</small></div>
+      <div class="spacer"></div>
+      <div class="nav-item">🌗<small>主题</small></div>
+      <div class="nav-item">⚙<small>设置</small></div>
+    </div>
+    <div class="grow col" style="gap:0">
+      <div class="topbar">
+        <span class="btn ghost">← 返回</span>
+        <span class="crumb">📗 <b>产品方案</b></span>
+        <span class="grow"></span>
+        <span class="input" style="width:200px">🔍 搜索库内文档…</span>
+        <span class="btn primary">＋ 新建文档</span>
+      </div>
+      <div class="row grow" style="gap:0">
+        <!-- 目录树 -->
+        <div class="col" style="width:260px; border-right:1px solid #ddd; padding:14px 10px; background:#fafafa">
+          <div class="label">目录树<span class="note-tag">支持层级/拖拽排序</span></div>
+          <div class="tree">
+            <div class="t-node">📄 快速开始</div>
+            <div class="t-node">▾ 📁 需求管理</div>
+            <div class="t-node l1 active">📄 需求池整理<span class="note-tag">当前</span></div>
+            <div class="t-node l1">📄 优先级评估</div>
+            <div class="t-node">▸ 📁 版本规划</div>
+            <div class="t-node">🧠 脑图：产品全景<span class="note-tag">思维导图类型</span></div>
+          </div>
+          <div class="grow"></div>
+          <span class="btn ghost center">＋ 新建文档</span>
+        </div>
+        <!-- 文档区（阅读态） -->
+        <div class="grow col" style="gap:0">
+          <div class="topbar" style="border-bottom:1px solid #eee">
+            <span class="crumb">产品方案 / 需求管理 / <b>需求池整理</b></span>
+            <span class="grow"></span>
+            <span class="chip">☆ 收藏</span><span class="chip">🔒</span>
+            <span class="btn primary">编辑</span>
+            <span class="btn">⋯</span>
+          </div>
+          <div class="grow" style="padding:24px 40px">
+            <div style="font-size:24px;font-weight:700;margin-bottom:8px">需求池整理</div>
+            <div style="font-size:11px;color:#999;margin-bottom:16px">更新于 2025-06-12 10:24 · 标签：<span class="chip">需求</span> <span class="chip">v2.0</span> · 💬 批注 2</div>
+            <div class="text-line w90"></div>
+            <div class="text-line w80"></div>
+            <div class="text-line w60"></div>
+            <div class="box" style="margin-top:12px">📊 Mermaid 流程图区块（渲染态）</div>
+            <div class="text-line w80"></div>
+            <div class="text-line w40"></div>
+          </div>
+          <div class="statusbar"><span>1,024 字</span><span class="grow"></span><span>✓ 已保存 10:24:36</span><span>阅读中</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="annotation-list">
+  <b>交互说明</b>
+  <ol>
+    <li>目录树节点右键：新建子文档 / 重命名 / 移动 / 删除（删除入回收站，级联清理 sidecar 文件）。</li>
+    <li>文档默认阅读态；点击「编辑」进入编辑态（UE-05），按钮变为「完成」。</li>
+    <li>「⋯」更多菜单：历史版本 / 导出（PDF/HTML/Word/Pandoc 多格式）/ 白板 / 锁定 / 删除。</li>
+    <li>思维导图文档点击后进入 MindmapEditor；库内搜索复用全局搜索浮层并限定库范围。</li>
+  </ol>
+</div>
+</body>
+</html>

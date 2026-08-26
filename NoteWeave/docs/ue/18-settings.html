@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>UE-18 设置 SettingsDialog</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<div class="wf-title">UE-18 设置对话框 SettingsDialog</div>
+<div class="wf-desc">900×620 设置对话框：左侧分区导航，右侧「外观」默认展开，其余分区以小灰卡预告。<a class="back" href="index.html">← 返回索引</a></div>
+
+<div class="wf-screen rel">
+  <!-- 底层压暗 -->
+  <div style="filter:brightness(.8)">
+    <div class="topbar">
+      <span class="crumb">🏠 工作台</span>
+      <span class="grow"></span>
+      <span class="btn">🔍 搜索</span>
+      <span class="btn">⚙️ 设置<span class="note-tag">入口</span></span>
+    </div>
+    <div style="padding:20px 40px">
+      <div class="box center" style="height:200px">工作台内容（压暗）</div>
+    </div>
+    <div class="statusbar"><span>就绪</span></div>
+  </div>
+
+  <!-- 前景对话框 -->
+  <div class="overlay-mask">
+    <div class="dialog" style="width:900px; height:620px; display:flex; flex-direction:column">
+      <div class="row" style="align-items:center; margin-bottom:12px">
+        <b style="font-size:15px">设置</b>
+        <span class="grow"></span>
+        <span class="btn ghost">✕</span>
+      </div>
+      <div class="row grow" style="align-items:stretch; gap:16px; overflow:hidden">
+        <!-- 左侧分区导航 -->
+        <div class="col" style="width:150px; border-right:1px solid #eee; padding-right:8px">
+          <span class="chip" style="border:2px solid #333;font-weight:600">🎨 外观</span>
+          <span class="chip">✏️ 编辑器</span>
+          <span class="chip">🔤 OCR</span>
+          <span class="chip">🤖 AI（Ollama）</span>
+          <span class="chip">🔒 应用锁</span>
+          <span class="chip">💾 数据</span>
+          <span class="chip">ℹ️ 关于</span>
+        </div>
+        <!-- 右侧内容：外观 -->
+        <div class="col grow" style="overflow:auto; padding-right:8px">
+          <div class="label">主题（三档）</div>
+          <div class="row">
+            <span class="chip">○ 浅色</span>
+            <span class="chip">○ 深色</span>
+            <span class="chip" style="border:2px solid #2e7d32;color:#2e7d32">● 跟随系统</span>
+          </div>
+          <div class="label" style="margin-top:10px">自定义主题</div>
+          <div class="row">
+            <span class="chip" style="border:2px solid #333;font-weight:600">默认</span>
+            <span class="chip">护眼绿</span>
+            <span class="chip">午夜蓝</span>
+            <span class="btn ghost" style="padding:2px 10px;font-size:11px">导入主题</span>
+            <span class="btn ghost" style="padding:2px 10px;font-size:11px">编辑变量</span>
+          </div>
+          <div class="label" style="margin-top:10px">字号</div>
+          <div class="row" style="align-items:center">
+            <span style="font-size:11px;color:#999">小</span>
+            <div class="grow box" style="padding:2px 6px">────────●────────</div>
+            <span style="font-size:11px;color:#999">大</span>
+            <span class="chip">14 px</span>
+          </div>
+          <!-- 其余分区预告小灰卡 -->
+          <div class="label" style="margin-top:12px">其余分区（切换后展开）</div>
+          <div class="box solid">
+            <b>✏️ 编辑器</b>：默认编辑档位（富文本 / Markdown）· 打字机模式 · 自动保存防抖间隔
+          </div>
+          <div class="box solid">
+            <b>🔤 OCR</b>：图片文字识别 <span class="chip">开</span> · 识别语言：chi_sim+eng ▾
+          </div>
+          <div class="box solid">
+            <b>🤖 AI（Ollama）</b>：地址 <span class="input" style="padding:1px 6px">http://127.0.0.1:11434</span> · 模型 <span class="input" style="padding:1px 6px">llama3 ▾</span> <span class="btn ghost" style="padding:1px 8px;font-size:11px">测试连通</span>
+          </div>
+          <div class="box solid">
+            <b>🔒 应用锁</b>：启动锁屏 <span class="chip">关</span> · 修改密码<span class="note-tag">PBKDF2 本地校验，密码不出本机</span>
+          </div>
+          <div class="box solid">
+            <b>💾 数据</b>：数据目录 <span class="input" style="padding:1px 6px">…/NoteWeave/data</span> · [导出 ZIP] [导入 ZIP] [打开目录]
+          </div>
+          <div class="box solid">
+            <b>ℹ️ 关于</b>：织记 NoteWeave · 版本 1.0.0 · 检查更新
+          </div>
+        </div>
+      </div>
+      <div class="row" style="margin-top:12px; border-top:1px solid #eee; padding-top:10px">
+        <span style="font-size:11px;color:#999">修改即时保存至 settings.json</span>
+        <span class="grow"></span>
+        <span class="btn">完成</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="annotation-list">
+  <b>交互说明</b>
+  <ol>
+    <li>设置持久化于 userData/settings.json，修改即时生效并保存，无需确认按钮。</li>
+    <li>自定义主题（护眼绿/午夜蓝等）以文件形式存于 themes/ 目录，「导入主题」读取主题变量文件，「编辑变量」打开变量编辑器。</li>
+    <li>Ollama 地址默认 http://127.0.0.1:11434，「测试连通」实时探测；未连通时编辑器 AI 菜单显示降级提示（功能置灰）。</li>
+    <li>应用锁密码经 PBKDF2 派生后本地 timingSafeEqual 校验，不离开本机；开启后启动需解锁。</li>
+    <li>「数据」分区支持导出/导入全量 ZIP 备份，「打开目录」直接在文件管理器中定位数据目录。</li>
+  </ol>
+</div>
+</body>
+</html>

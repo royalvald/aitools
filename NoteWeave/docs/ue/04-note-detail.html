@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>UE-04 小记详情（覆盖层）</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<div class="wf-title">UE-04 小记详情 NoteDetail（覆盖层 · 阅读态）</div>
+<div class="wf-desc">从工作台/列表点击小记后以覆盖层打开，不离开原上下文。<a class="back" href="index.html">← 返回索引</a></div>
+
+<div class="wf-screen rel">
+  <!-- 底层：工作台（变暗） -->
+  <div class="row grow" style="gap:0; filter:brightness(.85)">
+    <div class="navrail">
+      <div class="nav-item">🧶<small>织记</small></div>
+      <div class="nav-item active">🏠<small>工作台</small></div>
+      <div class="nav-item">📚<small>知识库</small></div>
+      <div class="nav-item">🔍<small>搜索</small></div>
+      <div class="spacer"></div>
+      <div class="nav-item">⚙<small>设置</small></div>
+    </div>
+    <div class="grow box center" style="border:none;background:#eee;color:#aaa">（底层：工作台，被覆盖层压暗，点击遮罩或 ✕ 关闭返回）</div>
+  </div>
+  <!-- 覆盖层 -->
+  <div class="overlay-mask" style="padding-top:24px">
+    <div class="dialog" style="width:900px; height:660px; display:flex; flex-direction:column; padding:0">
+      <div class="topbar" style="border-bottom:1px solid #e5e5e5">
+        <span class="btn ghost">✕ 关闭</span>
+        <span class="crumb">工作台 / 小记 / <b>会议纪要 0612</b></span>
+        <span class="grow"></span>
+        <span class="chip">📁 工作</span>
+        <span class="chip">☆ 收藏</span>
+        <span class="chip">🔒 锁定</span>
+        <span class="btn primary">编辑</span>
+        <span class="btn">⋯</span>
+      </div>
+      <div class="grow" style="padding:24px 40px; overflow:hidden">
+        <div style="font-size:24px;font-weight:700">会议纪要 0612</div>
+        <div style="font-size:11px;color:#999;margin:6px 0 14px">更新于 2025-06-12 10:24 · 标签：<span class="chip">会议</span> <span class="chip">Q2</span></div>
+        <div class="text-line w90"></div>
+        <div class="text-line w80"></div>
+        <div class="text-line" style="width:75%"></div>
+        <div class="box" style="margin:12px 0">🖼 图片（noteweave-asset: 协议加载，右键：OCR / 复制 / 另存）</div>
+        <div class="text-line w60"></div>
+        <div class="text-line w40"></div>
+      </div>
+      <div style="border-top:1px solid #eee; padding:12px 40px" class="col">
+        <div class="label">关联文档（LinkPanel，双向关联）<span class="note-tag">点击 chip 跳转 KB 文档</span></div>
+        <div class="row">
+          <span class="chip">📄 需求池整理 ✕</span>
+          <span class="chip">📄 优先级评估 ✕</span>
+          <span class="btn ghost" style="padding:1px 10px;font-size:11px">＋ 添加关联</span>
+        </div>
+      </div>
+      <div class="statusbar"><span>512 字</span><span class="grow"></span><span>✓ 已保存 10:24:36</span><span>阅读中</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="annotation-list">
+  <b>交互说明</b>
+  <ol>
+    <li>「编辑」进入编辑态：顶栏出现档位切换（富文本 / Markdown），按钮变为「完成」；锁定时「编辑」隐藏、档位禁用。</li>
+    <li>编辑态支持 Ctrl+F 查找替换（含 WYSIWYG 第 N 处定位）、Ctrl+K 链接 popover、选区气泡菜单。</li>
+    <li>「⋯」更多：历史版本 / 导出 / 移动分组 / 反馈 / 删除（入回收站）。</li>
+    <li>空标题自动存为「无标题」；summary 取正文前 120 字符用于列表展示。</li>
+  </ol>
+</div>
+</body>
+</html>

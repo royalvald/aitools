@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>UE-20 大纲抽屉 + 标签交互</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<div class="wf-title">UE-20 大纲抽屉 DocOutline + 标签交互 TagInput / TagFilterBar</div>
+<div class="wf-desc">一屏两场景：左「大纲抽屉展开态」，右「标签编辑与筛选」。<a class="back" href="index.html">← 返回索引</a></div>
+
+<div class="row" style="width:1200px; margin:0 auto 32px; gap:40px">
+  <!-- 左场景：大纲抽屉展开态 -->
+  <div class="wf-screen" style="width:580px; margin:0">
+    <div class="topbar" style="height:40px">
+      <span class="crumb">📗 产品方案 / <b>需求池整理</b></span>
+      <span class="grow"></span>
+      <span class="chip" style="border:2px solid #333;font-weight:600">富文本</span>
+    </div>
+    <div class="row grow" style="gap:0">
+      <!-- 正文区（压暗衬托抽屉） -->
+      <div class="grow" style="padding:16px 20px; filter:brightness(.8)">
+        <div style="font-size:16px;font-weight:700">需求池整理</div>
+        <div class="text-line w90"></div>
+        <div class="text-line w80"></div>
+        <div class="text-line w60"></div>
+        <div style="font-size:13px;font-weight:600;margin-top:8px">高优 12 条</div>
+        <div class="text-line w90"></div>
+        <div class="text-line w40"></div>
+      </div>
+      <!-- 大纲抽屉 280px -->
+      <div class="col" style="width:280px; border-left:1px solid #ccc; background:#fcfcfc; padding:10px 12px; gap:4px">
+        <div class="row" style="align-items:center">
+          <b style="font-size:13px">大纲</b>
+          <span class="grow"></span>
+          <span class="btn ghost" style="padding:1px 8px">✕</span>
+        </div>
+        <div class="tree">
+          <div class="t-node">H1 需求池整理</div>
+          <div class="t-node">H2 背景</div>
+          <div class="t-node">H2 需求清单</div>
+          <div class="t-node l1 active">H3 高优 12 条<span class="note-tag">当前位置</span></div>
+          <div class="t-node">H2 排期</div>
+        </div>
+        <span class="note-tag" style="margin-top:auto">点击跳转滚动定位 · 随正文滚动同步高亮</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 右场景：标签编辑与筛选 -->
+  <div class="wf-screen" style="width:580px; margin:0">
+    <!-- TagInput 编辑态 -->
+    <div class="col" style="padding:16px; gap:10px; border-bottom:1px dashed #ccc">
+      <div class="label">① TagInput 标签编辑态（文档/小记元信息）</div>
+      <div class="box solid" style="background:#fff; padding:10px">
+        <div class="row" style="align-items:center; flex-wrap:wrap">
+          <span class="chip">需求 ✕</span>
+          <span class="chip">v2.0 ✕</span>
+          <span class="input grow" style="min-width:120px">输入标签…</span>
+        </div>
+        <!-- 下拉建议 -->
+        <div class="box" style="margin-top:8px; background:#fafafa">
+          <div style="padding:2px 0">会议 (12)</div>
+          <div style="padding:2px 0">评审 (8)</div>
+          <span class="note-tag">下拉建议：已有标签聚合</span>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <span class="btn ghost">✨ AI 推荐标签</span>
+          <span class="note-tag">依赖 Ollama 配置</span>
+        </div>
+      </div>
+    </div>
+    <!-- TagFilterBar 筛选态 -->
+    <div class="col grow" style="padding:16px; gap:10px">
+      <div class="label">② TagFilterBar 筛选态（工作台 · 小记 Tab 顶部）</div>
+      <div class="row" style="align-items:center">
+        <span class="chip" style="border:2px solid #333;font-weight:600">全部</span>
+        <span class="chip" style="border:2px solid #333;font-weight:600">会议 ✓</span>
+        <span class="chip" style="border:2px solid #333;font-weight:600">需求 ✓</span>
+        <span class="grow"></span>
+        <span style="font-size:12px;color:#333"><b>筛选出 5 篇</b><span class="note-tag">多选高亮</span></span>
+      </div>
+      <div class="col grow" style="gap:8px">
+        <div class="box solid">📝 周会纪要 0612 · 会议 / 需求</div>
+        <div class="box solid">📝 评审意见汇总 · 会议 / 评审</div>
+        <div class="box solid">📝 需求池讨论 · 需求</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="annotation-list">
+  <b>交互说明</b>
+  <ol>
+    <li>大纲抽屉由 DocPageHeader「▤ 大纲」开关；点击标题项正文平滑滚动定位，正文滚动时反向同步高亮当前标题。</li>
+    <li>TagInput 支持 Enter 新建、Backspace 删除末位、✕ 移除单个标签；输入时实时过滤已有标签。</li>
+    <li>标签建议来自全库标签聚合（useTagSuggestions，按使用次数排序显示计数）。</li>
+    <li>「✨ AI 推荐标签」依赖 Ollama 配置：未配置时按钮置灰并提示「前往设置配置 Ollama」。</li>
+    <li>TagFilterBar 多选筛选，实时显示「筛选出 N 篇」结果计数；「全部」重置。</li>
+  </ol>
+</div>
+</body>
+</html>

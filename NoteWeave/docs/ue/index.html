@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>NoteWeave UE 线框图 · 索引</title>
+<link rel="stylesheet" href="wireframe.css">
+<style>
+  .idx { width: 720px; margin: 40px auto; background: #fff; border: 1px solid #bbb; border-radius: 8px; padding: 32px 40px; }
+  .idx h1 { font-size: 22px; margin-bottom: 6px; }
+  .idx .sub { color: #888; font-size: 13px; margin-bottom: 24px; }
+  .idx ol { padding-left: 22px; line-height: 2.4; font-size: 15px; }
+  .idx a { color: #1a5fb4; text-decoration: none; }
+  .idx a:hover { text-decoration: underline; }
+  .idx .tip { margin-top: 24px; font-size: 12px; color: #999; }
+</style>
+</head>
+<body>
+<div class="idx">
+  <h1>织记 NoteWeave · UE 线框图</h1>
+  <div class="sub">低保真原型 v1.0 · 与 <code>docs/UE_DESIGN.md</code> 对应 · 灰度线框 + 红色标注</div>
+  <ol>
+    <li><a href="01-dashboard.html">工作台 Dashboard</a> — 问候 + 快捷新建 + 最近/收藏/小记/待办 Tab</li>
+    <li><a href="02-kb-grid.html">知识库首页 KbGridPage</a> — 知识库卡片网格</li>
+    <li><a href="03-kb-detail.html">知识库详情 KbDetail</a> — 目录树 + 文档区</li>
+    <li><a href="04-note-detail.html">小记详情 NoteDetail</a> — 覆盖层 · 阅读态</li>
+    <li><a href="05-kb-doc-editor.html">KB 文档编辑器</a> — 编辑态 + 讨论面板 + 关联抽屉</li>
+    <li><a href="06-whiteboard.html">白板（仅浏览模式）</a> — 无限画布 + 小地图 + 工具栏</li>
+    <li><a href="07-global-search.html">全局搜索浮层</a> — 搜索 / 快速打开 / 命令 三合一</li>
+    <li><a href="08-quick-note.html">快捷小记浮窗</a> — 托盘唤起</li>
+    <li><a href="09-lock-screen.html">应用锁屏</a> — 全屏密码遮罩</li>
+    <li><a href="10-trash.html">回收站 TrashPanel</a> — 还原 / 彻底删除</li>
+  </ol>
+  <h2 style="font-size:16px;margin:20px 0 4px">对话框与展开态（UE-11 ~ UE-18）</h2>
+  <ol start="11">
+    <li><a href="11-create-dialogs.html">新建系列对话框</a> — 小记/知识库/文档/待办/分组</li>
+    <li><a href="12-export-menu.html">导出菜单 ExportMenu</a> — PDF/HTML/Word/多格式/Pandoc</li>
+    <li><a href="13-import-external.html">批量导入外部格式</a> — 分步向导 + 进度/结果</li>
+    <li><a href="14-export-kb.html">批量导出知识库</a> — 多选 + 格式 + 资产选项</li>
+    <li><a href="15-template-picker.html">模板选择</a> — 分类 + 模板卡片网格</li>
+    <li><a href="16-history.html">版本历史 HistoryPanel</a> — 版本列表 + 双栏对比 + 恢复</li>
+    <li><a href="17-assets.html">资源管理 AssetManagerPanel</a> — 引用/未引用 + 清理</li>
+    <li><a href="18-settings.html">设置对话框</a> — 外观/编辑器/OCR/AI/应用锁/数据</li>
+  </ol>
+  <h2 style="font-size:16px;margin:20px 0 4px">编辑器展开态与独立界面（UE-19 ~ UE-24）</h2>
+  <ol start="19">
+    <li><a href="19-find-replace.html">查找替换 FindReplaceBar</a> — 匹配计数 + 第 N 处定位</li>
+    <li><a href="20-outline-tag.html">大纲抽屉 + 标签交互</a> — 大纲跳转 / TagInput / 筛选</li>
+    <li><a href="21-ai-menu.html">AI 能力三态</a> — AI 菜单 / 翻译 / 标签推荐（Ollama）</li>
+    <li><a href="22-mindmap.html">思维导图编辑器</a> — 节点画布 + 互转</li>
+    <li><a href="23-frame-presentation.html">框架演示 FramePresentation</a> — 全屏分页播放</li>
+    <li><a href="24-todo.html">待办 TodoPanel + 编辑对话框</a> — 分组列表 + 编辑</li>
+  </ol>
+  <div class="tip">说明：线框图为结构与交互说明用，不代表视觉稿；颜色、间距以实现（Tailwind 主题变量）为准。</div>
+</div>
+</body>
+</html>

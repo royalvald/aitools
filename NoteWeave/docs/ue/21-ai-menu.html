@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>UE-21 AI 能力三态</title>
+<link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+<div class="wf-title">UE-21 AI 能力三态：AiMenu / TranslateDialog / TagSuggestions</div>
+<div class="wf-desc">编辑器选区 AI 菜单 → 翻译对话框 → 标签推荐浮层，纵向三场景。<a class="back" href="index.html">← 返回索引</a></div>
+
+<div class="wf-screen">
+  <div class="col" style="padding:20px 24px; gap:20px">
+
+    <!-- 场景① 编辑器 AI 菜单 -->
+    <div class="col" style="gap:6px">
+      <div class="label">场景① 编辑器 AI 菜单 AiMenu（选区上方浮出）</div>
+      <div class="rel box solid" style="height:190px; background:#fff; display:block">
+        <div style="font-size:14px;font-weight:700;margin-bottom:8px">需求池整理</div>
+        <div class="text-line w90"></div>
+        <div style="font-size:12px;color:#444;margin:8px 0">
+          其中<span class="hl">高优先级 12 条需在 v2.0 完成</span><span class="note-tag">选区触发浮出</span>，产品侧已逐条评估…
+        </div>
+        <div class="text-line w60"></div>
+        <!-- 浮出菜单 -->
+        <div class="box solid" style="position:absolute; top:52px; left:220px; width:300px; background:#fff; padding:10px">
+          <div class="row" style="align-items:center; margin-bottom:8px">
+            <b style="font-size:12px">✨AI</b>
+            <span class="grow"></span>
+            <span class="chip">Ollama · qwen2.5</span>
+          </div>
+          <div class="row" style="flex-wrap:wrap; gap:6px">
+            <span class="btn">续写</span>
+            <span class="btn">总结</span>
+            <span class="btn">润色</span>
+            <span class="btn">扩写</span>
+            <span class="btn">翻译</span>
+            <span class="btn">自定义指令…</span>
+          </div>
+        </div>
+        <span class="note-tag" style="position:absolute; bottom:8px; right:10px">未配置 Ollama：菜单项置灰 + 「前往设置配置 Ollama」</span>
+      </div>
+    </div>
+
+    <!-- 场景② 翻译对话框 -->
+    <div class="col" style="gap:6px">
+      <div class="label">场景② 翻译对话框 TranslateDialog（约 560px）</div>
+      <div class="row">
+        <div class="dialog" style="width:560px; margin:0">
+          <div class="row" style="align-items:center; margin-bottom:10px">
+            <b style="font-size:13px">🌐 翻译</b>
+            <span class="grow"></span>
+            <span class="chip">Ollama · qwen2.5</span>
+            <span class="btn ghost" style="padding:1px 8px">✕</span>
+          </div>
+          <div class="box" style="background:#f4f4f4">
+            <div class="label">原文（选区摘要）</div>
+            <div class="text-line w90"></div>
+            <div class="text-line w80"></div>
+          </div>
+          <div class="row" style="align-items:center; margin:10px 0">
+            <span style="font-size:12px;color:#555">目标语言</span>
+            <span class="input" style="min-width:140px; color:#333">英语 ▾</span>
+            <span style="font-size:11px;color:#999">英语 / 日语 / 韩语 / 法语…</span>
+            <span class="grow"></span>
+            <span class="btn primary">翻译</span>
+          </div>
+          <div class="box" style="background:#fafafa">
+            <div class="label">翻译结果</div>
+            <div class="text-line w90"></div>
+            <div class="text-line w90"></div>
+            <div class="text-line w60"></div>
+          </div>
+          <div class="row" style="margin-top:10px; justify-content:flex-end">
+            <span class="btn">替换选区</span>
+            <span class="btn">插入下方</span>
+            <span class="btn ghost">复制</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 场景③ 标签推荐浮层 -->
+    <div class="col" style="gap:6px">
+      <div class="label">场景③ 标签推荐浮层 TagSuggestions（约 360px）</div>
+      <div class="row">
+        <div class="dialog" style="width:360px; margin:0">
+          <div class="row" style="align-items:center; margin-bottom:10px">
+            <b style="font-size:13px">✨ 根据内容推荐标签</b>
+            <span class="grow"></span>
+            <span class="btn ghost" style="padding:1px 8px">✕</span>
+          </div>
+          <div class="row" style="flex-wrap:wrap; gap:6px">
+            <span class="chip">会议 ＋</span>
+            <span class="chip">优先级 ＋</span>
+            <span class="chip">Q2 ＋</span>
+            <span class="note-tag">点击 ＋ 一键添加</span>
+          </div>
+          <div class="row" style="margin-top:12px; justify-content:flex-end">
+            <span class="btn ghost">忽略</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="annotation-list">
+  <b>交互说明</b>
+  <ol>
+    <li>AI 由本地 Ollama 提供（REQ-215）；prompt 模板统一在 shared/ai-prompts.ts，模型与地址在设置中配置。</li>
+    <li>选区浮出 AiMenu：续写/总结/润色/扩写直接作用于选区或插入；「自定义指令」打开输入框自由下指令。</li>
+    <li>未配置 Ollama 时降级态：菜单项置灰，显示「前往设置配置 Ollama」引导入口。</li>
+    <li>生成中结果区显示流式光标与「停止」按钮，可随时中断；完成后提供替换选区 / 插入下方 / 复制操作。</li>
+    <li>TagSuggestions 推荐标签以 chips 呈现，点 ＋ 即添加到文档标签；「忽略」关闭本次推荐。</li>
+  </ol>
+</div>
+</body>
+</html>
