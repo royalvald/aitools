@@ -242,7 +242,7 @@ AI 按标准逐项判定：归类 bug 类型 + 判定命中因子（+ 复杂类�
 ```
 
 - **解析约定**：固定表头 + 固定列序，加载器按表头识别段落；首行 `rubric_version` 为版本标识
-- **注入**：`scoring_v2.md` 模板只保留薄壳（角色 + "按以下评价标准逐项判定" + `{rubric_block}` + bug 数据 + 输出格式），标准原文直传；**标准变更只改 rubric 文件，不动模板结构**
+- **注入**：`scoring_v2_v2.md`（模板名 `scoring_v2`）只保留薄壳（角色 + "按以下评价标准逐项判定" + `{rubric_block}` + bug 数据 + 输出格式），标准原文直传；**标准变更只改 rubric 文件，不动模板结构**
 - **治理**：与 strategy_version 同款通道——`optimization` 介入单可提议 rubric 变更（附依据，如"param_check 区间 15-30 收窄为 15-25，依据近 30 天该类通过率"），人批准后新版本激活，可回退
 
 ### 8.4 新维度体系：定位/修改/验证/波及（重构，四维）
@@ -282,7 +282,7 @@ AI 按标准逐项判定：归类 bug 类型 + 判定命中因子（+ 复杂类�
 ### 8.7 实现触点
 
 1. `prompts/rubrics/scoring_rubric_v1.md` + 加载器（表头解析、版本读取）
-2. `prompts/templates/scoring_v2.md`（薄壳 + `{rubric_block}` 占位符）
+2. `prompts/templates/scoring_v2_v2.md`（薄壳 + `{rubric_block}` 占位符）
 3. `各阶段包 schemas.py`：判定表单 Schema（替代/并存 ScoreOutput）
 4. `stages/scoring.py`：本地映射器（基准+因子→四维分）、代码实证分支
 5. `strategy_version`：四键权重 + optimization 介入单提议 rubric 变更

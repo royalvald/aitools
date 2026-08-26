@@ -4,6 +4,8 @@
 system/user 通道切分：模板内 ``<<<SYSTEM_END>>>`` 标记之前为 system 段
 （角色/规则），之后为 user 段（数据 + 输出要求）；标记本身不进入 prompt，
 仅插入标记不改变模型可见内容，无需升版本（改措辞才升）。
+版本治理：templates/ 只保留各模板的现行版本文件；历史版本随 git 历史保留
+（历史 FixRecord/审计记录的 prompt_version 回放查对应提交）。
 """
 
 from __future__ import annotations
@@ -53,5 +55,5 @@ def render_prompt(name: str, **fields: str) -> tuple[str | None, str]:
 
 
 def prompt_version(name: str) -> str:
-    """返回模板的版本标识（如 "fixing:v1"），供审计留痕。"""
+    """返回模板的版本标识（如 "fixing:v2"），供审计留痕。"""
     return f"{name}:{PROMPT_VERSIONS[name]}"
