@@ -61,12 +61,10 @@ def test_bumped_templates_put_rules_in_system():
         bug_block="<bug>", repo_profiles="<repos>", skill_library="<skills>")
     assert "DSL 动作词表" in system and "四段式" in system
     assert "proposed_skills 输出示例" in system
+    assert "target_repos" in system  # v6：选仓职责 + 每条选定须附具体依据
+    assert "必须附具体依据" in system
     assert "<bug>" in user and "<repos>" in user and "<skills>" in user
-
-    system, user = render_prompt(
-        "repo_match", bug_block="<bug>", repo_library="<lib>")
-    assert "每条关联必须附具体依据" in system  # v2：低置信关联须附依据
-    assert "<bug>" in user and "<lib>" in user
+    assert "候选仓库登记表" in user  # 候选库（画像）在 user 段供判定
 
     system, user = render_prompt(
         "scoring", bug_block="<bug>", plan_summary="<plan>")

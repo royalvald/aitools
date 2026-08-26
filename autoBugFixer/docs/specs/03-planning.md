@@ -4,7 +4,7 @@
 |---|---|
 | 范围 | **仅验证方案生成阶段**：LLM 产出 DSL 结构化方案 + 风险分级 + 高风险人工确认（评分见 Spec 04，DSL 执行见 Spec 07） |
 | 源码 | `planning/stage.py`（阶段逻辑）、`dsl/__init__.py`（DSL 词表与校验）、`intervention/service.py`（确认回写） |
-| 提示词 | `prompts/templates/planning_v5.md`（占位符 `{bug_block}`、`{repo_profiles}`、`{skill_library}`；v5：v4 机制不动，数据后置分通道 + proposed_skills 输出示例） |
+| 提示词 | `prompts/templates/planning_v6.md`（占位符 `{bug_block}`、`{repo_profiles}`（候选仓库登记表）、`{skill_library}`；v6：候选库注入 + `target_repos` 选仓输出，对应关系随方案一并判定，见 Spec 02 §9 v3） |
 | 参考样例 | `examples/bugs_sample.csv`（CSV 路径恒低风险，落点可复现） |
 
 ## 1. 目标与结果预期
@@ -33,6 +33,7 @@
 
 ```json
 {
+  "target_repos": [{"repo_id": 1, "reason": "含 /health 接口实现，主要怀疑仓库"}],
   "env_requirements": "环境要求描述（如：本地仿真环境）",
   "steps": [{"action": "call_api", "params": {"method": "GET", "path": "/health"}, "desc": "调用健康检查接口"}],
   "expected_results": ["status 字段为 ok"],
@@ -41,7 +42,7 @@
 }
 ```
 
-五字段去向：`steps` 是**唯一被机器执行**的字段；其余四个（env_requirements / expected_results / function_points / regression_scope）供人工确认展示与审计留痕，不参与执行。（P1 新增第六字段 `fix_approach` 修复思路大纲，供评分与修复阶段消费，见 §9.4。）
+六字段去向：`steps` 是**唯一被机器执行**的字段；`target_repos` 由阶段写回 bug_repo（声明链接补相关性、未声明的建 matched 链接，驱动工作区准备与代码检索，见 Spec 02 §9 v3）；其余四个（env_requirements / expected_results / function_points / regression_scope）供人工确认展示与审计留痕，不参与执行。（P1 新增 `fix_approach` 修复思路大纲，供评分与修复阶段消费，见 §9.4。）
 
 **状态流转（按场景标注，每个状态附含义）**：
 
@@ -59,6 +60,10 @@
 
 场景C LLM 输出非法/预算超限/未捕获异常：
   PLANNING(执行态) ──异常──▶ FAILED(可续跑态：故障排除后重新触发，从本阶段继续)
+
+场景D 未声明仓库 Bug 且 target_repos 解析后零绑定（Spec 02 §9 v3）：
+  PLANNING(执行态) ──need_intervention──▶ WAIT_INFO(阻塞态：等 tester 补充仓库声明，
+      创建 repo_supplement 介入单；止损上限同 Spec 02 B3，超限转 MANUAL)
 ```
 
 ## 3. 行为规格
@@ -67,7 +72,7 @@
 
 | 规则 | 环节 | 规格 |
 |---|---|---|
-| B1-1 | Prompt | `planning_v5` 模板填充 `{bug_block}`（七行结构化文本，超长字段截断，注入防护同 Spec 02 B2-5：检测留痕 + `<untrusted_bug_data>` 包裹）；词表/结构/示例进 system 通道、数据块后置 user 通道；输出上限放宽 8192 防 JSON 截断 |
+| B1-1 | Prompt | `planning_v6` 模板填充 `{bug_block}`（七行结构化文本，超长字段截断，注入防护同 Spec 02 B2-5：检测留痕 + `<untrusted_bug_data>` 包裹）与 `{repo_profiles}`（候选仓库登记表，repo_id 可引用）；词表/结构/示例进 system 通道、数据块后置 user 通道；输出上限放宽 8192 防 JSON 截断 |
 | B1-2 | 评估任务（模板原文口径） | 角色"测试设计助手"，任务"基于 Bug 信息生成可执行的回归验证方案"；模板内嵌**完整 DSL 词表**并明示"禁止词表外动作" |
 | B1-3 | 调用 | `ctx.llm.analyze(prompt, PlanOutput)` 恰 1 次（不含校验失败重试）；预算/计量/审计口径同 Spec 02 B2-6/B2-7 |
 | B1-4 | 结构化校验 | `steps` 逐条过 `DSLStep` 校验（词表 + 必填参数，见 B2）；失败由 Gateway 重试（`stage_max_retry`=2），耗尽 → `FAILED` |
@@ -227,7 +232,7 @@
 
 **实现联动点**（排期时一并处理）：
 
-- `planning` 模板（现行 `planning_v5.md`）：词表段后增加 `{skill_library}` 占位符（模板从静态词表变为"静态词表 + 动态技能"两段渲染）；
+- `planning` 模板（现行 `planning_v6.md`）：词表段后增加 `{skill_library}` 占位符（模板从静态词表变为"静态词表 + 动态技能"两段渲染）；
 - `PlanOutput` schema：增加可选 `proposed_skills` 字段（模板步骤同样过 DSLStep 词表/必填参数校验链）；
 - 学习阶段（Spec 08）：增加技能蒸馏 upsert 分支；
 - 新表 `verification_skill`（或经验表加类型字段）：名称/参数/模板/版本/使用统计。

@@ -34,7 +34,10 @@ LEGAL_TRANSITIONS: dict[TaskState, set[TaskState]] = {
     TaskState.DISCOVERED: {TaskState.ANALYZING, TaskState.CANCELLED},
     TaskState.ANALYZING: {TaskState.WAIT_INFO, TaskState.PLANNING, TaskState.MANUAL, TaskState.FAILED, TaskState.CANCELLED},
     TaskState.WAIT_INFO: {TaskState.ANALYZING, TaskState.CANCELLED, TaskState.FAILED},  # 补充完成重新分析；FAILED=SLA 超时挂起
-    TaskState.PLANNING: {TaskState.WAIT_PLAN, TaskState.SCORED, TaskState.FAILED, TaskState.CANCELLED},
+    # WAIT_INFO=方案生成未从登记表选定目标仓库（Spec 02 §9 v3），
+    # 补充声明后回 ANALYZING 复检（repo_supplement resolve 既有路径）
+    TaskState.PLANNING: {TaskState.WAIT_PLAN, TaskState.WAIT_INFO, TaskState.SCORED,
+                         TaskState.FAILED, TaskState.CANCELLED},
     # 确认/调整后继续；拒绝（approved=false）转人工（Spec 03 B6-3 缺陷修复）
     TaskState.WAIT_PLAN: {TaskState.PLANNING, TaskState.SCORED, TaskState.MANUAL, TaskState.CANCELLED, TaskState.FAILED},
     TaskState.SCORED: {TaskState.MANUAL, TaskState.FIXING, TaskState.FAILED, TaskState.CANCELLED},

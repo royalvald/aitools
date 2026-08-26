@@ -308,29 +308,30 @@ T2  再补一轮仍不齐 → 2 ≥ 2 达上限 → 不再开单，直接 MANUAL
 - missing / suggestions 内容约束（当前 LLM 自由生成：missing 不强制标准字段名、建议无模板/长度规范），介入单展示侧需容忍自由文本；
 - ~~info_supplement 介入单 SLA deadline 自动填充~~（已实现：介入单创建即按 `intervention_sla_hours` 填充 deadline，四类介入单同口径；超时升级由调度器 SLA 扫描消费）。
 
-## 9. 全局仓库画像 + Bug 仓库匹配（v2，as-built）
+## 9. 全局仓库画像 + Bug 仓库对应关系（v3，as-built）
 
 > 状态：已实现（`completeness/repo_profile.py`、`models.py::Repo` 登记表、
-> planning v5 模板、fixing prompt extras 段）。v1（画像随 `bug_repo` 行
+> planning v6 模板、fixing prompt extras 段）。v1（画像随 `bug_repo` 行
 > 逐 Bug 存储）已由 v2 取代：仓库事实升级为**独立登记的全局共享资产**
-> （登记表见 Spec 01 §10），画像一次生成全局复用；相关性判定改为
-> Bug 维度的独立匹配调用。
+> （登记表见 Spec 01 §10），画像一次生成全局复用。v3 再取消 Bug 维度的
+> 独立匹配调用：**对应关系由 planning LLM 在方案输出中一并判定**
+> （`target_repos`），画像描述进 context、下游自行评估 Bug 与仓库的
+> 对应关系，无独立匹配开销。
 
 ### 9.1 行为规格
 
 | 规则 | 环节 | 规格 |
 |---|---|---|
-| P1 | 全局画像 | B2 评估 `complete=true` 后：先补齐关联仓库中未画像者的**全局事实画像**（无 Bug 上下文），结果挂 `repo.profile`（JSON）+ `profiled_at`，跨 Bug 复用（同一仓库第二个 Bug 起 0 次画像调用）；计量 `llm_usage`（stage=`repo_profile`，task_id 可空=登记期全局画像） |
+| P1 | 全局画像 | planning 组装候选集后补齐未画像者的**全局事实画像**（无 Bug 上下文），结果挂 `repo.profile`（JSON）+ `profiled_at`，跨 Bug 复用（同一仓库第二个 Bug 起 0 次画像调用）；计量 `llm_usage`（stage=`repo_profile`，task_id 可空=登记期全局画像） |
 | P2 | 画像输入 | 纯本地只读摘要（两层目录树限 40 条 + 扩展名统计 + README 前 800 字符，跳过 `.git`/`node_modules`/二进制后缀），`wrap_untrusted` 包裹；注入命中 → `injection_detected` 留痕不阻断 |
 | P3 | 画像 Schema | `RepoProfile`：`summary`、`tech_stack`、`key_dirs`、`entry_points`（**纯仓库事实**；v1 的 `bug_relevance` 移除——相关性是 Bug 维度，由 P4 产生） |
-| P4 | Bug 匹配 | 每 Bug 一次 `repo_match` 调用：Bug 信息 × 候选仓库画像清单（关联仓库 + 登记表其他可用仓库，上限 `repo_match_max_candidates`）→ `RepoMatch.matches[{repo_id, relevance}]`；候选先补齐画像（全局缓存）。v2 模板：每条关联必须附具体依据（接口路径/模块名/技术栈对应点），无依据猜测不输出（防误补选烧预算） |
-| P5 | 链接合并 | 声明链接（origin=declared）强制保留（信任用户指定）；未声明的判定仓库追加 matched 链接（排在声明之后）；候选外 id 忽略并审计 `repo_match_ignored`；匹配重建 matched 链接幂等 |
-| P6 | 跳过启发式 | 单一声明仓库且登记表无其他可用候选 → 匹配无信息增益，跳过调用（相关性留空，渲染时省略）；多仓库/有额外候选/相关性缺失时才调用 |
-| P7 | 零结果 | 未声明 Bug 匹配零仓库 → `repo_supplement` 介入（"LLM 未从登记表匹配到相关仓库"），受 info_rounds 止损上限保护 |
-| P8 | 下游注入 | planning v5 `{repo_profiles}` 段与 fixing extras 段注入"全局画像 + 本 Bug 相关性"（`关联判断:` 行）；无画像回退基础信息（分支+路径+可用性），不阻断；画像/相关性条目为二阶外部数据，`wrap_untrusted` 包裹注入 |
-| P9 | 开关 | `AUTOBUGFIXER_REPO_PROFILE_ENABLED=false` 同时关闭画像与匹配（0 次调用，下游仅回退基础信息） |
-| P10 | 失败 | 画像/匹配 LLM 重试耗尽或预算超限 → 沿网关抛出 → 阶段异常落 `FAILED` 断点续跑（口径同 B2-6/B2-8） |
-| P11 | 重导 | 重建 bug_repo 关联行但**全局画像缓存不失效**（v1 的"重导重画像"规则作废）；仅新引入的未画像仓库补画像。手动刷新走登记表维护入口（Spec 01 §10） |
+| P4 | 对应关系判定 | 候选登记表（声明链接仓库 + 登记表其他可用仓库，上限 `repo_candidate_limit`）注入 planning prompt（`candidate_library_block`，repo_id 可引用）；LLM 输出 `PlanOutput.target_repos[{repo_id, reason}]`，v6 模板：每条选定必须附具体依据（接口路径/模块名/技术栈对应点），无依据猜测不输出（防误补选烧预算） |
+| P5 | 链接写回 | planning 阶段写回 bug_repo：声明链接（origin=declared）强制保留（信任用户指定），判定命中补相关性；未声明的判定仓库重建 matched 链接（排在声明之后，幂等）；候选外 id 忽略并审计 `target_repo_ignored` |
+| P6 | 零选定 | 未声明 Bug 且 `target_repos` 解析后零绑定 → `repo_supplement` 介入（"方案生成未从登记表选定目标仓库"，PLANNING→WAIT_INFO），受 info_rounds 止损上限保护 |
+| P7 | 下游注入 | fixing extras 段注入"全局画像 + 本 Bug 相关性"（`关联判断:` 行）；无画像回退基础信息（分支+路径+可用性），不阻断；画像/相关性条目为二阶外部数据，`wrap_untrusted` 包裹注入 |
+| P8 | 开关 | `AUTOBUGFIXER_REPO_PROFILE_ENABLED=false` 同时关闭画像与候选注入（0 次画像调用，声明链接即绑定，下游仅回退基础信息） |
+| P9 | 失败 | 画像 LLM 重试耗尽或预算超限 → 沿网关抛出 → 阶段异常落 `FAILED` 断点续跑（口径同 B2-6/B2-8） |
+| P10 | 重导 | 重建 bug_repo 关联行但**全局画像缓存不失效**（v1 的"重导重画像"规则作废）；仅新引入的未画像仓库在 planning 补画像。手动刷新走登记表维护入口（Spec 01 §10） |
 
 ### 9.2 验收
 
@@ -339,10 +340,10 @@ T2  再补一轮仍不齐 → 2 ≥ 2 达上限 → 不再开单，直接 MANUAL
 | PA1 | digest 跳过噪声目录/二进制、README 摘录、untrusted 包裹 | `test_repo_profile.py::test_digest_skips_noise_and_wraps_untrusted` |
 | PA2 | 登记 get-or-create + 复检 + path+branch 唯一 | `test_repo_profile.py::test_register_repo_gets_or_creates_with_recheck` |
 | PA3 | 声明解析自动登记 / 关闭时 unresolved 供门禁 | `test_repo_profile.py::test_sync_resolves_declarations_and_auto_registers` |
-| PA4 | 全局画像一次生成跨 Bug 复用（第二个 Bug 0 次画像、匹配每 Bug 一次） | `test_repo_profile.py::test_profiles_global_cached_across_bugs` |
-| PA5 | 单一声明仓库无额外候选 → 匹配跳过（llm_usage 无 repo_match） | `test_repo_profile.py::test_single_declared_repo_skips_match_call` |
-| PA6 | 匹配补选 matched 链接 + 相关性注入 planning prompt | `test_repo_profile.py::test_match_adds_unmatched_relevant_repo` |
-| PA7 | 未声明 Bug 匹配零结果 → repo_supplement 介入 | `test_repo_profile.py::test_match_zero_links_intervenes` |
+| PA4 | 全局画像一次生成跨 Bug 复用（第二个 Bug 0 次画像、无独立匹配 stage） | `test_repo_profile.py::test_profiles_global_cached_across_bugs` |
+| PA5 | 单一声明仓库：声明链接即绑定，无额外调用 | `test_repo_profile.py::test_single_declared_repo_costs_no_extra_call` |
+| PA6 | planning target_repos 补选 matched 链接 + 相关性注入下游 | `test_repo_profile.py::test_planning_selects_unmatched_relevant_repo` |
+| PA7 | 未声明 Bug 零选定 → repo_supplement 介入（PLANNING→WAIT_INFO） | `test_repo_profile.py::test_planning_zero_selection_intervenes` |
 | PA8 | fixing prompt 快照含画像段 / 无画像回退 | `test_repo_profile.py::test_fixing_prompt_contains_profiles`、`::test_render_fallback_without_profile` |
-| PA9 | 开关关闭 0 次画像/匹配、下游回退基础信息 | `test_repo_profile.py::test_disabled_setting_skips_llm_but_keeps_basic_info` |
+| PA9 | 开关关闭 0 次画像、下游回退基础信息 | `test_repo_profile.py::test_disabled_setting_skips_llm_but_keeps_basic_info` |
 | PA10 | 重导重建关联、画像缓存不失效（仅新仓库补画像） | `test_repo_profile.py::test_reimport_rebuilds_links_profiles_persist` |

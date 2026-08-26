@@ -1,9 +1,9 @@
-"""全局仓库登记表 + 画像/匹配测试（Spec 01 §10 / Spec 02 §9 v2）。
+"""全局仓库登记表 + 画像/候选库测试（Spec 01 §10 / Spec 02 §9 v3）。
 
 覆盖：digest 构建（噪声跳过/注入包裹）、登记 get-or-create 与复检、
-全局画像一次生成跨 Bug 复用、Bug x 登记表匹配（相关性 + 补选 + 零结果
-介入 + 单仓跳过启发式）、planning/fixing prompt 注入、开关关闭回退、
-重导重建关联但画像缓存不失效。
+全局画像一次生成跨 Bug 复用、planning target_repos 选仓写回 bug_repo
+（声明补相关性 + 补选 matched 链接 + 零选定介入）、planning/fixing prompt
+注入、开关关闭回退、重导重建关联但画像缓存不失效。
 """
 
 from pathlib import Path
@@ -133,11 +133,10 @@ def test_profiles_global_cached_across_bugs(
         for r in repos:  # 画像挂全局行（fake 应答）
             assert r.profile["summary"] == "fake 画像：健康检查服务仓库"
             assert r.profiled_at is not None
-        # Bug1 消耗：评估 1 + 画像 2 + 匹配 1（双仓库需相关性判定）
+        # Bug1 消耗：评估 1 + 画像 2 + 方案生成 1（对应关系随方案一并判定）
         used1 = s.scalars(select(LLMUsage).where(LLMUsage.task_id == task1)).all()
         assert [u.stage for u in used1] == ["completeness", "repo_profile",
-                                            "repo_profile", "repo_match",
-                                            "planning", "scoring"]
+                                            "repo_profile", "planning", "scoring"]
 
     # Bug2 引用同两仓库：画像全局缓存命中 -> 0 次画像调用（关联行重建不复位画像）
     assert orchestrator.run_preprocessing(task2) == TaskState.SCORED
@@ -145,20 +144,20 @@ def test_profiles_global_cached_across_bugs(
         prof2 = s.scalars(select(LLMUsage).where(
             LLMUsage.task_id == task2, LLMUsage.stage == "repo_profile")).all()
         assert prof2 == []  # 全局复用：不重复画像
-        match2 = s.scalars(select(LLMUsage).where(
-            LLMUsage.task_id == task2, LLMUsage.stage == "repo_match")).all()
-        assert len(match2) == 1  # 匹配仍按 Bug 各一次（相关性是 Bug 维度）
+        # 对应关系判定并入 planning 调用：无独立匹配 stage（Spec 02 §9 v3）
+        assert s.scalars(select(LLMUsage).where(
+            LLMUsage.task_id == task2, LLMUsage.stage == "repo_match")).all() == []
         links = s.scalars(select(BugRepo).where(
             BugRepo.bug_ticket_id == s.get(Task, task2).bug_ticket_id)
             .order_by(BugRepo.seq)).all()
         assert len(links) == 2 and all(l.origin == "declared" for l in links)
 
 
-# ---------- 匹配：单仓跳过 / 补选 / 零结果介入 ----------
+# ---------- planning 选仓：声明绑定 / 补选 / 零选定介入 ----------
 
-def test_single_declared_repo_skips_match_call(
+def test_single_declared_repo_costs_no_extra_call(
         make_orchestrator, session_factory, settings, environment, tmp_path):
-    """单一声明仓库且登记表无其他候选：匹配无信息增益，跳过不耗调用。"""
+    """单一声明仓库：声明链接即绑定（fake 零选定），无独立匹配调用。"""
     repo = _mk_repo(tmp_path)
     task_id = _ingest(session_factory, _bug(repo_url=str(repo)), settings)
     assert make_orchestrator().run_preprocessing(task_id) == TaskState.SCORED
@@ -170,8 +169,8 @@ def test_single_declared_repo_skips_match_call(
         assert link.origin == "declared" and link.relevance == ""
 
 
-def _recording_llm(prompts, matches):
-    """按 Schema 路由的录制 LLM：匹配调用返回给定 matches，其余给可通过应答。"""
+def _recording_llm(prompts, target_repos):
+    """按 Schema 路由的录制 LLM：planning 返回给定 target_repos，其余给可通过应答。"""
     class RecordingLLM:
         def analyze(self, prompt, schema, *, task_id, stage, session=None, system=None, max_tokens=None):
             # system/user 分通道后仍按整体录制（模板标题在 system 段，断言依赖全文）
@@ -184,12 +183,11 @@ def _recording_llm(prompts, matches):
                 from autobugfixer.features.completeness.schemas import RepoProfile
                 return RepoProfile(summary="健康检查服务仓库", tech_stack=["python"],
                                    key_dirs=["api"])
-            if name == "RepoMatch":
-                from autobugfixer.features.completeness.schemas import RepoMatch
-                return RepoMatch(matches=matches)
             if name == "PlanOutput":
                 from autobugfixer.features.planning.schemas import PlanOutput
-                return PlanOutput(steps=[
+                return PlanOutput(
+                    target_repos=target_repos,
+                    steps=[
                     {"action": "input", "params": {"selector": "#env", "value": "v1"}},
                     {"action": "call_api", "params": {"method": "GET", "path": "/health"}},
                     {"action": "assert_response",
@@ -209,9 +207,9 @@ def _recording_llm(prompts, matches):
     return RecordingLLM()
 
 
-def test_match_adds_unmatched_relevant_repo(
+def test_planning_selects_unmatched_relevant_repo(
         session_factory, settings, environment, tmp_path, platform):
-    """LLM 匹配补选未声明的相关仓库：matched 链接 + 相关性注入下游 prompt。"""
+    """planning target_repos 补选未声明的相关仓库：matched 链接 + 相关性注入下游。"""
     from autobugfixer.features.intervention.notifier import LogNotifier
     from autobugfixer.runtime.orchestrator import Orchestrator
 
@@ -223,13 +221,14 @@ def test_match_adds_unmatched_relevant_repo(
         s.commit()
         svc_id = get_repo(s, str(svc)).id
         lib_id = get_repo(s, str(lib)).id
+        docs_id = get_repo(s, str(docs)).id
     task_id = _ingest(session_factory, _bug(repo_url=str(svc)), settings)  # 只声明 svc
 
-    from autobugfixer.features.completeness.schemas import RepoMatchItem
+    from autobugfixer.features.planning.schemas import TargetRepo
     prompts: list[str] = []
     llm = _recording_llm(
-        prompts, [RepoMatchItem(repo_id=svc_id, relevance="含 /health 实现，主要怀疑仓库"),
-                  RepoMatchItem(repo_id=lib_id, relevance="公共库，可能被间接波及")])
+        prompts, [TargetRepo(repo_id=svc_id, reason="含 /health 实现，主要怀疑仓库"),
+                  TargetRepo(repo_id=lib_id, reason="公共库，可能被间接波及")])
     orchestrator = Orchestrator(session_factory, llm=llm, platform=platform,
                                 executor=None, notifier=LogNotifier(), settings=settings)
     assert orchestrator.run_preprocessing(task_id) == TaskState.SCORED
@@ -243,17 +242,18 @@ def test_match_adds_unmatched_relevant_repo(
             (svc_id, "declared"), (lib_id, "matched")]
         assert "主要怀疑仓库" in links[0].relevance
         assert "间接波及" in links[1].relevance and links[1].matched_at is not None
-    # 匹配 prompt 含候选清单（repo_id 可引用）；planning prompt 注入两仓库相关性
-    match_prompt = [p for p in prompts if "# Bug 仓库匹配" in p]
-    assert match_prompt and f"[repo_id={svc_id}]" in match_prompt[0]
+        # 下游注入块（fixing 消费）含判定出的相关性
+        assert "关联判断: 含 /health 实现" in render_repo_profiles(s, bug)
+    # planning prompt 注入候选登记表（repo_id 可引用，含未声明候选 docs）
     planning = [p for p in prompts if "# 回归验证方案生成" in p]
-    assert planning and "主要怀疑仓库" in planning[0] and "间接波及" in planning[0]
-    assert "关联判断:" in planning[0]
+    assert planning and f"[repo_id={svc_id}]" in planning[0]
+    assert f"[repo_id={docs_id}]" in planning[0]
+    assert "候选仓库登记表" in planning[0]
 
 
-def test_match_zero_links_intervenes(session_factory, settings, environment,
-                                     tmp_path, platform):
-    """未声明 Bug 且匹配零结果：repo_supplement 介入（有止损上限）。"""
+def test_planning_zero_selection_intervenes(session_factory, settings, environment,
+                                            tmp_path, platform):
+    """未声明 Bug 且方案生成零选定：repo_supplement 介入（有止损上限）。"""
     from autobugfixer.features.intervention.notifier import LogNotifier
     from autobugfixer.runtime.orchestrator import Orchestrator
     from autobugfixer.common.core.models import Intervention
@@ -265,14 +265,14 @@ def test_match_zero_links_intervenes(session_factory, settings, environment,
     task_id = _ingest(session_factory, _bug(repo_url=""), settings)  # 未声明仓库
 
     prompts: list[str] = []
-    llm = _recording_llm(prompts, matches=[])
+    llm = _recording_llm(prompts, target_repos=[])
     orchestrator = Orchestrator(session_factory, llm=llm, platform=platform,
                                 executor=None, notifier=LogNotifier(), settings=settings)
     assert orchestrator.run_until_blocked(task_id) == TaskState.WAIT_INFO
     with session_factory() as s:
         it = s.scalar(select(Intervention).where(Intervention.task_id == task_id))
         assert it.type == "repo_supplement"
-        assert "LLM 未从登记表匹配到相关仓库" in it.context["missing_repos"][0]["reason"]
+        assert "方案生成未从登记表选定目标仓库" in it.context["missing_repos"][0]["reason"]
 
 
 # ---------- 下游 prompt 注入 ----------
@@ -316,7 +316,7 @@ def test_disabled_setting_skips_llm_but_keeps_basic_info(
         repos = s.scalars(select(Repo)).all()
         assert all(not r.profile for r in repos)  # 未画像
         assert s.scalars(select(LLMUsage).where(
-            LLMUsage.stage.in_(["repo_profile", "repo_match"]))).all() == []
+            LLMUsage.stage.in_(["repo_profile"]))).all() == []
         fix = s.scalar(select(FixRecord).where(FixRecord.task_id == task_id))
         # 下游回退基础仓库信息（路径/分支仍在），但无画像内容
         assert str(repo) in fix.prompt_snapshot

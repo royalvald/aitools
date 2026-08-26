@@ -15,6 +15,7 @@ from autobugfixer.common.core.state import (
     (TaskState.ANALYZING, TaskState.WAIT_INFO),
     (TaskState.WAIT_INFO, TaskState.ANALYZING),      # 补充完成重新分析
     (TaskState.PLANNING, TaskState.WAIT_PLAN),
+    (TaskState.PLANNING, TaskState.WAIT_INFO),        # 零选定目标仓库，待补充声明（Spec 02 §9 v3）
     (TaskState.WAIT_PLAN, TaskState.SCORED),          # 方案确认后进入评分
     (TaskState.WAIT_PLAN, TaskState.MANUAL),          # 方案被拒绝转人工（Spec 03 B6-3 修复）
     (TaskState.SCORED, TaskState.FIXING),

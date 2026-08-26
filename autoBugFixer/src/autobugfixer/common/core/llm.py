@@ -130,12 +130,12 @@ class ScriptedFakeChatModel(BaseChatModel):
             return {"summary": "fake 画像：健康检查服务仓库",
                     "tech_stack": ["python"], "key_dirs": ["api"],
                     "entry_points": []}
-        if "# Bug 仓库匹配" in text:
-            # Bug x 登记表匹配（Spec 02 §9 v2）：默认不补选（声明链接强制保留）
-            return {"matches": [], "note": ""}
         if "# 回归验证方案生成" in text:
-            # 四段式五步方案（Spec 03 §9.5：Fake 应答同步升级，保证新校验下可落库）
+            # 四段式五步方案（Spec 03 §9.5：Fake 应答同步升级，保证新校验下可落库）；
+            # target_repos 默认零选定（Spec 02 §9 v3）：声明链接仍强制保留，
+            # 未声明 Bug 走 planning 的仓库补充介入
             return {
+                "target_repos": [],
                 "env_requirements": "本地仿真环境",
                 "steps": [
                     {"action": "input", "params": {"selector": "#env", "value": "v1.0.0"},

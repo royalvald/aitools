@@ -47,7 +47,8 @@ class Repo(Base):
     仓库信息不挂在单个 Bug 下——登记（CLI/API 手动，或 Bug 声明自动）时做
     本地可用性校验；LLM 画像（summary/tech_stack/key_dirs/entry_points，
     仓库固有事实、不含任何 Bug 上下文）一次生成全局复用，手动刷新
-    （Spec 02 §9 v2）。Bug 经 LLM 匹配（repo_match）引用登记表条目。
+    （Spec 02 §9 v2）。Bug 经 planning 的 target_repos 判定引用登记表条目
+    （Spec 02 §9 v3：对应关系随方案输出一并产生）。
     """
 
     __tablename__ = "repo"
@@ -75,9 +76,9 @@ class BugRepo(Base):
     """Bug ↔ 全局仓库关联（Spec 01 §10）：链接 + 本 Bug 维度的相关性判定。
 
     仓库事实（可用性/画像）在全局 repo 表，本表只维护链接：
-    - origin: declared（用户在 Bug 单声明）/ matched（LLM 匹配补选）；
+    - origin: declared（用户在 Bug 单声明）/ matched（planning target_repos 补选）；
     - seq: 声明顺序（matched 链接排在声明之后）；
-    - relevance: LLM 匹配调用给出的"该仓库与本 Bug 的关联"判断（提示性）。
+    - relevance: planning 判定给出的"该仓库与本 Bug 的关联"依据（提示性）。
     """
 
     __tablename__ = "bug_repo"

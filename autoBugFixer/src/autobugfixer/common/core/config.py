@@ -32,11 +32,11 @@ class Settings(BaseSettings):
     stage_max_retry: int = 2  # 单 Stage LLM 调用重试次数
 
     # 全局仓库登记表（Spec 01 §10）：仓库独立于 Bug 登记，画像一次生成全局复用
-    # profile：ensure_profiles 补齐 + match（Bug x 登记表匹配）写 bug_repo.relevance；
-    # 关闭时下游回退基础仓库信息
+    # profile：planning 前补齐候选画像；Bug x 仓库对应关系由 planning LLM 在方案
+    # 输出中一并判定（target_repos）写回 bug_repo；关闭时下游回退基础仓库信息
     repo_profile_enabled: bool = True
     repo_auto_register: bool = True  # Bug 声明的未登记仓库自动登记（关闭则要求先登记）
-    repo_match_max_candidates: int = 20  # 匹配调用候选仓库上限
+    repo_candidate_limit: int = 20  # planning 候选仓库上限（声明链接 + 登记表补选）
 
     # 评分（FR-PRE-04）：三维权重 + 准入阈值（v1 引擎，默认）
     score_weight_fix: float = 0.4  # 解决难度

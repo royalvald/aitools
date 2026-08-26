@@ -1,17 +1,17 @@
-"""全局仓库 LLM 画像 + Bug 仓库匹配（Spec 02 §9 v2 / Spec 01 §10）。
+"""全局仓库 LLM 画像 + 候选库渲染（Spec 02 §9 v3 / Spec 01 §10）。
 
 链路（仓库信息是全局共享资产，不是单个 Bug 的附庸）：
 - 登记表 repo（独立登记/声明自动登记）-> 本模块 ``profile_repo`` 对未画像
   仓库做一次 **无 Bug 上下文** 的事实画像（用途/技术栈/关键目录/入口），
   结果挂全局行、所有 Bug 复用（``ensure_profiles`` 补齐，手动刷新）；
-- 完整性通过后 ``match_bug_repos``：一次 LLM 调用分析 Bug 信息 x 候选
-  仓库画像库 -> 逐仓库相关性判定 + 从登记表补选未声明的相关仓库，
-  相关性写 bug_repo.relevance（Bug 维度），补选建 origin=matched 链接；
-- ``render_repo_profiles``：下游（方案生成/自动修复）注入块 = 全局画像
+- planning 注入 ``candidate_library_block``（声明链接仓库 + 登记表其他
+  可用候选，限量）：LLM 在方案输出中自行评估 Bug x 仓库对应关系
+  （``target_repos``），由 planning 阶段写回 bug_repo（Spec 02 §9 v3）；
+- ``render_repo_profiles``：下游（自动修复）注入块 = 全局画像
   + 本 Bug 相关性，提示而非约束。
 
-成本口径：画像每仓库全局一次（profile 非空即跳过）；匹配每 Bug 一次，
-无增益时（单一声明仓库且登记表无其他可用候选）跳过不耗调用。
+成本口径：画像每仓库全局一次（profile 非空即跳过）；对应关系判定并入
+planning 调用，无独立匹配开销。
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from autobugfixer.common.core.models import BugRepo, Repo, utcnow
+from autobugfixer.common.core.models import Repo, utcnow
 from autobugfixer.common.prompts import prompt_version, render_prompt
 from autobugfixer.common.security.injection import detect_injection, wrap_untrusted
 
@@ -104,7 +104,8 @@ def profile_repo(llm, session: Session, repo: Repo, *,
     """单仓库 LLM 事实画像（Spec 02 §9 v2）：结果写全局 repo.profile。
 
     画像只描述仓库固有事实（不含任何 Bug 判断——相关性属 Bug 维度，
-    由 repo_match 产生）；LLM 失败沿网关重试后抛出 -> 调用方决定 FAILED/告警。
+    由 planning 的 target_repos 产生）；LLM 失败沿网关重试后抛出 ->
+    调用方决定 FAILED/告警。
     """
     from autobugfixer.features.completeness.schemas import RepoProfile
 
@@ -152,10 +153,14 @@ def refresh_profile(llm, session: Session, repo: Repo, *,
     session.flush()
 
 
-# ---------- Bug x 仓库库匹配（每 Bug 一次） ----------
+# ---------- 候选库渲染（planning 注入，供 target_repos 判定） ----------
 
-def _candidate_block(candidates: list[Repo]) -> str:
-    """候选仓库清单（画像摘要行，repo_id 供输出引用）。"""
+def candidate_library_block(candidates: list[Repo]) -> str:
+    """候选仓库登记表渲染（Spec 02 §9 v3）：画像摘要行 + repo_id 供输出引用。
+
+    条目内容含 LLM 画像产物（二阶外部数据，11.2 输入侧）：统一 wrap_untrusted
+    包裹；无画像回退基础行（路径/分支），不阻断。
+    """
     lines = []
     for repo in candidates:
         p = repo.profile or {}
@@ -170,104 +175,28 @@ def _candidate_block(candidates: list[Repo]) -> str:
             facts.append("入口: " + "/".join(p["entry_points"]))
         lines.append(f"- [repo_id={repo.id}] {repo.path}（分支 {repo.branch}）: "
                      + (" | ".join(facts) if facts else "（未画像）"))
-    return "\n".join(lines)
+    return wrap_untrusted("\n".join(lines))
 
 
-def _match_needed(links: list[BugRepo], extras: list[Repo]) -> bool:
-    """匹配调用触发启发式：只在有信息增益时耗这一次调用。
+def load_repo_candidates(ctx) -> list[Repo]:
+    """组装 planning 候选集：声明链接仓库 + 登记表其他可用仓库（限量）。
 
-    - 登记表有额外可用候选（可能补选未声明仓库）-> 需要；
-    - 多仓库链接（需区分主次/相关性）-> 需要；
-    - 单一声明仓库且无额外候选 -> 相关性平凡（用户指定），跳过；
-    - 无变化重跑（链接已带相关性且无新候选）-> 跳过，不重复消耗。
+    开关 repo_profile_enabled 关闭时仅返回声明链接仓库（不注入候选库、
+    不做补选，下游回退基础仓库信息）。
     """
-    if extras:
-        return True
-    if len(links) <= 1:
-        return False
-    return not all(l.relevance for l in links)
-
-
-def match_bug_repos(ctx) -> list[BugRepo]:
-    """Bug x 登记表匹配（Spec 02 §9 v2）：一次 LLM 调用 -> 相关性 + 补选。
-
-    - 声明链接（origin=declared）强制保留（信任用户指定）；
-    - LLM matches 按 repo_id 解析：声明的补相关性，未声明的建 matched 链接
-      （追加在声明之后）；无法解析的 id 忽略并留痕；
-    - 失败沿网关重试后抛出 -> 阶段异常落 FAILED（口径同其他 analyze）。
-    """
-    from autobugfixer.common.core.bugtext import build_bug_block
-    from autobugfixer.features.completeness.schemas import RepoMatch
     from autobugfixer.features.ingest.repo_check import load_bug_repos
 
-    links = load_bug_repos(ctx.session, ctx.bug.id)
+    linked = [l.repo for l in load_bug_repos(ctx.session, ctx.bug.id)]
     if not ctx.settings.repo_profile_enabled:
-        return links
-    linked_ids = {l.repo_id for l in links}
+        return linked
+    linked_ids = {r.id for r in linked}
     extras = list(ctx.session.scalars(select(Repo).where(
         Repo.status == "available", Repo.id.not_in(linked_ids)
-    ).order_by(Repo.id).limit(ctx.settings.repo_match_max_candidates)).all())
-    if not links and not extras:
-        return links  # 无候选空间（门禁已保证登记表非空，此处兜底）
-    if not _match_needed(links, extras):
-        return links
-
-    candidates = [l.repo for l in links] + extras
-    ensure_profiles(ctx, candidates)  # 候选先补齐画像（全局缓存，已画像零成本）
-    system, user = render_prompt(
-        "repo_match",
-        bug_block=build_bug_block(ctx),
-        repo_library=wrap_untrusted(_candidate_block(candidates)))
-    result = ctx.llm.analyze(user, RepoMatch, system=system,
-                             task_id=ctx.task.id, stage="repo_match",
-                             session=ctx.session)
-    assert isinstance(result, RepoMatch)
-    candidate_ids = {r.id for r in candidates}
-    judgments: dict[int, str] = {}
-    for m in result.matches:
-        if m.repo_id in candidate_ids:
-            judgments[m.repo_id] = m.relevance[:500]
-        else:
-            ctx.audit.log(action="repo_match_ignored", target=f"task:{ctx.task.id}",
-                          detail={"repo_id": m.repo_id,
-                                  "reason": "候选集外 id"},
-                          task_id=ctx.task.id)
-    ctx.audit.log(action="llm_call", target=f"task:{ctx.task.id}",
-                  detail={"stage": "repo_match",
-                          "prompt_version": prompt_version("repo_match"),
-                          "candidates": len(candidates),
-                          "judged": len(judgments)}, task_id=ctx.task.id)
-
-    # 声明链接：保留 + 补相关性（未被判定的标注用户声明）
-    now = utcnow()
-    for link in links:
-        if link.origin == "declared":
-            link.relevance = judgments.get(link.repo_id) or "（用户声明修复仓库）"
-            link.matched_at = now
-    # 补选链接：重建（先删旧 matched，再按判定顺序追加）
-    session = ctx.session
-    from sqlalchemy import delete
-    session.execute(delete(BugRepo).where(
-        BugRepo.bug_ticket_id == ctx.bug.id, BugRepo.origin == "matched"))
-    declared_ids = {l.repo_id for l in links if l.origin == "declared"}
-    seq_base = len(declared_ids)
-    added = 0
-    for rid, relevance in judgments.items():
-        if rid in declared_ids:
-            continue
-        session.add(BugRepo(bug_ticket_id=ctx.bug.id, repo_id=rid,
-                            seq=seq_base + added, origin="matched",
-                            relevance=relevance, matched_at=now))
-        added += 1
-    session.flush()
-    ctx.audit.log(action="repo_match", target=f"task:{ctx.task.id}",
-                  detail={"declared": len(declared_ids), "matched_added": added,
-                          "extras_candidates": len(extras)},
-                  task_id=ctx.task.id)
-    return load_bug_repos(ctx.session, ctx.bug.id)
+    ).order_by(Repo.id).limit(ctx.settings.repo_candidate_limit)).all())
+    return linked + extras
 
 
-# ---------- 下游注入（方案生成 / 自动修复共用） ----------
+# ---------- 下游注入（自动修复） ----------
 
 def render_repo_profiles(session: Session, bug_id: int) -> str:
     """下游注入块：全局画像 + 本 Bug 相关性，提示而非约束。

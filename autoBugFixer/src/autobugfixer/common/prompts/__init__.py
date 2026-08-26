@@ -16,8 +16,7 @@ from importlib import resources
 PROMPT_VERSIONS = {
     "completeness": "v2",  # 逐项判据 + 正反例 + 输出质量要求（few-shot/grounding）
     "repo_profile": "v2",  # 全局仓库事实画像（Spec 02 §9 v2：无 Bug 上下文，挂 repo 表全局复用）
-    "repo_match": "v2",  # Bug x 登记表匹配：低置信关联必须附具体依据（防误补选烧预算）
-    "planning": "v5",  # v4 + proposed_skills 输出示例 + 数据后置（system/user 切分）
+    "planning": "v6",  # v5 + 候选仓库登记表注入 + target_repos 选仓输出（对应关系随方案一并判定）
     "scoring": "v3",  # v2 + 输出 JSON 尾注改为合法形式 + 数据后置
     "scoring_v2": "v2",  # 评分 v2 引擎薄壳：判定流程分步 + 证据引用要求（rubric 直传不变）
     "code_evidence": "v2",  # 防幻觉约束（路径取片段原文）+ 改动面枚举

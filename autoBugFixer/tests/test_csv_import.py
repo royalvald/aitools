@@ -153,10 +153,11 @@ def test_import_and_analysis_end_to_end(settings, session_factory, tmp_path):
             assert 0 <= item["priority_score"] < 60
             assert item["admission"] == "入队"
 
-    # 方案与评分落库（仅放行任务）；信息缺失任务 0 次 LLM 调用
+    # 方案与评分落库：BUG-2003 未声明仓库，planning 生成方案但 target_repos
+    # 零选定 -> WAIT_INFO（方案留库，补充声明后重新生成新版本）
     with session_factory() as s:
         plans = s.scalars(select(VerificationPlan)).all()
-        assert len(plans) == 1  # 两个 WAIT_INFO 的 Bug 未生成方案
+        assert len(plans) == 2  # 放行任务 1 + 零选定任务 1（BUG-2002 未生成）
         from autobugfixer.common.core.models import BugRepo, LLMUsage, Repo
 
         # 事实挂全局登记表（Spec 01 §10）：两 Bug 声明同一仓库 -> 一条登记 + 两条关联
@@ -166,19 +167,20 @@ def test_import_and_analysis_end_to_end(settings, session_factory, tmp_path):
         links = s.scalars(select(BugRepo).order_by(BugRepo.seq)).all()
         assert [l.repo.path for l in links] == [str(repo), str(repo)]
         # BUG-2002（信息缺失，规则快路径）0 次 LLM（Spec 01 R6）；
-        # BUG-2003（未声明）走登记表匹配自动选仓，匹配零结果才转 WAIT_INFO（§10）
+        # BUG-2003（未声明）由 planning target_repos 从登记表自动选仓，
+        # 零选定才转 WAIT_INFO（Spec 02 §9 v3）
         info_blocked = [t.id for t in s.scalars(select(Task).where(
             Task.state == "WAIT_INFO")).all()]
         used = {u.task_id for u in s.scalars(select(LLMUsage)).all()}
         assert used  # BUG-2001 全流程消耗
         match_blocked = [tid for tid in info_blocked if tid in used]
-        assert len(match_blocked) == 1  # 仅零匹配任务（BUG-2003）既被拦又耗过匹配
+        assert len(match_blocked) == 1  # 仅零选定任务（BUG-2003）既被拦又耗过 planning
         zero_match = s.scalars(select(Task).where(
             Task.id.in_(match_blocked))).all()
         for t in zero_match:
             stages = [u.stage for u in s.scalars(select(LLMUsage).where(
                 LLMUsage.task_id == t.id)).all()]
-            assert "repo_match" in stages  # 匹配尝试过且零结果
+            assert "planning" in stages  # 方案生成尝试过且零选定
 
 
 def test_analysis_high_score_to_manual(settings, session_factory, tmp_path):

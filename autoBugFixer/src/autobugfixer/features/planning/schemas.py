@@ -34,9 +34,21 @@ class ProposedSkill(BaseModel):
     steps: list[DSLStep]
 
 
+class TargetRepo(BaseModel):
+    """方案生成时一并选定的目标仓库（Spec 02 §9 v3：Bug ↔ 仓库对应关系）。
+
+    LLM 基于候选登记表画像自行判定；阶段内写回 bug_repo（声明链接补相关性、
+    未声明的建 matched 链接），驱动工作区准备与代码检索。
+    """
+
+    repo_id: int  # 候选清单中的仓库 id
+    reason: str = ""  # 选定依据（接口/模块/技术栈与 Bug 的对应点，须具体）
+
+
 class PlanOutput(BaseModel):
     """回归验证方案（FR-PRE-03 + 11.4 DSL + Spec 03 §9 四段式深度要求）。"""
 
+    target_repos: list[TargetRepo] = Field(default_factory=list)  # 目标仓库选定（Spec 02 §9 v3）
     env_requirements: str = ""
     steps: list[DSLStep]
     expected_results: list[str] = Field(default_factory=list)

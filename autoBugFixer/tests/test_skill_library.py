@@ -116,6 +116,9 @@ def test_skill_library_rendered_into_planning_prompt(
 
     class RecordingLLM:
         def analyze(self, prompt, schema, *args, **kwargs):
+            if schema.__name__ == "RepoProfile":
+                from autobugfixer.features.completeness.schemas import RepoProfile
+                return RepoProfile(summary="技能测试仓库", tech_stack=["python"])
             prompts.append(prompt)
             return PlanOutput(steps=[
                 {"action": "input", "params": {"selector": "#env", "value": "v1"}},
@@ -151,6 +154,9 @@ def test_skill_use_counted_on_structural_match(session_factory, settings, task_i
 
     class _LLM:
         def analyze(self, prompt, schema, *args, **kwargs):
+            if schema.__name__ == "RepoProfile":
+                from autobugfixer.features.completeness.schemas import RepoProfile
+                return RepoProfile(summary="技能测试仓库", tech_stack=["python"])
             # 步骤与模板同构（实参已替换，键集合一致）
             return PlanOutput(steps=[
                 {"action": "input", "params": {"selector": "#env", "value": "v2.0"}},

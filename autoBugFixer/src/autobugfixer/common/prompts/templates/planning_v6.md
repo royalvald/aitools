@@ -1,4 +1,4 @@
-# 回归验证方案生成（planning v5）
+# 回归验证方案生成（planning v6）
 
 你是测试设计助手。基于以下 Bug 信息生成可执行的回归验证方案。
 方案由 DSL 解释器逐字执行，词表外动作会被直接拒绝——设计错了整条验证链
@@ -40,6 +40,18 @@
 期望结果原文（如 status 为 ok），不得凭空设定。
 </counter_example>
 
+## 目标仓库选定（target_repos）
+
+用户提供的候选仓库登记表（画像为 LLM 预分析）在数据段尾部。基于 Bug 信息与
+各候选画像，**自行评估本 Bug 与各仓库的对应关系**并在输出中携带 `target_repos`：
+
+- 逐一给出与本 Bug 相关的仓库（`repo_id` 必须取自候选清单，`reason` 为关联依据）；
+- **每条选定必须附具体依据**（接口路径/模块名/技术栈/关键目录与 Bug 描述的
+  对应点）；给不出具体依据的猜测不要输出——误报会把无关仓库拉进修复范围，
+  白白消耗修复与验证预算；
+- Bug 单声明的仓库必然在候选之列，按实际相关性正常判定（不做特殊照顾）；
+- 明确无关的仓库不要输出（未声明的无关仓库不会被补选）。
+
 ## 其余字段要求
 
 - expected_results：与 S3/S4 断言一一对应的自然语言预期（可复核）；
@@ -50,7 +62,7 @@
 ## 修复思路大纲（fix_approach）
 
 同时给出修复思路大纲，供难度评分与修复阶段参考（是提示不是约束）：
-locate_hints（可疑点定位线索，可结合仓库画像的关联判断与关键目录）、
+locate_hints（可疑点定位线索，可结合候选仓库画像与 target_repos 判定依据）、
 change_files（拟改动文件/模块清单）、strategy（修复策略概述：怎么改、为什么这样改）。
 
 ## 可复用验证技能（技能库）
@@ -64,12 +76,13 @@ proposed_skills 输出示例（无合适技能时给空数组）：
 {{"proposed_skills": [{{"name": "login_and_check", "params": ["user", "pass"],
   "desc": "登录后断言欢迎文案",
   "steps": [{{"action": "input", "params": {{"selector": "#user", "value": "{{user}}"}}}},
-            {{"action": "input", "params": {{"selector": "#pass", "value": "{{pass}}"}}}},
-            {{"action": "click", "params": {{"selector": "#login"}}}},
-            {{"action": "assert_element", "params": {{"selector": "#welcome", "state": "present"}}}}]}}]}}
+             {{"action": "input", "params": {{"selector": "#pass", "value": "{{pass}}"}}}},
+             {{"action": "click", "params": {{"selector": "#login"}}}},
+             {{"action": "assert_element", "params": {{"selector": "#welcome", "state": "present"}}}}]}}]}}
 
 输出 JSON：
-{{"env_requirements": str,
+{{"target_repos": [{{"repo_id": <候选清单中的仓库 id>, "reason": "<关联依据>"}}],
+  "env_requirements": str,
   "steps": [{{"action": str, "params": {{...}}, "desc": str}}],  # >=3 步且含 assert_*
   "expected_results": [str], "function_points": [str], "regression_scope": str,
   "fix_approach": {{"locate_hints": [str], "change_files": [str], "strategy": str}},
@@ -82,14 +95,14 @@ proposed_skills 输出示例（无合适技能时给空数组）：
 
 {bug_block}
 
-## 关联仓库画像（LLM 预分析，提示而非约束）
+## 候选仓库登记表（全局画像，供 target_repos 判定）
 
 {repo_profiles}
 
-（画像来自完整性阶段的逐仓库分析，供定位线索参考；与实际代码冲突时以代码为准。）
+（画像来自登记表全局分析，供自行评估 Bug 与仓库对应关系；与实际代码冲突时以代码为准。）
 
 ## 可复用验证技能（技能库）
 
 {skill_library}
 
-请按上述词表与四段式结构生成验证方案，仅输出规定的 JSON。
+请按上述词表与四段式结构生成验证方案并选定目标仓库，仅输出规定的 JSON。
