@@ -1,9 +1,11 @@
 """LLM Gateway（设计文档 11.3 成本治理 + 11.6 Fake 模式）。
 
 - 分析类 LLM 调用统一入口：结构化分析走 with_structured_output(Schema)；
-  修复驱动已统一为 codex exec 子进程（Spec 05），其事件流用量经本网关计量；
+  修复驱动默认 codex exec 子进程（Spec 05），亦可配置 deepseek 通道（同接口），
+  其用量经本网关计量；
 - llm_mode=fake 时使用 ScriptedFakeChatModel，无需 API Key 即可跑通全流程（CI/本地开发）；
 - llm_mode=anthropic 时走 langchain-anthropic；
+- llm_mode=deepseek 时走 DeepSeek OpenAI 兼容接口（langchain-openai）；
 - 每次调用计量 token 写 llm_usage，并在调用前做预算检查（超限抛 BudgetExceededError）。
 """
 
@@ -34,6 +36,13 @@ logger = logging.getLogger(__name__)
 
 class BudgetExceededError(RuntimeError):
     """LLM 预算超限（11.3：单任务/日总量）。"""
+
+
+def _usage_model_name(settings: Settings) -> str:
+    """计量记录的模型名：模式 + 当前模式配置的模型（各通道计量统一口径）。"""
+    model = {"anthropic": settings.anthropic_model,
+             "deepseek": settings.deepseek_model}.get(settings.llm_mode, "")
+    return f"{settings.llm_mode}:{model}"
 
 
 class LLMPreflightError(RuntimeError):
@@ -224,8 +233,9 @@ class LLMGateway:
         """
         report = PreflightReport(mode=self.settings.llm_mode)
         mode = self.settings.llm_mode
-        if mode not in ("fake", "anthropic"):
-            report.static_errors.append(f"llm_mode 非法: {mode!r}（可选 fake / anthropic）")
+        if mode not in ("fake", "anthropic", "deepseek"):
+            report.static_errors.append(
+                f"llm_mode 非法: {mode!r}（可选 fake / anthropic / deepseek）")
             return report
         if mode == "anthropic":
             if not self.settings.anthropic_api_key:
@@ -233,7 +243,13 @@ class LLMGateway:
                     "llm_mode=anthropic 但未配置 ANTHROPIC_API_KEY")
             if not self.settings.anthropic_model:
                 report.static_errors.append("llm_mode=anthropic 但未配置模型名")
-        if probe and report.static_ok and mode == "anthropic":
+        if mode == "deepseek":
+            if not self.settings.deepseek_api_key:
+                report.static_errors.append(
+                    "llm_mode=deepseek 但未配置 AUTOBUGFIXER_DEEPSEEK_API_KEY")
+            if not self.settings.deepseek_model:
+                report.static_errors.append("llm_mode=deepseek 但未配置模型名")
+        if probe and report.static_ok and mode in ("anthropic", "deepseek"):
             try:
                 self._probe_model().invoke("ping")
             except Exception as exc:  # 网络/认证/模型名错误统一落到探测错误
@@ -242,6 +258,16 @@ class LLMGateway:
 
     def _probe_model(self) -> BaseChatModel:
         """探测专用模型：最小 token + 短超时，失败快速返回（测试可替换）。"""
+        if self.settings.llm_mode == "deepseek":
+            from langchain_openai import ChatOpenAI
+
+            return ChatOpenAI(
+                model=self.settings.deepseek_model,
+                api_key=self.settings.deepseek_api_key,
+                base_url=self.settings.deepseek_base_url,
+                max_tokens=1,
+                timeout=10,
+            )
         from langchain_anthropic import ChatAnthropic
 
         return ChatAnthropic(
@@ -254,13 +280,22 @@ class LLMGateway:
     # ---- 模型 ----
 
     def _chat_model(self, max_tokens: int | None = None) -> BaseChatModel:
-        """按 llm_mode 构造聊天模型：anthropic 走真实 API，否则用脚本化 Fake 模型。"""
+        """按 llm_mode 构造聊天模型：anthropic/deepseek 走真实 API，否则用脚本化 Fake。"""
         if self.settings.llm_mode == "anthropic":
             from langchain_anthropic import ChatAnthropic
 
             return ChatAnthropic(
                 model=self.settings.anthropic_model,
                 api_key=self.settings.anthropic_api_key,
+                max_tokens=max_tokens or self.settings.llm_max_tokens,
+            )
+        if self.settings.llm_mode == "deepseek":
+            from langchain_openai import ChatOpenAI
+
+            return ChatOpenAI(
+                model=self.settings.deepseek_model,
+                api_key=self.settings.deepseek_api_key,
+                base_url=self.settings.deepseek_base_url,
                 max_tokens=max_tokens or self.settings.llm_max_tokens,
             )
         # 共享可变队列：构造后赋值以保留引用（pydantic 初始化可能拷贝列表）
@@ -321,7 +356,7 @@ class LLMGateway:
             return
         usage = LLMUsage(
             task_id=task_id, stage=stage,
-            model=model or f"{self.settings.llm_mode}:{self.settings.anthropic_model}",
+            model=model or _usage_model_name(self.settings),
             tokens_in=tokens_in, tokens_out=tokens_out, cost_est=0.0,
         )
         own = session is None
@@ -376,7 +411,7 @@ class LLMGateway:
         try:
             usage = LLMUsage(
                 task_id=task_id, stage=stage,
-                model=f"{self.settings.llm_mode}:{self.settings.anthropic_model}",
+                model=_usage_model_name(self.settings),
                 tokens_in=tokens_in or self._est_tokens(prompt),
                 tokens_out=self._est_tokens(output),
                 cost_est=0.0,  # fake 模式成本为 0；anthropic 模式可按价目表估算

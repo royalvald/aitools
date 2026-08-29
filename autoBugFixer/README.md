@@ -96,5 +96,12 @@ docs/                            # PRD、整体方案设计、阶段 specs、测
 
 ## 说明
 
-- 默认 `llm_mode=fake`：结构化分析（完整性/方案/评分/失败分析）与修复 agent 均为脚本化应答，供 CI 与本地开发；切真实模式设 `LLM_MODE=anthropic` 并配置 Key。
+- 默认 `llm_mode=fake`：结构化分析（完整性/方案/评分/失败分析）与修复 agent 均为脚本化应答，供 CI 与本地开发。
+- 真实分析模式：`AUTOBUGFIXER_LLM_MODE=anthropic` + `AUTOBUGFIXER_ANTHROPIC_API_KEY`，或
+  `AUTOBUGFIXER_LLM_MODE=deepseek` + `AUTOBUGFIXER_DEEPSEEK_API_KEY`（OpenAI 兼容接口，
+  模型/地址可用 `AUTOBUGFIXER_DEEPSEEK_MODEL` / `AUTOBUGFIXER_DEEPSEEK_BASE_URL` 覆盖）。
+- 修复驱动：`AUTOBUGFIXER_FIX_DRIVER=codex`（默认，codex exec 子进程，需 codex CLI + OpenAI 鉴权），
+  或 `AUTOBUGFIXER_FIX_DRIVER=deepseek`（DeepSeek 智能体回路，与 codex 同接口；修复模型
+  `AUTOBUGFIXER_DEEPSEEK_FIX_MODEL`，未配置回落分析模型）。
+- 设计依据：`docs/` 下 PRD 与整体方案设计（状态机见 3.1、数据模型 5.1、接口 6.1、补充设计 11.1~11.6）。
 - 设计依据：`docs/` 下 PRD 与整体方案设计（状态机见 3.1、数据模型 5.1、接口 6.1、补充设计 11.1~11.6）。

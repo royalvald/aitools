@@ -13,7 +13,8 @@ import logging
 
 from sqlalchemy import select
 
-from autobugfixer.features.fixing.codex import CodexCLI, CodexError
+from autobugfixer.features.fixing.codex import CodexError
+from autobugfixer.features.fixing.driver import build_fix_driver
 from autobugfixer.common.core.models import FixRecord, VerificationPlan, VerifyRecord
 from autobugfixer.common.prompts import prompt_version, render_prompt
 from autobugfixer.features.knowledge.experience import ExperienceService
@@ -50,8 +51,8 @@ class FixingStage:
         prompt_name = "fixing" if attempt == 1 else "fixing_retry"
         prompt, experience_hit = self._build_prompt(ctx, prompt_name, attempt, perception_note)
 
-        # 修复驱动（Spec 05）：codex exec 唯一通道；预算调用前拦截（超限 -> FAILED）
-        cli = ctx.codex or CodexCLI.from_settings(ctx.settings)
+        # 修复驱动（Spec 05：codex/deepseek 按配置选择）；预算调用前拦截（超限 -> FAILED）
+        cli = ctx.codex or build_fix_driver(ctx.settings)
         ctx.llm.check_budget(task.id, ctx.session)
         try:
             result = cli.run(prompt, workspace)

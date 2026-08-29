@@ -7,7 +7,8 @@ import logging
 from fastapi import FastAPI
 
 from autobugfixer.adapters.platform import BugPlatformAdapter
-from autobugfixer.features.fixing.codex import CodexCLI, codex_preflight
+from autobugfixer.features.fixing.codex import CodexPreflightError
+from autobugfixer.features.fixing.driver import build_fix_driver, fix_driver_preflight
 from autobugfixer.adapters.env import LocalExecutor
 from autobugfixer.features.intervention.notifier_im import build_notifier
 from autobugfixer.runtime.registry import get_bug_platform
@@ -23,8 +24,8 @@ logger = logging.getLogger(__name__)
 
 
 def _build_codex(settings: Settings):
-    """按配置构建 codex 修复通道（Spec 05：唯一修复驱动）。"""
-    return CodexCLI.from_settings(settings)
+    """按配置构建修复驱动（Spec 05：codex / deepseek 由 fix_driver 决定）。"""
+    return build_fix_driver(settings)
 
 
 def _build_perception(settings: Settings, session_factory, executor):
@@ -71,11 +72,11 @@ def create_app(
     if preflight.probe_error:
         logger.error("LLM 连通预检失败，服务降级启动（详见 /api/health）: %s",
                      preflight.probe_error)
-    # codex 修复通道预检（Spec 05 §2.2）：失败降级运行并在 /api/health 暴露
+    # 修复驱动预检（Spec 05 §2.2 扩展）：失败降级运行并在 /api/health 暴露
     # （查询/介入回写等非修复功能不受影响；修复任务将在 FIXING 显式 FAILED）
-    codex_errors = codex_preflight(settings)
+    codex_errors = fix_driver_preflight(settings)
     if codex_errors:
-        logger.error("codex 修复通道预检失败（修复任务将失败，详见 /api/health）: %s",
+        logger.error("修复驱动预检失败（修复任务将失败，详见 /api/health）: %s",
                      "; ".join(codex_errors))
     # 平台适配器：显式传入优先，否则按配置名从 registry 实例化
     platform = platform or get_bug_platform(settings.bug_platform,

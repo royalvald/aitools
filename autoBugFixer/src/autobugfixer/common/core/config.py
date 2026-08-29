@@ -21,10 +21,16 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./autobugfixer.db"
 
     # LLM Gateway
-    llm_mode: str = "fake"  # fake / anthropic
+    llm_mode: str = "fake"  # fake / anthropic / deepseek
     anthropic_model: str = "claude-sonnet-4-5"
     anthropic_api_key: str | None = None
     llm_max_tokens: int = 4096  # 分析类调用输出上限（调用方按需覆盖，如 planning 8192）
+
+    # DeepSeek（OpenAI 兼容协议）：分析网关（llm_mode=deepseek）与修复通道共用接入配置
+    deepseek_api_key: str | None = None
+    deepseek_base_url: str = "https://api.deepseek.com"
+    deepseek_model: str = "deepseek-chat"  # 分析网关模型
+    deepseek_fix_model: str = ""  # 修复通道模型（空 = 回落 deepseek_model）
 
     # 预算治理（11.3）
     task_token_budget: int = 100_000  # 单任务 token 预算，超限转人工
@@ -92,11 +98,14 @@ class Settings(BaseSettings):
     bug_platform: str = "mock"  # mock / jira / zentao（csv 走导入通道）
     bug_platform_config: dict = Field(default_factory=dict)
 
-    # 修复驱动（Spec 05）：codex exec 子进程（唯一通道）
+    # 修复驱动（Spec 05：codex exec 子进程；扩展 deepseek 智能体回路，同接口可替换）
+    fix_driver: str = "codex"  # codex / deepseek
     codex_executable: str = "codex"
     codex_model: str | None = None  # 未配置时用 codex CLI 默认模型
     codex_timeout: float = 600.0
     codex_sandbox: str = "workspace-write"  # 进程只能写工作区内文件，网络默认禁用
+    deepseek_fix_max_steps: int = 24  # DeepSeek 修复回路步数上限（含工具调用轮）
+    deepseek_timeout: float = 120.0  # DeepSeek 单次 API 请求超时（秒）
 
     # 三维感知（FR-FIX-02，P1）：默认关闭保持轻量
     perception_enabled: bool = False

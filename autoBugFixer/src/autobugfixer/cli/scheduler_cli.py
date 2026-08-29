@@ -5,7 +5,8 @@ from __future__ import annotations
 import argparse
 import sys
 
-from autobugfixer.features.fixing.codex import CodexPreflightError, CodexCLI, codex_preflight
+from autobugfixer.features.fixing.codex import CodexPreflightError
+from autobugfixer.features.fixing.driver import build_fix_driver, fix_driver_preflight
 from autobugfixer.features.intervention.notifier_im import build_notifier
 from autobugfixer.runtime.registry import get_bug_platform
 from autobugfixer.adapters.env import LocalExecutor
@@ -32,17 +33,17 @@ def build_scheduler(settings: Settings | None = None, *, codex=None) -> Schedule
     report = llm.preflight()  # LLM 预检（Spec 02 B0）：调度器依赖 LLM，配置错拒绝启动
     if not report.ok:
         raise LLMPreflightError(f"LLM 预检失败: {report.summary()}")
-    # codex 预检（Spec 05 §2.2）：调度器会派发修复任务，通道不可用拒绝启动
-    codex_errors = codex_preflight(settings)
+    # 修复驱动预检（Spec 05 §2.2 扩展）：按 fix_driver 分流；通道不可用拒绝启动
+    codex_errors = fix_driver_preflight(settings)
     if codex_errors:
-        raise CodexPreflightError(f"codex 预检失败: {'; '.join(codex_errors)}")
+        raise CodexPreflightError(f"修复驱动预检失败: {'; '.join(codex_errors)}")
     executor = LocalExecutor(settings.env_root, CommandWhitelist(settings.cmd_whitelist))
     notifier = build_notifier(settings)
     platform = get_bug_platform(settings.bug_platform, settings.bug_platform_config)
     orchestrator = Orchestrator(
         session_factory, llm=llm, platform=platform, executor=executor,
         notifier=notifier, settings=settings,
-        codex=codex if codex is not None else CodexCLI.from_settings(settings),
+        codex=codex if codex is not None else build_fix_driver(settings),
         perception=_build_perception(settings, session_factory, executor),
     )
     return Scheduler(orchestrator, platform, notifier, session_factory, settings)
