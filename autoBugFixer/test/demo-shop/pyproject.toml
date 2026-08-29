@@ -1,0 +1,11 @@
+[project]
+name = "demo-shop"
+version = "1.0.0"
+description = "迷你订单服务（autoBugFixer 端到端验证用真实项目）"
+requires-python = ">=3.11"
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

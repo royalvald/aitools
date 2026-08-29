@@ -1,0 +1,7 @@
+缺陷编号,标题,描述,复现步骤,期望结果,实际结果,环境版本,附件,仓库地址,分支
+BUG-3001,健康检查接口返回 fail,"测试环境部署 v1.0.0 后，GET /health 聚合结果始终 status=fail。探活面板显示 8/8 依赖健康、仅 1 条可容忍告警（低于告警阈值 3）。按设计：告警未超阈值不应判 fail，超阈值应是 degraded 而非 fail（见 health 模块文档语义）。","1. 在仓库根执行 PYTHONPATH=src python build.py
+2. 查看 api/_health.json 的 status 字段",status 为 ok,status 为 fail（http_status 503）,v1.0.0,logs/app.log,/Users/iris/work/code/aitools/autoBugFixer/test/demo-shop,main
+BUG-3002,订单列表分页错位,"订单分页返回内容与页码错位一页：page=2 返回的是第 21~30 条；共 55 条、每页 10 条时第 6 页应返回剩余 5 条，实际返回空列表。疑似页号 0 基/1 基约定不一致。","1. 调用 demo_shop.orders.paginate(orders, page=2)
+2. 对比返回与第 11~20 条订单
+3. 再调用 paginate(orders, page=6) 观察返回",page=2 返回第 11~20 条；page=6 返回第 51~55 条,page=2 返回第 21~30 条；page=6 返回空列表,v1.0.0,,/Users/iris/work/code/aitools/autoBugFixer/test/demo-shop,main
+BUG-3003,订单导出偶发超时,用户反馈订单导出偶发超时，具体复现路径与影响范围待测试补充,,,,,,,

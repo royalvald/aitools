@@ -1,0 +1,10 @@
+2026-08-29 10:00:01 INFO  order-service v1.0.0 started, 8 dependencies registered
+2026-08-29 10:00:02 INFO  probe: db primary healthy (2ms)
+2026-08-29 10:00:02 INFO  probe: cache healthy (1ms)
+2026-08-29 10:00:02 WARN  probe: slow dependency: inventory-svc latency 820ms (threshold 500ms)
+2026-08-29 10:00:03 INFO  probe: queue healthy (3ms)
+2026-08-29 10:00:03 INFO  probe: search-svc healthy (12ms)
+2026-08-29 10:00:03 INFO  probe: payment-gateway healthy (45ms)
+2026-08-29 10:00:04 INFO  probe: user-svc healthy (8ms)
+2026-08-29 10:00:04 INFO  probe: notification-svc healthy (6ms)
+2026-08-29 10:00:05 ERROR health: aggregate status=fail (8/8 healthy, warnings=1) — 健康检查聚合判定异常，请排查

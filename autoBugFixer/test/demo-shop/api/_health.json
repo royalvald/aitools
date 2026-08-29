@@ -1,0 +1,8 @@
+{
+  "status": "fail",
+  "http_status": 503,
+  "healthy_checks": 8,
+  "total_checks": 8,
+  "warnings": 1,
+  "warning_threshold": 3
+}
