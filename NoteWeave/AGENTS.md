@@ -332,7 +332,7 @@ Note 管理、知识库/KB Doc 管理、双向关联、批注、白板初版、M
 | 223 | 白板内容卡片 | `Whiteboard`、`NoteListItem`、`KbDocListItem` |
 | 224 | 白板框架与分页演示/导出 PDF | `FramePresentation`、`main/wb-export.ts` |
 | 225 | 白板模板库 | `shared/wb-templates.ts`、`main/wb-templates.ts` |
-| 226 | 白板个人记录工具（优先级/计时器/转待办） | `WhiteboardTimerPanel`、`WhiteboardElementView` |
+| 226 | 白板个人记录工具（计时器已实现；便签「转待办」📐 目标态未实现，列入 UE Backlog P0，见 `docs/UE_IMPL_GAP.md` §6） | `WhiteboardTimerPanel`、`WhiteboardElementView` |
 | 227 | 白板手绘与涂鸦 | `WhiteboardCanvas` pen/eraser、`shared/whiteboard-export.ts` |
 | 228 | 白板导出 PNG/SVG/Markdown | `main/wb-export.ts`、`whiteboard-export.ts` |
 | 229 | 白板与文档双向同步 | `Whiteboard`、`store.saveWhiteboard` |

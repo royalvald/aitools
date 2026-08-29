@@ -7,8 +7,37 @@
 </head>
 <body>
 <div class="wf-title">UE-13 批量导入外部格式 ImportExternalDialog</div>
-<div class="wf-desc">分步对话框：①选择文件 → ②确认与目标 → ③导入结果；支持 docx/html/txt/md 批量转换。<a class="back" href="index.html">← 返回索引</a></div>
+<div class="wf-desc">分步对话框：①选择文件 → ②确认与目标 → ③导入结果；支持 docx/html/txt/md 批量转换。<span class="status target">📐 目标态 · 核心交互未实现，见 <a href="../UE_IMPL_GAP.md">IMPL_GAP §3.1</a></span> <a class="back" href="index.html">← 返回索引</a></div>
 
+<div class="wf-title" style="font-size:14px; margin-top:8px">关键帧 ①：选择文件（初始态）</div>
+<div class="wf-screen rel" style="min-height:560px">
+  <div class="overlay-mask" style="position:static; background:#e8e8e8; padding-top:40px; flex:1">
+    <div class="dialog" style="width:720px">
+      <!-- 步骤条 -->
+      <div class="row" style="align-items:center; margin-bottom:12px; font-size:12px">
+        <span class="chip" style="border:2px solid #333;font-weight:600">① 选择文件</span>
+        <span style="color:#bbb">────</span>
+        <span class="chip">② 确认与目标</span>
+        <span style="color:#bbb">────</span>
+        <span class="chip">③ 导入结果</span>
+      </div>
+      <div class="box center col" style="height:220px; border-style:dashed; gap:10px">
+        <div style="font-size:15px; color:#666">拖拽文件到这里，或</div>
+        <div class="row">
+          <span class="btn primary">📄 选择文件</span>
+          <span class="btn">🗂 选择文件夹</span>
+        </div>
+        <div style="font-size:11px; color:#999">支持 docx / html / txt / md，可多选；文件夹将递归扫描支持的格式</div>
+      </div>
+      <div class="row" style="justify-content:flex-end; margin-top:10px">
+        <span class="btn">取消</span>
+        <span class="btn" style="opacity:.5">下一步<span class="note-tag">未选文件时禁用</span></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="wf-title" style="font-size:14px; margin-top:24px">关键帧 ②：确认与目标（含导入中进度）</div>
 <div class="wf-screen rel">
   <!-- 底层页面压暗 -->
   <div class="col grow" style="gap:0; filter:brightness(.8)">
@@ -95,10 +124,43 @@
   </div>
 </div>
 
+<div class="wf-title" style="font-size:14px; margin-top:24px">关键帧 ③：导入结果</div>
+<div class="wf-screen rel" style="min-height:560px">
+  <div class="overlay-mask" style="position:static; background:#e8e8e8; padding-top:40px; flex:1">
+    <div class="dialog" style="width:720px">
+      <!-- 步骤条 -->
+      <div class="row" style="align-items:center; margin-bottom:12px; font-size:12px">
+        <span class="chip">① 选择文件</span>
+        <span style="color:#bbb">────</span>
+        <span class="chip">② 确认与目标</span>
+        <span style="color:#bbb">────</span>
+        <span class="chip" style="border:2px solid #333;font-weight:600">③ 导入结果</span>
+      </div>
+      <div class="box" style="background:#fff">
+        <b style="font-size:13px">导入完成：成功 11 · 失败 1</b>
+        <div style="font-size:11px; color:#999; margin-top:4px">已导入到「📗 技术学习」；导入前已自动备份当前数据为 ZIP<span class="note-tag">可回滚</span></div>
+      </div>
+      <div class="col" style="margin-top:10px; gap:4px">
+        <div class="box solid row" style="font-size:11px"><span class="grow">✅ 季度汇报.docx → 季度汇报</span><span style="color:#999">docx</span></div>
+        <div class="box solid row" style="font-size:11px"><span class="grow">✅ 需求调研.html → 需求调研</span><span style="color:#999">html</span></div>
+        <div class="box solid row" style="font-size:11px; color:#999">…（共 11 条成功）</div>
+        <div class="annot invalid row" style="align-items:center">
+          <span class="grow" style="font-size:11px">❌ 旧版档案.docx —— 转换超时（mammoth 解析失败）</span>
+          <span class="btn" style="padding:1px 10px; font-size:11px">重试</span>
+          <span class="btn ghost" style="padding:1px 10px; font-size:11px">跳过</span>
+        </div>
+      </div>
+      <div class="row" style="justify-content:flex-end; margin-top:12px">
+        <span class="btn primary">完成</span>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="annotation-list">
   <b>交互说明</b>
   <ol>
-    <li>三步流程：①选择文件/文件夹 → ②确认与导入目标（知识库+父级文档，或小记分组）→ ③结果页；步骤条实时高亮。</li>
+    <li>三步流程：①选择文件/文件夹 → ②确认与导入目标（知识库+父级文档，或小记分组）→ ③结果页；步骤条实时高亮（三个关键帧已分别绘制，见上）。</li>
     <li>点击「开始导入」前弹出确认框，并自动对现有数据做 ZIP 备份，失败可回滚。</li>
     <li>格式转换：docx 经 mammoth、html 经 turndown 转为 Markdown 后入库（main/import-external.ts）。</li>
     <li>勾选「保留目录结构」时按源目录层级创建父级文档；失败项可展开原因并单独重试或跳过。</li>

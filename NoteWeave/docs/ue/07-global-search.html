@@ -7,7 +7,7 @@
 </head>
 <body>
 <div class="wf-title">UE-07 全局搜索浮层 GlobalSearch（三合一）</div>
-<div class="wf-desc">search（Ctrl+Shift+F）/ quick（Ctrl+P）/ command（Ctrl+Shift+P）共用浮层。<a class="back" href="index.html">← 返回索引</a></div>
+<div class="wf-desc">search（Ctrl+Shift+F）/ quick（Ctrl+P）/ command（Ctrl+Shift+P）共用浮层。 <span class="status partial">🟡 部分实现 · 差距见 <a href="../UE_IMPL_GAP.md">IMPL_GAP §3.2</a></span> <a class="back" href="index.html">← 返回索引</a></div>
 
 <div class="wf-screen rel">
   <div class="row grow" style="gap:0; filter:brightness(.8)">
@@ -54,6 +54,7 @@
     <li>三种模式共用浮层骨架；命令模式列出应用命令（切换主题 / 导出数据 / 打开回收站 / 专注模式 / 打字机模式…），模糊匹配（fuzzy）。</li>
     <li>全文搜索覆盖小记与 KB 文档正文、标题、标签；开启 OCR 后图片文字一并命中。</li>
     <li>打开结果后：小记以覆盖层打开，KB 文档跳转到所属库并定位；命中关键词在预览中高亮。</li>
+    <li>实现侧另含本线框未画出的筛选区（类型 chips / 日期范围 / 排序），经 2026-08-29 决策保留为实现超集（见 <a href="../UE_IMPL_GAP.md">IMPL_GAP §6</a>），线框不再回改。</li>
   </ol>
 </div>
 </body>

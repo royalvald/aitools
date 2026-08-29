@@ -134,3 +134,13 @@ body {
 .annotation-list { width: 1200px; margin: 0 auto 40px; font-size: 13px; }
 .annotation-list ol { padding-left: 20px; line-height: 2; color: #555; }
 a.back { color: #555; font-size: 13px; }
+/* 实现状态徽标（2026-08-29 补充）：标识线框图与实现的关系，是有意突破灰度的彩色元素 */
+.status {
+  display: inline-block; font-size: 11px; border-radius: 999px;
+  padding: 1px 10px; margin-left: 6px; vertical-align: middle;
+  border: 1px solid transparent; font-weight: 600; white-space: nowrap;
+}
+.status.ok { background: #e6f4ea; color: #1e7e34; border-color: #a9d7b6; }
+.status.partial { background: #fff4e0; color: #b26a00; border-color: #ecc57e; }
+.status.target { background: #e8eefc; color: #1a5fb4; border-color: #a8bfe8; }
+.status a { color: inherit; text-decoration: underline; }

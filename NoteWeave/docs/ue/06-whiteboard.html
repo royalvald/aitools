@@ -7,7 +7,7 @@
 </head>
 <body>
 <div class="wf-title">UE-06 白板 Whiteboard（仅浏览模式）</div>
-<div class="wf-desc">无限画布只读查看：平移/缩放/内容卡片跳转/框架演示/导出。<a class="back" href="index.html">← 返回索引</a></div>
+<div class="wf-desc">无限画布只读查看：平移/缩放/内容卡片跳转/框架演示/导出。<span class="status partial">🟡 部分实现 · 差距见 <a href="../UE_IMPL_GAP.md">IMPL_GAP §3.1</a></span> <a class="back" href="index.html">← 返回索引</a></div>
 
 <div class="wf-screen rel">
   <div class="topbar">
@@ -54,7 +54,7 @@
   <ol>
     <li>工具调色板已裁剪：无选择/便签/形状/框架等创建工具；旧数据元素（便签/形状/连线/手绘/框架/内容卡片）全部正常渲染。</li>
     <li>「框架演示」按框架分页播放（FramePresentation），支持导出 PDF；「导出」支持 PNG / SVG / Markdown。</li>
-    <li>「源码」查看白板 JSON；计时器用于个人记录场景（白板转待办能力在数据层保留）。</li>
+    <li>「源码」查看白板 JSON；计时器用于个人记录场景。「白板便签转待办」为 📐 目标态能力（当前未实现，已列入 UE Backlog P0，见 <a href="../UE_DESIGN.md">UE_DESIGN §8</a> / <a href="../UE_IMPL_GAP.md">IMPL_GAP §6</a>）。</li>
     <li>入口：KB 文档「⋯ → 白板」、内容卡片所在文档；独立「展示窗口」功能已整体移除。</li>
   </ol>
 </div>

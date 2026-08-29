@@ -6,8 +6,8 @@
 <link rel="stylesheet" href="wireframe.css">
 </head>
 <body>
-<div class="wf-title">UE-11 新建系列对话框（新建小记 / 知识库 / 文档 / 待办 / 分组）</div>
-<div class="wf-desc">五类「新建」入口统一弹出的模态对话框集合，一屏并列展示。<a class="back" href="index.html">← 返回索引</a></div>
+<div class="wf-title">UE-11 新建系列对话框（新建小记 / 知识库 / 文档 / 待办 / 分组 / 挂载外部知识库）</div>
+<div class="wf-desc">五类「新建」入口统一弹出的模态对话框集合，外加「挂载外部知识库」（REQ-120），一屏并列展示。<span class="status partial">🟡 部分实现 · 差距见 <a href="../UE_IMPL_GAP.md">IMPL_GAP §3.2</a></span> <a class="back" href="index.html">← 返回索引</a></div>
 
 <div class="wf-screen" style="min-height:auto; padding:20px">
   <div class="row" style="align-items:flex-start; flex-wrap:wrap; gap:16px; justify-content:center">
@@ -142,6 +142,31 @@
       </div>
     </div>
 
+    <!-- 挂载外部知识库 -->
+    <div class="dialog" style="width:340px; box-shadow:none">
+      <div style="font-size:14px;font-weight:600;margin-bottom:10px">挂载外部知识库<span class="note-tag">REQ-120</span></div>
+      <div class="col">
+        <div>
+          <div class="label">本地目录</div>
+          <div class="row">
+            <div class="input grow">选择包含 Markdown 的文件夹…</div>
+            <span class="btn">浏览…</span>
+          </div>
+        </div>
+        <div>
+          <div class="label">名称</div>
+          <div class="input" style="width:100%">默认取目录名，可修改…</div>
+        </div>
+        <div class="row" style="font-size:12px; align-items:center">
+          <span class="chip">☑</span><span>只读挂载（不写入原目录）<span class="note-tag">默认只读</span></span>
+        </div>
+        <div class="row" style="justify-content:flex-end; margin-top:6px">
+          <span class="btn">取消</span>
+          <span class="btn primary">挂载</span>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -153,6 +178,7 @@
     <li>「新建文档」的父级文档下拉按层级缩进展示，选中后作为子文档挂载（REQ-006）；思维导图类型进入 MindmapEditor。</li>
     <li>「新建待办」的关联目标可选小记或文档，保存后出现在对方「关联与反链」抽屉中。</li>
     <li>「新建分组」的父分组下拉支持多级嵌套；取消或点击遮罩直接关闭，不产生数据。</li>
+    <li>「挂载外部知识库」仅选目录 + 只读开关：挂载后以「只读」角标出现在知识库网格，编辑入口禁用；原目录结构映射为文档树。</li>
   </ol>
 </div>
 </body>
