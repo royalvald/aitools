@@ -12,7 +12,7 @@ from autobugfixer.adapters.platform import BugPlatformAdapter
 from autobugfixer.adapters.env import EnvExecutor
 from autobugfixer.features.intervention.notifier import LogNotifier, Notifier
 from autobugfixer.common.core.config import Settings, get_settings
-from autobugfixer.common.core.models import BugTicket, Task, TaskStateHistory
+from autobugfixer.common.core.models import BugTicket, Task
 from autobugfixer.common.core.audit import AuditService
 from autobugfixer.adapters.env.lock import EnvLockService
 from autobugfixer.features.intervention.service import InterventionService
@@ -70,7 +70,7 @@ class Orchestrator:
         self.platform = platform
         self.executor = executor
         self.notifier = notifier or LogNotifier()
-        # codex 修复通道（None 时按配置构建 CodexCLI；测试注入 ScriptedCodexCLI 桩）
+        # 修复驱动（None 时修复阶段按 fix_driver 配置回退构建；测试可注入桩）
         # 与三维感知服务（可选）
         self.codex = codex
         self.perception = perception

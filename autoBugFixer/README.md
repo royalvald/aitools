@@ -89,7 +89,8 @@ src/autobugfixer/                # 树状分包：common 通用 / features 功�
 ├── runtime/                     # 编排：Orchestrator、Scheduler、适配器注册表
 ├── api/                         # FastAPI 对内接口 + web/ 静态控制台
 └── cli/                         # 命令行入口：import_cli / scheduler_cli / export_cli
-tests/                           # 247 条用例（单元 + 端到端 + API）
+tests/                           # pytest 套件（单元 + 端到端 + API）
+test/                            # 端到端演示：demo-shop 夹具项目 + E2E 脚本（git 仓库由 test/e2e/setup_demo_shop.sh 重建）
 examples/bugs_sample.csv         # 中文示例 CSV（utf-8-sig）
 docs/                            # PRD、整体方案设计、阶段 specs、测试用例设计
 ```

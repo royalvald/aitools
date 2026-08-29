@@ -14,7 +14,6 @@ from __future__ import annotations
 import json
 import logging
 import re
-from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any

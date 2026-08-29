@@ -122,7 +122,6 @@ class Scheduler:
         仅当目标环境锁实际空闲（无持有人或租约已过期）才唤醒，且每轮每个
         环境只唤醒一个（优先级最高的），避免唤醒后抢锁失败来回翻转。
         """
-        from autobugfixer.adapters.env.lock import EnvLockService
         from autobugfixer.common.core.models import EnvLock
         from autobugfixer.common.core.transitions import transition_task
 

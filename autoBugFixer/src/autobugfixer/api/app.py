@@ -7,7 +7,6 @@ import logging
 from fastapi import FastAPI
 
 from autobugfixer.adapters.platform import BugPlatformAdapter
-from autobugfixer.features.fixing.codex import CodexPreflightError
 from autobugfixer.features.fixing.driver import build_fix_driver, fix_driver_preflight
 from autobugfixer.adapters.env import LocalExecutor
 from autobugfixer.features.intervention.notifier_im import build_notifier
@@ -50,7 +49,7 @@ def create_app(
 ) -> FastAPI:
     """组装 FastAPI 应用：建库、装配适配器与编排器、挂载路由与 Web 控制台。
 
-    codex：测试可注入 ScriptedCodexCLI 桩；缺省按配置构建真实 CodexCLI。
+    codex：测试可注入桩（ScriptedCodexCLI/自定义驱动）；缺省按 fix_driver 配置构建真实驱动。
     """
     settings = settings or get_settings()
     engine = make_engine(settings.database_url)

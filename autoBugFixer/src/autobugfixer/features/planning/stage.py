@@ -13,7 +13,7 @@ target_repos 后写回 bug_repo（声明链接补相关性、未声明的建 mat
 
 from __future__ import annotations
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete
 
 from autobugfixer.common.core.models import BugRepo, VerificationPlan, utcnow
 from autobugfixer.common.prompts import prompt_version, render_prompt

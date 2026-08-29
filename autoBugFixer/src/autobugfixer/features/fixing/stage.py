@@ -1,9 +1,10 @@
 """Bug 修复阶段（FR-FIX-01 + 11.5 重试反馈回路 + 11.2 出口侧静态校验，Spec 05）。
 
 流程：准备工作区 -> （可选）修复前三维感知基线 -> 经验库检索复用 ->
-组装修复指令（首轮含修复思路大纲，重试轮含失败反馈）-> codex exec 子进程
-（workspace-write 沙箱）-> 独立 compute_diff 验收（不信任 CLI 自述）->
-禁改路径 / 零变更 / 相同 diff 出口校验 -> 留痕入库（FixRecord + llm_usage）。
+组装修复指令（首轮含修复思路大纲，重试轮含失败反馈）-> 修复驱动执行
+（fix_driver 配置：codex exec 沙箱 / deepseek 工具回路）-> 独立 compute_diff
+验收（不信任驱动自述）-> 禁改路径 / 零变更 / 相同 diff 出口校验 ->
+留痕入库（FixRecord + llm_usage）。
 """
 
 from __future__ import annotations
@@ -34,12 +35,12 @@ logger = logging.getLogger(__name__)
 
 
 class FixingStage:
-    """AI 修复阶段（codex exec 驱动 + 经验复用、重试反馈、出口校验）。"""
+    """AI 修复阶段（修复驱动 codex/deepseek + 经验复用、重试反馈、出口校验）。"""
 
     name = "fixing"
 
     def run(self, ctx: TaskContext) -> StageResult:
-        """准备工作区并以 codex exec 执行修复，校验变更后产出 FixRecord，决定下一步状态。"""
+        """准备工作区并以配置的修复驱动执行修复，校验变更后产出 FixRecord，决定下一步状态。"""
         task = ctx.task
         attempt = ctx.attempt
         branch = f"autofix/{ctx.bug.platform_bug_id}"

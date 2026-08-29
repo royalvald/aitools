@@ -23,7 +23,7 @@ from autobugfixer.runtime.scheduler import Scheduler
 def build_scheduler(settings: Settings | None = None, *, codex=None) -> Scheduler:
     """组装调度器（测试可直接驱动 run_round，不跑死循环）。
 
-    codex：测试可注入 ScriptedCodexCLI 桩；缺省按配置构建真实 CodexCLI。
+    codex：测试可注入桩（ScriptedCodexCLI/自定义驱动）；缺省按 fix_driver 配置构建真实驱动。
     """
     settings = settings or get_settings()
     engine = make_engine(settings.database_url)
