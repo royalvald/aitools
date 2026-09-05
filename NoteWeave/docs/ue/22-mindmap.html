@@ -12,60 +12,60 @@
 <div class="wf-screen">
   <div class="col grow" style="gap:0">
     <div class="topbar">
-      <span class="crumb">📗 产品方案 / 脑图：<b>产品全景</b></span>
+      <span class="crumb" style="display:inline-flex; align-items:center; gap:6px"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/></svg> 产品方案 / 脑图：<b>产品全景</b></span>
       <span class="grow"></span>
-      <span class="btn">适应画布</span>
+      <span class="btn"><svg class="ic" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>适应画布</span>
       <span class="btn">收起全部</span>
       <span class="btn">展开全部</span>
-      <span class="btn">导出</span>
-      <span class="chip" style="border:2px solid #333;font-weight:600">思维导图</span>
+      <span class="btn"><svg class="ic" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>导出</span>
+      <span class="chip" style="border-color:var(--wf-primary); background:var(--wf-primary-soft); color:var(--wf-primary-hover); font-weight:600">思维导图</span>
       <span class="note-tag">档位注记：区别于 Markdown 文档</span>
     </div>
 
     <div class="row grow" style="gap:0">
       <!-- 画布 -->
-      <div class="grow rel" style="background:#fbfbfb; background-image:radial-gradient(#ddd 1px, transparent 1px); background-size:24px 24px; padding:24px">
+      <div class="grow rel" style="background:var(--wf-surface-2); background-image:radial-gradient(var(--wf-border-2) 1px, transparent 1px); background-size:24px 24px; padding:24px">
         <!-- 中心主题 -->
-        <div class="box primary" style="position:absolute; left:60px; top:250px; width:130px; text-align:center; padding:12px">产品全景</div>
+        <div class="box primary" style="position:absolute; left:60px; top:250px; width:130px; text-align:center; padding:12px; box-shadow:var(--wf-shadow-sm)">产品全景</div>
         <!-- 连接线（div 模拟） -->
-        <div style="position:absolute; left:190px; top:272px; width:60px; height:2px; background:#999"></div>
-        <div style="position:absolute; left:250px; top:120px; width:2px; height:154px; background:#999"></div>
-        <div style="position:absolute; left:250px; top:272px; width:2px; height:120px; background:#999"></div>
+        <div style="position:absolute; left:190px; top:272px; width:60px; height:2px; background:var(--wf-text-3)"></div>
+        <div style="position:absolute; left:250px; top:120px; width:2px; height:154px; background:var(--wf-text-3)"></div>
+        <div style="position:absolute; left:250px; top:272px; width:2px; height:120px; background:var(--wf-text-3)"></div>
         <!-- 主分支 1：需求管理 -->
-        <div class="box solid" style="position:absolute; left:250px; top:110px; width:110px; text-align:center">需求管理</div>
-        <div style="position:absolute; left:360px; top:130px; width:50px; height:2px; background:#aaa"></div>
-        <div style="position:absolute; left:360px; top:160px; width:50px; height:2px; background:#aaa"></div>
-        <div class="box" style="position:absolute; left:410px; top:118px">需求收集</div>
-        <div class="box" style="position:absolute; left:410px; top:150px">优先级评审</div>
+        <div class="box solid" style="position:absolute; left:250px; top:110px; width:110px; text-align:center; background:var(--wf-screen); border-color:var(--wf-border-2); box-shadow:var(--wf-shadow-xs); font-weight:500">需求管理</div>
+        <div style="position:absolute; left:360px; top:130px; width:50px; height:2px; background:var(--wf-border-strong)"></div>
+        <div style="position:absolute; left:360px; top:160px; width:50px; height:2px; background:var(--wf-border-strong)"></div>
+        <div class="box" style="position:absolute; left:410px; top:118px; border-style:solid; border-color:var(--wf-border-2); background:var(--wf-screen)">需求收集</div>
+        <div class="box" style="position:absolute; left:410px; top:150px; border-style:solid; border-color:var(--wf-border-2); background:var(--wf-screen)">优先级评审</div>
         <!-- 主分支 2：版本规划 -->
-        <div class="box solid" style="position:absolute; left:250px; top:262px; width:110px; text-align:center">版本规划<span class="note-tag">双击编辑</span></div>
-        <div style="position:absolute; left:360px; top:250px; width:50px; height:2px; background:#aaa"></div>
-        <div style="position:absolute; left:360px; top:280px; width:50px; height:2px; background:#aaa"></div>
-        <div style="position:absolute; left:360px; top:310px; width:50px; height:2px; background:#aaa"></div>
-        <div class="box" style="position:absolute; left:410px; top:238px">v2.0 里程碑</div>
-        <div class="box" style="position:absolute; left:410px; top:270px">发版节奏</div>
-        <div class="box" style="position:absolute; left:410px; top:302px">回归清单</div>
+        <div class="box solid" style="position:absolute; left:250px; top:262px; width:110px; text-align:center; background:var(--wf-screen); border-color:var(--wf-border-2); box-shadow:var(--wf-shadow-xs); font-weight:500">版本规划<span class="note-tag">双击编辑</span></div>
+        <div style="position:absolute; left:360px; top:250px; width:50px; height:2px; background:var(--wf-border-strong)"></div>
+        <div style="position:absolute; left:360px; top:280px; width:50px; height:2px; background:var(--wf-border-strong)"></div>
+        <div style="position:absolute; left:360px; top:310px; width:50px; height:2px; background:var(--wf-border-strong)"></div>
+        <div class="box" style="position:absolute; left:410px; top:238px; border-style:solid; border-color:var(--wf-border-2); background:var(--wf-screen)">v2.0 里程碑</div>
+        <div class="box" style="position:absolute; left:410px; top:270px; border-style:solid; border-color:var(--wf-border-2); background:var(--wf-screen)">发版节奏</div>
+        <div class="box" style="position:absolute; left:410px; top:302px; border-style:solid; border-color:var(--wf-border-2); background:var(--wf-screen)">回归清单</div>
         <!-- 主分支 3：数据指标 -->
-        <div class="box solid" style="position:absolute; left:250px; top:380px; width:110px; text-align:center">数据指标</div>
-        <div style="position:absolute; left:360px; top:368px; width:50px; height:2px; background:#aaa"></div>
-        <div style="position:absolute; left:360px; top:398px; width:50px; height:2px; background:#aaa"></div>
-        <div class="box" style="position:absolute; left:410px; top:356px">留存率</div>
-        <div class="box" style="position:absolute; left:410px; top:388px">活跃度</div>
+        <div class="box solid" style="position:absolute; left:250px; top:380px; width:110px; text-align:center; background:var(--wf-screen); border-color:var(--wf-border-2); box-shadow:var(--wf-shadow-xs); font-weight:500">数据指标</div>
+        <div style="position:absolute; left:360px; top:368px; width:50px; height:2px; background:var(--wf-border-strong)"></div>
+        <div style="position:absolute; left:360px; top:398px; width:50px; height:2px; background:var(--wf-border-strong)"></div>
+        <div class="box" style="position:absolute; left:410px; top:356px; border-style:solid; border-color:var(--wf-border-2); background:var(--wf-screen)">留存率</div>
+        <div class="box" style="position:absolute; left:410px; top:388px; border-style:solid; border-color:var(--wf-border-2); background:var(--wf-screen)">活跃度</div>
         <span class="note-tag" style="position:absolute; right:300px; bottom:16px">选中节点：↩收起子树</span>
       </div>
 
       <!-- 右侧节点操作小面板 -->
-      <div class="col" style="width:190px; border-left:1px solid #ddd; background:#fcfcfc; padding:12px; gap:8px">
+      <div class="col" style="width:190px; border-left:1px solid var(--wf-border); background:var(--wf-surface-2); padding:12px; gap:8px">
         <div class="label">节点操作</div>
-        <span class="btn">＋ 子节点</span>
-        <span class="btn">＋ 兄弟节点</span>
-        <span class="btn">🗑 删除</span>
-        <span class="btn ghost">↩ 收起</span>
+        <span class="btn"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></svg>子节点</span>
+        <span class="btn"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></svg>兄弟节点</span>
+        <span class="btn" style="color:var(--wf-danger)"><svg class="ic" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>删除</span>
+        <span class="btn ghost"><svg class="ic" viewBox="0 0 24 24"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>收起</span>
         <span class="note-tag" style="margin-top:auto">Tab=子节点 · Enter=兄弟节点</span>
       </div>
     </div>
 
-    <div class="statusbar"><span>11 个节点</span><span>缩放 100%</span><span class="grow"></span><span>● 已保存</span><span>思维导图</span></div>
+    <div class="statusbar"><span>11 个节点</span><span>缩放 100%</span><span class="grow"></span><span style="display:inline-flex; align-items:center; gap:5px"><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--wf-primary)"></span>已保存</span><span>思维导图</span></div>
   </div>
 </div>
 

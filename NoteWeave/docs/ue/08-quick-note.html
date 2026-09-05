@@ -13,16 +13,16 @@
   <!-- 浮窗 -->
   <div class="wf-screen" style="width:420px; min-height:300px; margin:0">
     <div class="topbar" style="height:36px; -webkit-app-region:drag">
-      <span style="font-size:12px">⚡ 快捷小记</span>
+      <span style="font-size:12px; display:inline-flex; align-items:center; gap:5px"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg>快捷小记</span>
       <span class="grow"></span>
-      <span class="btn ghost" style="padding:0 8px">─</span>
-      <span class="btn ghost" style="padding:0 8px">✕</span>
+      <span class="btn ghost icon-only"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14"/></svg></span>
+      <span class="btn ghost icon-only"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></span>
     </div>
     <div class="grow col" style="padding:12px">
-      <div class="input grow" style="min-height:150px; text-align:left; vertical-align:top">直接输入想法…（支持 Markdown）</div>
+      <div class="input focus grow" style="min-height:150px; align-items:flex-start">直接输入想法…（支持 Markdown）</div>
       <div class="row" style="justify-content:space-between; align-items:center">
-        <span class="chip">📁 默认分组</span>
-        <span class="btn primary">保存 Ctrl+Enter</span>
+        <span class="chip"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>默认分组</span>
+        <span class="btn primary"><svg class="ic" viewBox="0 0 24 24"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></svg>保存 <span class="kbd">Ctrl</span>+<span class="kbd">Enter</span></span>
       </div>
     </div>
   </div>
@@ -30,7 +30,7 @@
   <div class="col">
     <div class="box" style="width:280px">
       <div class="label">系统托盘（Windows 任务栏右下角）</div>
-      <div style="font-size:20px">🧶</div>
+      <div style="width:30px; height:30px; border-radius:8px; background:var(--wf-primary); color:var(--wf-screen); display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700">织</div>
       <div style="font-size:12px; margin-top:6px">左键：打开主窗口<br>右键菜单：快捷小记 / 打开主窗口 / 退出</div>
     </div>
     <div class="box" style="width:280px">

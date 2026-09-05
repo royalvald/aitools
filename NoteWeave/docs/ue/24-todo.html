@@ -15,40 +15,40 @@
     <!-- 上部：待办面板 -->
     <div class="col" style="width:720px; gap:8px">
       <div class="row" style="align-items:center">
-        <b style="font-size:14px">☑ 待办</b>
+        <b style="font-size:14px; display:inline-flex; align-items:center; gap:6px"><svg class="ic" viewBox="0 0 24 24" style="color:var(--wf-primary)"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="m9 12 2 2 4-4"/></svg>待办</b>
         <span class="grow"></span>
-        <span class="btn primary">＋ 新建待办</span>
+        <span class="btn primary"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></svg>新建待办</span>
       </div>
       <!-- 今天 -->
       <div class="label" style="margin-top:4px">今天</div>
-      <div class="box solid row" style="align-items:center; background:#fff">
-        <span>☐</span>
+      <div class="li-row">
+        <svg class="ic" viewBox="0 0 24 24" style="color:var(--wf-text-4)"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>
         <span class="grow">完成评审意见</span>
-        <span class="chip" style="color:#c0392b; border-color:#c0392b">🔴 高</span>
-        <span style="font-size:11px;color:#888">17:00</span>
-        <span style="font-size:11px;color:#888">关联 📄 需求池整理</span>
-        <span style="font-size:11px;color:#bbb">✎ 编辑 · 🗑</span>
+        <span class="chip" style="color:var(--wf-danger); border-color:var(--wf-danger)"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--wf-danger)"></span>高</span>
+        <span style="font-size:11px;color:var(--wf-text-3)">17:00</span>
+        <span style="font-size:11px;color:var(--wf-text-3); display:inline-flex; align-items:center; gap:4px">关联 <svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>需求池整理</span>
+        <span style="font-size:11px;color:var(--wf-text-4); display:inline-flex; align-items:center; gap:4px"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg>编辑 · <svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg></span>
       </div>
-      <div class="box solid row" style="align-items:center; background:#fff">
-        <span>☐</span>
+      <div class="li-row">
+        <svg class="ic" viewBox="0 0 24 24" style="color:var(--wf-text-4)"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>
         <span class="grow">回复评论</span>
-        <span class="chip">🟡 中</span>
+        <span class="chip"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--wf-warning)"></span>中</span>
         <span class="note-tag">悬停显示：编辑 / 删除</span>
       </div>
       <!-- 稍后 -->
       <div class="label" style="margin-top:8px">稍后</div>
-      <div class="box solid row" style="align-items:center; background:#fff">
-        <span>☐</span>
+      <div class="li-row">
+        <svg class="ic" viewBox="0 0 24 24" style="color:var(--wf-text-4)"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>
         <span class="grow">整理读书笔记</span>
-        <span class="chip">⚪ 低</span>
-        <span style="font-size:11px;color:#888">周五</span>
+        <span class="chip"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--wf-border-strong)"></span>低</span>
+        <span style="font-size:11px;color:var(--wf-text-3)">周五</span>
       </div>
       <!-- 已完成 -->
       <div class="label" style="margin-top:8px">已完成</div>
-      <div class="box solid row" style="align-items:center; background:#fafafa; color:#999">
-        <span>☑</span>
-        <span class="grow" style="text-decoration:line-through; color:#aaa">发布 v1.0</span>
-        <span style="font-size:11px;color:#bbb">✎ · 🗑</span>
+      <div class="li-row" style="background:var(--wf-surface-2); color:var(--wf-text-3)">
+        <svg class="ic" viewBox="0 0 24 24" style="color:var(--wf-primary)"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="m9 12 2 2 4-4"/></svg>
+        <span class="grow" style="text-decoration:line-through; color:var(--wf-text-4)">发布 v1.0</span>
+        <span style="font-size:11px;color:var(--wf-text-4); display:inline-flex; align-items:center; gap:4px"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg>· <svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg></span>
       </div>
     </div>
 
@@ -61,16 +61,16 @@
         <div class="row" style="align-items:center; margin-bottom:12px">
           <b style="font-size:13px">编辑待办</b>
           <span class="grow"></span>
-          <span class="btn ghost" style="padding:1px 8px">✕</span>
+          <span class="btn ghost icon-only" style="padding:2px 6px"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></span>
         </div>
         <div class="col" style="gap:10px">
           <div>
             <div class="label">标题</div>
-            <span class="input" style="display:block; color:#333">完成评审意见</span>
+            <span class="input focus" style="display:flex; color:var(--wf-text)">完成评审意见</span>
           </div>
           <div>
             <div class="label">详情（支持 Markdown）</div>
-            <div class="box" style="background:#fafafa">
+            <div class="box" style="background:var(--wf-surface-2); border-style:solid; border-color:var(--wf-border)">
               <div class="text-line w90"></div>
               <div class="text-line w60"></div>
             </div>
@@ -78,21 +78,21 @@
           <div class="row">
             <div class="grow">
               <div class="label">优先级</div>
-              <div class="row">
-                <span class="chip" style="border:2px solid #333; font-weight:600">高</span>
-                <span class="chip">中</span>
-                <span class="chip">低</span>
+              <div class="seg">
+                <span class="seg-item active">高</span>
+                <span class="seg-item">中</span>
+                <span class="seg-item">低</span>
               </div>
             </div>
             <div>
               <div class="label">截止时间</div>
-              <span class="input" style="color:#333">今天 17:00 ▾</span>
+              <span class="input" style="color:var(--wf-text)"><svg class="ic ic-sm" viewBox="0 0 24 24" style="color:var(--wf-text-3)"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>今天 17:00 <svg class="ic ic-sm" viewBox="0 0 24 24" style="color:var(--wf-text-3)"><path d="m6 9 6 6 6-6"/></svg></span>
             </div>
           </div>
           <div>
             <div class="label">关联目标</div>
-            <span class="input" style="display:inline-block; min-width:220px; color:#333">📄 文档 · 需求池整理 ▾</span>
-            <span style="font-size:11px;color:#999; margin-left:8px">可选：小记 / 文档</span>
+            <span class="input" style="display:inline-flex; min-width:220px; color:var(--wf-text)"><svg class="ic ic-sm" viewBox="0 0 24 24" style="color:var(--wf-text-3)"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>文档 · 需求池整理 <svg class="ic ic-sm" viewBox="0 0 24 24" style="color:var(--wf-text-3)"><path d="m6 9 6 6 6-6"/></svg></span>
+            <span style="font-size:11px;color:var(--wf-text-3); margin-left:8px">可选：小记 / 文档</span>
           </div>
         </div>
         <div class="row" style="margin-top:14px; justify-content:flex-end">

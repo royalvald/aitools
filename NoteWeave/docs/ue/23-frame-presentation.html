@@ -9,27 +9,27 @@
 <div class="wf-title">UE-23 框架演示 FramePresentation（全屏播放态）</div>
 <div class="wf-desc">黑底全屏：按白板框架顺序分页演示，中央显示当前框架内容缩略。 <span class="status partial">🟡 部分实现 · 差距见 <a href="../UE_IMPL_GAP.md">IMPL_GAP §3.2</a></span> <a class="back" href="index.html">← 返回索引</a></div>
 
-<div class="wf-screen" style="background:#111; border-color:#333; min-height:700px">
+<div class="wf-screen" style="background:#0f172a; border-color:var(--wf-text); min-height:700px">
   <!-- 顶部右侧控制 -->
   <div style="height:52px; display:flex; align-items:center; justify-content:flex-end; padding:0 24px; gap:12px">
-    <span class="btn" style="background:#222; color:#ccc; border-color:#555">⤓ 导出 PDF</span>
-    <span class="btn ghost" style="background:#222; color:#ccc; border-color:#555">✕ 退出 Esc</span>
+    <span class="btn" style="background:var(--wf-text); color:var(--wf-border-2); border-color:var(--wf-text-2); box-shadow:none"><svg class="ic" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>导出 PDF</span>
+    <span class="btn ghost" style="background:var(--wf-text); color:var(--wf-border-2); border-color:var(--wf-text-2)"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>退出 <span class="kbd" style="background:transparent; border-color:var(--wf-text-2); color:var(--wf-border-2)">Esc</span></span>
   </div>
 
   <!-- 中央白色画布区：框架 2 · 方案 -->
   <div class="grow center" style="padding:0 60px 80px">
-    <div class="rel" style="width:760px; height:420px; background:#fff; border-radius:6px; box-shadow:0 10px 40px rgba(0,0,0,.5); padding:24px">
-      <div style="font-size:16px; font-weight:700; color:#222; margin-bottom:12px">框架 2 · 方案</div>
+    <div class="rel" style="width:760px; height:420px; background:var(--wf-screen); border-radius:10px; box-shadow:0 10px 40px rgba(15,23,42,.5); padding:24px">
+      <div style="font-size:16px; font-weight:700; color:var(--wf-text); margin-bottom:12px">框架 2 · 方案</div>
       <!-- 便签缩略 -->
-      <div class="box" style="position:absolute; left:40px; top:90px; width:140px; height:110px; background:#f7f3d8; border-color:#ccc; color:#555">便签：目标用户</div>
-      <div class="box" style="position:absolute; left:210px; top:110px; width:140px; height:110px; background:#d8ecf7; border-color:#ccc; color:#555">便签：核心场景</div>
+      <div class="box" style="position:absolute; left:40px; top:90px; width:140px; height:110px; background:var(--wf-amber-soft); border-style:solid; border-color:var(--wf-border-2); color:var(--wf-text-2)">便签：目标用户</div>
+      <div class="box" style="position:absolute; left:210px; top:110px; width:140px; height:110px; background:var(--wf-blue-soft); border-style:solid; border-color:var(--wf-border-2); color:var(--wf-text-2)">便签：核心场景</div>
       <!-- 形状缩略 -->
-      <div class="box solid" style="position:absolute; left:420px; top:90px; width:150px; height:80px; text-align:center; border-radius:40px">形状（圆角）</div>
-      <div class="box solid" style="position:absolute; left:420px; top:210px; width:150px; height:90px; text-align:center; border-radius:0">形状（矩形）</div>
+      <div class="box solid" style="position:absolute; left:420px; top:90px; width:150px; height:80px; text-align:center; border-radius:40px; display:flex; align-items:center; justify-content:center">形状（圆角）</div>
+      <div class="box solid" style="position:absolute; left:420px; top:210px; width:150px; height:90px; text-align:center; border-radius:0; display:flex; align-items:center; justify-content:center">形状（矩形）</div>
       <!-- 连线缩略（div 模拟） -->
-      <div style="position:absolute; left:180px; top:145px; width:30px; height:2px; background:#888; transform:rotate(14deg)"></div>
-      <div style="position:absolute; left:350px; top:150px; width:70px; height:2px; background:#888; transform:rotate(-18deg)"></div>
-      <div style="position:absolute; left:495px; top:170px; width:2px; height:40px; background:#888"></div>
+      <div style="position:absolute; left:180px; top:145px; width:30px; height:2px; background:var(--wf-text-3); transform:rotate(14deg)"></div>
+      <div style="position:absolute; left:350px; top:150px; width:70px; height:2px; background:var(--wf-text-3); transform:rotate(-18deg)"></div>
+      <div style="position:absolute; left:495px; top:170px; width:2px; height:40px; background:var(--wf-text-3)"></div>
       <!-- 文本缩略 -->
       <div style="position:absolute; left:40px; top:250px; width:280px">
         <div class="text-line w90"></div>
@@ -40,15 +40,15 @@
 
   <!-- 底部居中翻页控制 -->
   <div class="center" style="height:64px; gap:16px">
-    <span class="btn" style="background:#222; color:#ccc; border-color:#555; padding:4px 14px">◀</span>
-    <span style="font-size:13px; color:#ccc"><b>2</b>/5</span>
-    <span class="btn" style="background:#222; color:#ccc; border-color:#555; padding:4px 14px">▶</span>
-    <span class="row" style="gap:8px; margin-left:8px">
-      <span style="width:9px;height:9px;border-radius:50%;background:#555;display:inline-block"></span>
-      <span style="width:9px;height:9px;border-radius:50%;background:#fff;display:inline-block"></span>
-      <span style="width:9px;height:9px;border-radius:50%;background:#555;display:inline-block"></span>
-      <span style="width:9px;height:9px;border-radius:50%;background:#555;display:inline-block"></span>
-      <span style="width:9px;height:9px;border-radius:50%;background:#555;display:inline-block"></span>
+    <span class="btn icon-only" style="background:var(--wf-text); color:var(--wf-border-2); border-color:var(--wf-text-2); box-shadow:none; padding:5px 12px"><svg class="ic" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></span>
+    <span style="font-size:13px; color:var(--wf-border-2)"><b>2</b>/5</span>
+    <span class="btn icon-only" style="background:var(--wf-text); color:var(--wf-border-2); border-color:var(--wf-text-2); box-shadow:none; padding:5px 12px"><svg class="ic" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></span>
+    <span class="row" style="gap:8px; margin-left:8px; align-items:center">
+      <span style="width:9px;height:9px;border-radius:50%;background:var(--wf-text-2);display:inline-block"></span>
+      <span style="width:9px;height:9px;border-radius:50%;background:var(--wf-screen);display:inline-block"></span>
+      <span style="width:9px;height:9px;border-radius:50%;background:var(--wf-text-2);display:inline-block"></span>
+      <span style="width:9px;height:9px;border-radius:50%;background:var(--wf-text-2);display:inline-block"></span>
+      <span style="width:9px;height:9px;border-radius:50%;background:var(--wf-text-2);display:inline-block"></span>
     </span>
   </div>
 </div>

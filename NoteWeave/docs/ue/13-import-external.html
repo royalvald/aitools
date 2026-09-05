@@ -11,23 +11,24 @@
 
 <div class="wf-title" style="font-size:14px; margin-top:8px">关键帧 ①：选择文件（初始态）</div>
 <div class="wf-screen rel" style="min-height:560px">
-  <div class="overlay-mask" style="position:static; background:#e8e8e8; padding-top:40px; flex:1">
+  <div class="overlay-mask" style="position:static; background:var(--wf-bg); padding-top:40px; flex:1">
     <div class="dialog" style="width:720px">
       <!-- 步骤条 -->
       <div class="row" style="align-items:center; margin-bottom:12px; font-size:12px">
-        <span class="chip" style="border:2px solid #333;font-weight:600">① 选择文件</span>
-        <span style="color:#bbb">────</span>
+        <span class="chip" style="border-color:var(--wf-primary); background:var(--wf-primary-soft); color:var(--wf-primary-hover); font-weight:600">① 选择文件</span>
+        <span style="color:var(--wf-border-strong)">────</span>
         <span class="chip">② 确认与目标</span>
-        <span style="color:#bbb">────</span>
+        <span style="color:var(--wf-border-strong)">────</span>
         <span class="chip">③ 导入结果</span>
       </div>
       <div class="box center col" style="height:220px; border-style:dashed; gap:10px">
-        <div style="font-size:15px; color:#666">拖拽文件到这里，或</div>
+        <svg class="ic ic-xl" style="color:var(--wf-text-4)" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+        <div style="font-size:15px; color:var(--wf-text-2)">拖拽文件到这里，或</div>
         <div class="row">
-          <span class="btn primary">📄 选择文件</span>
-          <span class="btn">🗂 选择文件夹</span>
+          <span class="btn primary"><svg class="ic" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>选择文件</span>
+          <span class="btn"><svg class="ic" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>选择文件夹</span>
         </div>
-        <div style="font-size:11px; color:#999">支持 docx / html / txt / md，可多选；文件夹将递归扫描支持的格式</div>
+        <div style="font-size:11px; color:var(--wf-text-3)">支持 docx / html / txt / md，可多选；文件夹将递归扫描支持的格式</div>
       </div>
       <div class="row" style="justify-content:flex-end; margin-top:10px">
         <span class="btn">取消</span>
@@ -44,15 +45,15 @@
     <div class="topbar">
       <span class="crumb">工作台</span>
       <span class="grow"></span>
-      <span class="btn">＋ 新建</span>
-      <span class="btn">⇪ 导入</span>
+      <span class="btn"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></svg>新建</span>
+      <span class="btn"><svg class="ic" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>导入</span>
     </div>
     <div class="grow" style="padding:24px">
       <div style="font-size:18px;font-weight:700;margin-bottom:12px">👋 下午好，织记</div>
       <div class="row">
-        <div class="card"><span class="icon">📝</span><span class="name">小记</span><span class="meta">共 36 条</span></div>
-        <div class="card"><span class="icon">📗</span><span class="name">产品方案</span><span class="meta">12 篇文档</span></div>
-        <div class="card"><span class="icon">📘</span><span class="name">技术学习</span><span class="meta">34 篇文档</span></div>
+        <div class="card"><div class="doc-ic g"><svg class="ic" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/></svg></div><span class="name">小记</span><span class="meta">共 36 条</span></div>
+        <div class="card"><div class="doc-ic g"><svg class="ic" viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/></svg></div><span class="name">产品方案</span><span class="meta">12 篇文档</span></div>
+        <div class="card"><div class="doc-ic b"><svg class="ic" viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/></svg></div><span class="name">技术学习</span><span class="meta">34 篇文档</span></div>
       </div>
     </div>
     <div class="statusbar"><span>就绪</span></div>
@@ -63,10 +64,10 @@
     <div class="dialog" style="width:720px">
       <!-- 步骤条 -->
       <div class="row" style="align-items:center; margin-bottom:12px; font-size:12px">
-        <span class="chip" style="border:2px solid #333;font-weight:600">① 选择文件</span>
-        <span style="color:#bbb">────</span>
-        <span class="chip" style="border:2px solid #333;font-weight:600">② 确认与目标</span>
-        <span style="color:#bbb">────</span>
+        <span class="chip" style="border-color:var(--wf-primary); background:var(--wf-primary-soft); color:var(--wf-primary-hover); font-weight:600">① 选择文件</span>
+        <span style="color:var(--wf-border-strong)">────</span>
+        <span class="chip" style="border-color:var(--wf-primary); background:var(--wf-primary-soft); color:var(--wf-primary-hover); font-weight:600">② 确认与目标</span>
+        <span style="color:var(--wf-border-strong)">────</span>
         <span class="chip">③ 导入结果</span>
         <span class="grow"></span>
         <span class="note-tag">当前：第②步确认态（第①步高亮入口）</span>
@@ -76,43 +77,43 @@
         <!-- 左：文件选择 + 列表 -->
         <div class="col grow">
           <div class="row">
-            <span class="btn">📄 选择文件</span>
-            <span class="btn">🗂 选择文件夹</span>
+            <span class="btn"><svg class="ic" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>选择文件</span>
+            <span class="btn"><svg class="ic" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>选择文件夹</span>
             <span class="note-tag">第①步入口</span>
           </div>
           <div class="label" style="margin-top:8px">已选文件（12）</div>
           <div class="box col grow" style="max-height:230px; overflow:hidden; gap:4px">
-            <div class="row" style="font-size:11px"><span>季度汇报.docx</span><span class="chip" style="margin-left:auto">docx</span><span style="color:#999;width:56px;text-align:right">1.2 MB</span></div>
-            <div class="row" style="font-size:11px"><span>需求调研.html</span><span class="chip" style="margin-left:auto">html</span><span style="color:#999;width:56px;text-align:right">340 KB</span></div>
-            <div class="row" style="font-size:11px"><span>会议纪要 0612.md</span><span class="chip" style="margin-left:auto">md</span><span style="color:#999;width:56px;text-align:right">12 KB</span></div>
-            <div class="row" style="font-size:11px"><span>随想.txt</span><span class="chip" style="margin-left:auto">txt</span><span style="color:#999;width:56px;text-align:right">4 KB</span></div>
-            <div class="row" style="font-size:11px"><span>接口文档.docx</span><span class="chip" style="margin-left:auto">docx</span><span style="color:#999;width:56px;text-align:right">880 KB</span></div>
-            <div class="row" style="font-size:11px;color:#999">…（共 12 个，含 docx · html · txt · md 徽标）</div>
+            <div class="row" style="font-size:11px; align-items:center"><svg class="ic ic-sm" style="color:var(--wf-text-3)" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg><span>季度汇报.docx</span><span class="chip" style="margin-left:auto">docx</span><span style="color:var(--wf-text-3);width:56px;text-align:right">1.2 MB</span></div>
+            <div class="row" style="font-size:11px; align-items:center"><svg class="ic ic-sm" style="color:var(--wf-text-3)" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg><span>需求调研.html</span><span class="chip" style="margin-left:auto">html</span><span style="color:var(--wf-text-3);width:56px;text-align:right">340 KB</span></div>
+            <div class="row" style="font-size:11px; align-items:center"><svg class="ic ic-sm" style="color:var(--wf-text-3)" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/></svg><span>会议纪要 0612.md</span><span class="chip" style="margin-left:auto">md</span><span style="color:var(--wf-text-3);width:56px;text-align:right">12 KB</span></div>
+            <div class="row" style="font-size:11px; align-items:center"><svg class="ic ic-sm" style="color:var(--wf-text-3)" viewBox="0 0 24 24"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" x2="15" y1="20" y2="20"/><line x1="12" x2="12" y1="4" y2="20"/></svg><span>随想.txt</span><span class="chip" style="margin-left:auto">txt</span><span style="color:var(--wf-text-3);width:56px;text-align:right">4 KB</span></div>
+            <div class="row" style="font-size:11px; align-items:center"><svg class="ic ic-sm" style="color:var(--wf-text-3)" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg><span>接口文档.docx</span><span class="chip" style="margin-left:auto">docx</span><span style="color:var(--wf-text-3);width:56px;text-align:right">880 KB</span></div>
+            <div class="row" style="font-size:11px;color:var(--wf-text-3)">…（共 12 个，含 docx · html · txt · md 徽标）</div>
           </div>
         </div>
         <!-- 右：目标区 -->
         <div class="col" style="width:220px">
           <div class="label">导入到</div>
-          <div class="input" style="width:100%">📗 技术学习 ▾（知识库）</div>
-          <div class="input" style="width:100%">父级文档 ▾（可选）</div>
-          <div class="box" style="font-size:11px">或选择：○ 小记分组（📁 工作 / 学习 / 未分组）</div>
+          <div class="input focus" style="width:100%"><svg class="ic ic-sm" style="color:var(--wf-primary-hover)" viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/></svg>技术学习<svg class="ic ic-sm" style="margin-left:auto" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg><span style="color:var(--wf-text-3)">（知识库）</span></div>
+          <div class="input" style="width:100%">父级文档<svg class="ic ic-sm" style="margin-left:auto" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg><span style="color:var(--wf-text-3)">（可选）</span></div>
+          <div class="box" style="font-size:11px">或选择：<span style="display:inline-block;width:12px;height:12px;border-radius:50%;border:2px solid var(--wf-border-strong);vertical-align:-2px"></span> 小记分组（<svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg> 工作 / 学习 / 未分组）</div>
           <div class="row" style="font-size:12px; align-items:center">
-            <span class="chip">☑</span><span>保留目录结构</span>
+            <svg class="ic" style="color:var(--wf-primary)" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="m9 12 2 2 4-4"/></svg><span>保留目录结构</span>
           </div>
         </div>
       </div>
 
       <!-- 进度与结果预览 -->
       <div class="col" style="margin-top:12px">
-        <div class="row" style="font-size:11px; color:#777">
+        <div class="row" style="font-size:11px; color:var(--wf-text-2)">
           <span>导入进度 60%</span>
           <span class="grow"></span>
           <span>成功 9 / 失败 1<span class="note-tag">失败行可展开原因</span></span>
         </div>
-        <div style="border:1px solid #bbb; border-radius:4px; height:8px; background:#f4f4f4">
-          <div style="width:60%; height:100%; background:#777; border-radius:3px"></div>
+        <div style="border:1px solid var(--wf-border-2); border-radius:4px; height:8px; background:var(--wf-fill)">
+          <div style="width:60%; height:100%; background:var(--wf-primary); border-radius:3px"></div>
         </div>
-        <div class="box" style="font-size:11px; margin-top:6px">▾ 失败：旧版档案.docx —— 转换超时（mammoth 解析失败，可重试 / 跳过）</div>
+        <div class="box" style="font-size:11px; margin-top:6px; background:var(--wf-warning-soft); border-color:var(--wf-amber-soft)"><svg class="ic ic-sm" style="color:var(--wf-warning)" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg> 失败：旧版档案.docx —— 转换超时（mammoth 解析失败，可重试 / 跳过）</div>
       </div>
 
       <div class="row" style="justify-content:flex-end; margin-top:10px">
@@ -126,26 +127,27 @@
 
 <div class="wf-title" style="font-size:14px; margin-top:24px">关键帧 ③：导入结果</div>
 <div class="wf-screen rel" style="min-height:560px">
-  <div class="overlay-mask" style="position:static; background:#e8e8e8; padding-top:40px; flex:1">
+  <div class="overlay-mask" style="position:static; background:var(--wf-bg); padding-top:40px; flex:1">
     <div class="dialog" style="width:720px">
       <!-- 步骤条 -->
       <div class="row" style="align-items:center; margin-bottom:12px; font-size:12px">
         <span class="chip">① 选择文件</span>
-        <span style="color:#bbb">────</span>
+        <span style="color:var(--wf-border-strong)">────</span>
         <span class="chip">② 确认与目标</span>
-        <span style="color:#bbb">────</span>
-        <span class="chip" style="border:2px solid #333;font-weight:600">③ 导入结果</span>
+        <span style="color:var(--wf-border-strong)">────</span>
+        <span class="chip" style="border-color:var(--wf-primary); background:var(--wf-primary-soft); color:var(--wf-primary-hover); font-weight:600">③ 导入结果</span>
       </div>
-      <div class="box" style="background:#fff">
+      <div class="box" style="background:var(--wf-screen)">
         <b style="font-size:13px">导入完成：成功 11 · 失败 1</b>
-        <div style="font-size:11px; color:#999; margin-top:4px">已导入到「📗 技术学习」；导入前已自动备份当前数据为 ZIP<span class="note-tag">可回滚</span></div>
+        <div style="font-size:11px; color:var(--wf-text-3); margin-top:4px">已导入到「<svg class="ic ic-sm" style="color:var(--wf-primary-hover)" viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/></svg> 技术学习」；导入前已自动备份当前数据为 ZIP<span class="note-tag">可回滚</span></div>
       </div>
       <div class="col" style="margin-top:10px; gap:4px">
-        <div class="box solid row" style="font-size:11px"><span class="grow">✅ 季度汇报.docx → 季度汇报</span><span style="color:#999">docx</span></div>
-        <div class="box solid row" style="font-size:11px"><span class="grow">✅ 需求调研.html → 需求调研</span><span style="color:#999">html</span></div>
-        <div class="box solid row" style="font-size:11px; color:#999">…（共 11 条成功）</div>
+        <div class="box solid row" style="font-size:11px; align-items:center"><svg class="ic ic-sm" style="color:var(--wf-success)" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg><span class="grow">季度汇报.docx → 季度汇报</span><span style="color:var(--wf-text-3)">docx</span></div>
+        <div class="box solid row" style="font-size:11px; align-items:center"><svg class="ic ic-sm" style="color:var(--wf-success)" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg><span class="grow">需求调研.html → 需求调研</span><span style="color:var(--wf-text-3)">html</span></div>
+        <div class="box solid row" style="font-size:11px; color:var(--wf-text-3)">…（共 11 条成功）</div>
         <div class="annot invalid row" style="align-items:center">
-          <span class="grow" style="font-size:11px">❌ 旧版档案.docx —— 转换超时（mammoth 解析失败）</span>
+          <svg class="ic ic-sm" style="color:var(--wf-danger)" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+          <span class="grow" style="font-size:11px">旧版档案.docx —— 转换超时（mammoth 解析失败）</span>
           <span class="btn" style="padding:1px 10px; font-size:11px">重试</span>
           <span class="btn ghost" style="padding:1px 10px; font-size:11px">跳过</span>
         </div>

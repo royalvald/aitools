@@ -13,14 +13,14 @@
   <!-- 底层页面压暗 -->
   <div style="filter:brightness(.8)">
     <div class="topbar">
-      <span class="crumb">📗 产品方案 / 需求管理 / <b>需求池整理</b></span>
+      <span class="crumb"><svg class="ic ic-sm" style="color:var(--wf-primary-hover)" viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/></svg> 产品方案 / 需求管理 / <b>需求池整理</b></span>
       <span class="grow"></span>
-      <span class="btn">▤ 大纲</span>
-      <span class="btn">💬 讨论</span>
-      <span class="btn">🔗 关联</span>
-      <span class="btn">🕘 历史</span>
-      <span class="btn">⋯<span class="note-tag">从模板新建入口</span></span>
-      <span class="btn primary" style="background:#2e7d32;border-color:#2e7d32">✓ 完成</span>
+      <span class="btn"><svg class="ic" viewBox="0 0 24 24"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>大纲</span>
+      <span class="btn"><svg class="ic" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>讨论</span>
+      <span class="btn"><svg class="ic" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>关联</span>
+      <span class="btn"><svg class="ic" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>历史</span>
+      <span class="btn icon-only"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="19" cy="12" r="1" fill="currentColor"/><circle cx="5" cy="12" r="1" fill="currentColor"/></svg><span class="note-tag">从模板新建入口</span></span>
+      <span class="btn primary"><svg class="ic" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>完成</span>
     </div>
     <div style="padding:20px 40px">
       <div style="font-size:20px;font-weight:700;margin-bottom:10px">需求池整理</div>
@@ -38,12 +38,12 @@
         <b style="font-size:15px">从模板新建</b>
         <span class="note-tag">新建小记/文档时弹出；编辑器「⋯→从模板新建」亦可触发</span>
         <span class="grow"></span>
-        <span class="btn ghost">✕</span>
+        <span class="btn ghost icon-only"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></span>
       </div>
       <div class="row grow" style="align-items:stretch; gap:12px">
         <!-- 左侧分类 -->
-        <div class="col" style="width:140px; border-right:1px solid #eee; padding-right:8px">
-          <span class="chip" style="border:2px solid #333;font-weight:600">全部</span>
+        <div class="col" style="width:140px; border-right:1px solid var(--wf-border); padding-right:8px; gap:6px">
+          <span class="chip" style="border-color:var(--wf-primary); background:var(--wf-primary-soft); color:var(--wf-primary-hover); font-weight:600">全部</span>
           <span class="chip">会议</span>
           <span class="chip">笔记</span>
           <span class="chip">项目管理</span>
@@ -83,15 +83,16 @@
               <div class="meta"><span class="btn primary" style="padding:2px 10px;font-size:11px">使用</span></div>
             </div>
             <div class="card new" style="width:180px; height:130px">
+              <svg class="ic ic-lg" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
               <span style="font-size:13px">空白<br>（不使用模板）</span>
             </div>
           </div>
         </div>
       </div>
       <!-- 底部入口 -->
-      <div class="row" style="margin-top:12px; border-top:1px solid #eee; padding-top:10px">
-        <span class="btn ghost">＋ 将当前文档保存为模板</span>
-        <span class="btn ghost">🗂 管理模板（templates/ 目录）</span>
+      <div class="row" style="margin-top:12px; border-top:1px solid var(--wf-border); padding-top:10px">
+        <span class="btn ghost"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></svg>将当前文档保存为模板</span>
+        <span class="btn ghost"><svg class="ic" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>管理模板（templates/ 目录）</span>
         <span class="grow"></span>
         <span class="btn">取消</span>
       </div>

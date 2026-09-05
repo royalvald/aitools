@@ -12,47 +12,49 @@
 <div class="wf-screen">
   <div class="col grow" style="gap:0">
     <div class="topbar">
-      <span class="crumb">📗 产品方案 / 需求管理 / <b>需求池整理</b></span>
+      <span class="crumb"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/></svg> 产品方案 / 需求管理 / <b>需求池整理</b></span>
       <span class="grow"></span>
-      <span class="chip" style="border:2px solid #333;font-weight:600">富文本</span>
-      <span class="chip">Markdown</span>
-      <span class="btn">🕘 历史</span>
+      <span class="seg">
+        <span class="seg-item active">富文本</span>
+        <span class="seg-item">Markdown</span>
+      </span>
+      <span class="btn"><svg class="ic" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>历史</span>
     </div>
     <div class="grow col" style="gap:0">
       <!-- 查找替换浮条（展开态） -->
-      <div class="box solid" style="margin:12px 40px 0; padding:8px 12px; background:#fff">
+      <div class="box solid" style="margin:12px 40px 0; padding:10px 14px; background:var(--wf-screen); border-color:var(--wf-border-2); box-shadow:var(--wf-shadow-md); border-radius:10px">
         <div class="row" style="align-items:center">
-          <span class="input grow" style="color:#333">需求</span>
-          <span style="font-size:12px;color:#333;white-space:nowrap"><b>3/12</b><span class="note-tag">当前第 3 处</span></span>
-          <span class="btn" style="padding:2px 8px">↑</span>
-          <span class="btn" style="padding:2px 8px">↓</span>
-          <span class="chip" style="border:2px solid #333;font-weight:600">Aa</span>
+          <span class="input grow focus"><svg class="ic ic-sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>需求</span>
+          <span style="font-size:12px;color:var(--wf-text);white-space:nowrap"><b>3/12</b><span class="note-tag">当前第 3 处</span></span>
+          <span class="btn icon-only"><svg class="ic" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></svg></span>
+          <span class="btn icon-only"><svg class="ic" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></span>
+          <span class="chip" style="border-color:var(--wf-primary);color:var(--wf-primary-hover);background:var(--wf-primary-soft);font-weight:600">Aa</span>
           <span class="chip">全词</span>
-          <span class="btn ghost" style="padding:2px 8px">展开替换 ▾</span>
+          <span class="btn ghost" style="padding:2px 8px">展开替换<svg class="ic ic-sm" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></span>
           <span class="note-tag">Ctrl+F 唤起 · Esc 关闭</span>
         </div>
         <div class="row" style="align-items:center; margin-top:8px">
           <span class="input grow">替换为…</span>
           <span class="btn">替换</span>
           <span class="btn primary">全部替换</span>
-          <span class="btn ghost" style="padding:2px 8px">✕</span>
+          <span class="btn ghost icon-only"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></span>
         </div>
       </div>
       <!-- 正文（富文本编辑区，背景压暗衬托浮条） -->
       <div class="grow" style="padding:20px 80px; filter:brightness(.92)">
         <div style="font-size:20px;font-weight:700;margin-bottom:10px">需求池整理</div>
         <div class="text-line w90"></div>
-        <div style="font-size:13px; line-height:2; color:#444">
+        <div style="font-size:13px; line-height:2; color:var(--wf-text-2)">
           本季度共收集 47 条<span class="hl">需求</span>，其中高优先级 12 条需在 v2.0 完成。产品侧对每条
           <span class="hl">需求</span><span class="note-tag">当前</span>逐条评估了实现成本与收益…
         </div>
         <div class="text-line w80"></div>
-        <div style="font-size:13px; line-height:2; color:#444">
+        <div style="font-size:13px; line-height:2; color:var(--wf-text-2)">
           下周评审会前需确认所有 <span class="hl">需求</span> 的责任人，并同步到版本规划文档。
         </div>
         <div class="text-line w60"></div>
       </div>
-      <div class="statusbar"><span>1,036 字</span><span class="grow"></span><span>● 已保存 14:32:08</span><span>富文本</span></div>
+      <div class="statusbar"><span>1,036 字</span><span class="grow"></span><span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--wf-primary);margin-right:4px"></span>已保存 14:32:08</span><span>富文本</span></div>
     </div>
   </div>
 </div>

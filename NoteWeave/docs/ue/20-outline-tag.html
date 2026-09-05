@@ -11,11 +11,11 @@
 
 <div class="row" style="width:1200px; margin:0 auto 32px; gap:40px">
   <!-- 左场景：大纲抽屉展开态 -->
-  <div class="wf-screen" style="width:580px; margin:0">
-    <div class="topbar" style="height:40px">
-      <span class="crumb">📗 产品方案 / <b>需求池整理</b></span>
+  <div class="wf-screen" style="width:580px; margin:0; min-height:0">
+    <div class="topbar" style="height:44px">
+      <span class="crumb" style="display:inline-flex; align-items:center; gap:6px"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/></svg> 产品方案 / <b>需求池整理</b></span>
       <span class="grow"></span>
-      <span class="chip" style="border:2px solid #333;font-weight:600">富文本</span>
+      <span class="chip" style="border-color:var(--wf-primary); background:var(--wf-primary-soft); color:var(--wf-primary-hover); font-weight:600">富文本</span>
     </div>
     <div class="row grow" style="gap:0">
       <!-- 正文区（压暗衬托抽屉） -->
@@ -29,11 +29,11 @@
         <div class="text-line w40"></div>
       </div>
       <!-- 大纲抽屉 280px -->
-      <div class="col" style="width:280px; border-left:1px solid #ccc; background:#fcfcfc; padding:10px 12px; gap:4px">
+      <div class="col" style="width:280px; border-left:1px solid var(--wf-border); background:var(--wf-surface-2); padding:12px 14px; gap:6px">
         <div class="row" style="align-items:center">
           <b style="font-size:13px">大纲</b>
           <span class="grow"></span>
-          <span class="btn ghost" style="padding:1px 8px">✕</span>
+          <span class="btn ghost icon-only" style="padding:2px 6px"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></span>
         </div>
         <div class="tree">
           <div class="t-node">H1 需求池整理</div>
@@ -48,24 +48,24 @@
   </div>
 
   <!-- 右场景：标签编辑与筛选 -->
-  <div class="wf-screen" style="width:580px; margin:0">
+  <div class="wf-screen" style="width:580px; margin:0; min-height:0">
     <!-- TagInput 编辑态 -->
-    <div class="col" style="padding:16px; gap:10px; border-bottom:1px dashed #ccc">
+    <div class="col" style="padding:16px; gap:10px; border-bottom:1px dashed var(--wf-border-2)">
       <div class="label">① TagInput 标签编辑态（文档/小记元信息）</div>
-      <div class="box solid" style="background:#fff; padding:10px">
+      <div class="box solid" style="background:var(--wf-screen); padding:10px; border-color:var(--wf-border)">
         <div class="row" style="align-items:center; flex-wrap:wrap">
-          <span class="chip">需求 ✕</span>
-          <span class="chip">v2.0 ✕</span>
-          <span class="input grow" style="min-width:120px">输入标签…</span>
+          <span class="chip">需求 <svg class="ic ic-sm" viewBox="0 0 24 24" style="color:var(--wf-text-3)"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></span>
+          <span class="chip">v2.0 <svg class="ic ic-sm" viewBox="0 0 24 24" style="color:var(--wf-text-3)"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></span>
+          <span class="input focus grow" style="min-width:120px">输入标签…</span>
         </div>
         <!-- 下拉建议 -->
-        <div class="box" style="margin-top:8px; background:#fafafa">
-          <div style="padding:2px 0">会议 (12)</div>
-          <div style="padding:2px 0">评审 (8)</div>
+        <div class="box" style="margin-top:8px; background:var(--wf-surface-2); border-style:solid; border-color:var(--wf-border); box-shadow:var(--wf-shadow-sm)">
+          <div style="padding:3px 6px; border-radius:5px">会议 (12)</div>
+          <div style="padding:3px 6px; border-radius:5px">评审 (8)</div>
           <span class="note-tag">下拉建议：已有标签聚合</span>
         </div>
-        <div class="row" style="margin-top:8px">
-          <span class="btn ghost">✨ AI 推荐标签</span>
+        <div class="row" style="margin-top:8px; align-items:center">
+          <span class="btn ghost"><svg class="ic" viewBox="0 0 24 24"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275Z"/></svg> AI 推荐标签</span>
           <span class="note-tag">依赖 Ollama 配置</span>
         </div>
       </div>
@@ -74,16 +74,16 @@
     <div class="col grow" style="padding:16px; gap:10px">
       <div class="label">② TagFilterBar 筛选态（工作台 · 小记 Tab 顶部）</div>
       <div class="row" style="align-items:center">
-        <span class="chip" style="border:2px solid #333;font-weight:600">全部</span>
-        <span class="chip" style="border:2px solid #333;font-weight:600">会议 ✓</span>
-        <span class="chip" style="border:2px solid #333;font-weight:600">需求 ✓</span>
+        <span class="chip">全部</span>
+        <span class="chip" style="border-color:var(--wf-primary); background:var(--wf-primary-soft); color:var(--wf-primary-hover); font-weight:600">会议 <svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>
+        <span class="chip" style="border-color:var(--wf-primary); background:var(--wf-primary-soft); color:var(--wf-primary-hover); font-weight:600">需求 <svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>
         <span class="grow"></span>
-        <span style="font-size:12px;color:#333"><b>筛选出 5 篇</b><span class="note-tag">多选高亮</span></span>
+        <span style="font-size:12px;color:var(--wf-text)"><b>筛选出 5 篇</b><span class="note-tag">多选高亮</span></span>
       </div>
       <div class="col grow" style="gap:8px">
-        <div class="box solid">📝 周会纪要 0612 · 会议 / 需求</div>
-        <div class="box solid">📝 评审意见汇总 · 会议 / 评审</div>
-        <div class="box solid">📝 需求池讨论 · 需求</div>
+        <div class="li-row"><span class="doc-ic g" style="width:26px;height:26px;border-radius:7px"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/></svg></span>周会纪要 0612 · 会议 / 需求</div>
+        <div class="li-row"><span class="doc-ic g" style="width:26px;height:26px;border-radius:7px"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/></svg></span>评审意见汇总 · 会议 / 评审</div>
+        <div class="li-row"><span class="doc-ic g" style="width:26px;height:26px;border-radius:7px"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/></svg></span>需求池讨论 · 需求</div>
       </div>
     </div>
   </div>

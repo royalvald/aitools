@@ -13,14 +13,14 @@
   <!-- 底层编辑器 -->
   <div class="col grow" style="gap:0; filter:brightness(.8)">
     <div class="topbar">
-      <span class="crumb">📗 产品方案 / 需求管理 / <b>需求池整理</b></span>
+      <span class="crumb"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/></svg> 产品方案 / 需求管理 / <b>需求池整理</b></span>
       <span class="grow"></span>
-      <span class="btn">▤ 大纲</span>
-      <span class="btn">💬 讨论</span>
-      <span class="btn">🔗 关联</span>
-      <span class="btn primary">🕘 历史<span class="note-tag">入口</span></span>
-      <span class="btn">⋯</span>
-      <span class="btn primary" style="background:#2e7d32;border-color:#2e7d32">✓ 完成</span>
+      <span class="btn"><svg class="ic" viewBox="0 0 24 24"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>大纲</span>
+      <span class="btn"><svg class="ic" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>讨论</span>
+      <span class="btn"><svg class="ic" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>关联</span>
+      <span class="btn primary"><svg class="ic" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>历史<span class="note-tag">入口</span></span>
+      <span class="btn icon-only"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="19" cy="12" r="1" fill="currentColor"/><circle cx="5" cy="12" r="1" fill="currentColor"/></svg></span>
+      <span class="btn primary"><svg class="ic" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>完成</span>
     </div>
     <div class="grow" style="padding:20px 40px">
       <div style="font-size:20px;font-weight:700;margin-bottom:10px">需求池整理</div>
@@ -32,42 +32,42 @@
   </div>
 
   <!-- 右侧 380px 抽屉 -->
-  <div style="position:absolute; top:0; right:0; bottom:0; width:380px; background:#fff; border-left:1px solid #999; box-shadow:-4px 0 16px rgba(0,0,0,.15); display:flex; flex-direction:column; padding:12px; gap:8px">
+  <div style="position:absolute; top:0; right:0; bottom:0; width:380px; background:var(--wf-screen); border-left:1px solid var(--wf-border-2); box-shadow:-4px 0 16px rgba(15,23,42,.10); display:flex; flex-direction:column; padding:14px; gap:8px; overflow:auto">
     <div class="row" style="align-items:center">
       <b style="font-size:14px">版本历史</b>
       <span class="grow"></span>
-      <span class="btn ghost">✕</span>
+      <span class="btn ghost icon-only"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></span>
     </div>
-    <div class="label">时间线（时间倒序）</div>
-    <div class="box solid" style="border:2px solid #555; color:#111">
-      <b>2025-06-12 10:24 · 1,036 字 · 自动保存</b> <span class="chip" style="border-color:#2e7d32;color:#2e7d32">当前</span>
-      <div class="row" style="margin-top:4px"><span class="btn ghost" style="padding:1px 8px;font-size:11px">查看</span><span class="btn ghost" style="padding:1px 8px;font-size:11px">恢复</span></div>
+    <div class="label"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg> 时间线（时间倒序）</div>
+    <div class="box primary">
+      <b>2025-06-12 10:24 · 1,036 字 · 自动保存</b> <span class="chip" style="border-color:var(--wf-primary);color:var(--wf-primary-hover);background:var(--wf-screen)">当前</span>
+      <div class="row" style="margin-top:6px"><span class="btn ghost" style="padding:1px 8px;font-size:11px">查看</span><span class="btn ghost" style="padding:1px 8px;font-size:11px">恢复</span></div>
     </div>
-    <div class="box">
+    <div class="box solid">
       <b>2025-06-12 09:58 · 998 字</b>
-      <div class="row" style="margin-top:4px"><span class="btn ghost" style="padding:1px 8px;font-size:11px">查看</span><span class="btn ghost" style="padding:1px 8px;font-size:11px">恢复</span></div>
+      <div class="row" style="margin-top:6px"><span class="btn ghost" style="padding:1px 8px;font-size:11px">查看</span><span class="btn ghost" style="padding:1px 8px;font-size:11px">恢复</span></div>
     </div>
-    <div class="box">
+    <div class="box solid">
       <b>昨天 17:30 · 860 字</b>
-      <div class="row" style="margin-top:4px"><span class="btn ghost" style="padding:1px 8px;font-size:11px">查看</span><span class="btn ghost" style="padding:1px 8px;font-size:11px">恢复</span></div>
+      <div class="row" style="margin-top:6px"><span class="btn ghost" style="padding:1px 8px;font-size:11px">查看</span><span class="btn ghost" style="padding:1px 8px;font-size:11px">恢复</span></div>
     </div>
-    <div class="box" style="color:#999">前天 14:02 · 612 字 · 手动快照</div>
-    <div class="box" style="color:#999">2025-06-09 11:20 · 403 字</div>
+    <div class="box solid" style="color:var(--wf-text-3)">前天 14:02 · 612 字 · 手动快照</div>
+    <div class="box solid" style="color:var(--wf-text-3)">2025-06-09 11:20 · 403 字</div>
 
-    <div class="label" style="margin-top:6px">版本对比</div>
-    <div class="row">
-      <span class="input grow">版本 A：09:58</span>
-      <span style="font-size:11px;color:#999">vs</span>
-      <span class="input grow">版本 B：当前</span>
+    <div class="label" style="margin-top:8px">版本对比</div>
+    <div class="row" style="align-items:center">
+      <span class="input grow">版本 A：09:58<svg class="ic ic-sm" viewBox="0 0 24 24" style="margin-left:auto"><path d="m6 9 6 6 6-6"/></svg></span>
+      <span style="font-size:11px;color:var(--wf-text-3)">vs</span>
+      <span class="input grow">版本 B：当前<svg class="ic ic-sm" viewBox="0 0 24 24" style="margin-left:auto"><path d="m6 9 6 6 6-6"/></svg></span>
     </div>
     <div class="row" style="gap:6px">
-      <div class="box grow" style="background:#fff">
+      <div class="box grow" style="background:var(--wf-screen)">
         <div class="label">版本 A</div>
         <div class="text-line w90" style="margin:4px 0"></div>
         <div class="text-line w80" style="margin:4px 0"></div>
         <div style="font-size:11px"><span class="hl">本季度共收集 39 条需求</span></div>
       </div>
-      <div class="box grow" style="background:#fff">
+      <div class="box grow" style="background:var(--wf-screen)">
         <div class="label">版本 B</div>
         <div class="text-line w90" style="margin:4px 0"></div>
         <div class="text-line w80" style="margin:4px 0"></div>
@@ -75,9 +75,9 @@
       </div>
     </div>
     <span class="note-tag" style="align-self:flex-start">差异行高亮（.hl）</span>
-    <span class="btn primary" style="align-self:flex-start">↩ 恢复此版本</span>
+    <span class="btn primary" style="align-self:flex-start"><svg class="ic" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5 5.5 5.5 0 0 1-5.5 5.5H11"/></svg>恢复此版本</span>
     <!-- 二次确认小图 -->
-    <div class="box solid" style="border:1px solid #999; background:#fafafa; margin-top:2px">
+    <div class="box solid" style="margin-top:2px">
       <div class="label">恢复确认（文字示意）</div>
       <div style="font-size:12px">对话框：「确定恢复到 09:58 的版本？当前内容将先自动备份为一个新版本快照，可随时找回。」[取消] [恢复]</div>
     </div>

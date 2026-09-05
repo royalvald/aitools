@@ -12,29 +12,31 @@
 <div class="wf-screen">
   <div class="col grow" style="gap:0">
     <div class="topbar">
-      <span class="crumb">📗 产品方案 / 需求管理 / <b>需求池整理</b></span>
+      <span class="crumb"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/></svg> 产品方案 / 需求管理 / <b>需求池整理</b></span>
       <span class="grow"></span>
-      <span class="btn">▤ 大纲</span>
-      <span class="btn primary">💬 讨论<span class="badge" style="background:#fff;color:#333">2</span></span>
-      <span class="btn">🔗 关联</span>
-      <span class="btn">🕘 历史</span>
-      <span class="btn">⋯</span>
-      <span class="btn primary" style="background:#2e7d32;border-color:#2e7d32">✓ 完成</span>
+      <span class="btn"><svg class="ic" viewBox="0 0 24 24"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>大纲</span>
+      <span class="btn primary"><svg class="ic" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>讨论<span class="badge" style="background:var(--wf-screen);color:var(--wf-text)">2</span></span>
+      <span class="btn"><svg class="ic" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>关联</span>
+      <span class="btn"><svg class="ic" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>历史</span>
+      <span class="btn icon-only"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="19" cy="12" r="1" fill="currentColor"/><circle cx="5" cy="12" r="1" fill="currentColor"/></svg></span>
+      <span class="btn primary"><svg class="ic" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>完成</span>
     </div>
     <div class="row grow" style="gap:0">
       <!-- 编辑区 -->
       <div class="grow col" style="gap:0">
-        <div class="row" style="padding:8px 24px; border-bottom:1px solid #eee; align-items:center">
-          <span class="chip" style="border:2px solid #333;font-weight:600">富文本</span>
-          <span class="chip">Markdown</span>
+        <div class="row" style="padding:8px 24px; border-bottom:1px solid var(--wf-surface-3); align-items:center">
+          <span class="seg">
+            <span class="seg-item active">富文本</span>
+            <span class="seg-item">Markdown</span>
+          </span>
           <span class="note-tag">档位切换</span>
           <span class="grow"></span>
-          <span class="btn ghost">🔍 查找替换 Ctrl+F</span>
+          <span class="btn ghost"><svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>查找替换 <span class="kbd">Ctrl+F</span></span>
         </div>
         <div class="grow" style="padding:20px 40px">
           <div style="font-size:20px;font-weight:700;margin-bottom:10px">需求池整理</div>
           <div class="text-line w90"></div>
-          <div class="box" style="margin:10px 0; background:#fff">
+          <div class="box" style="margin:10px 0; background:var(--wf-screen)">
             本季度共收集 <b>47</b> 条需求，其中 <span class="hl">高优先级 12 条<span class="note-tag">选区气泡：B I S 高亮 代码 🔗</span></span> 需在 v2.0 完成…
           </div>
           <div class="text-line w80"></div>
@@ -42,26 +44,26 @@
           <div class="box" style="margin-top:10px">/ 斜杠菜单（SlashMenu）：标题 / 表格 / 代码块 / Mermaid / 公式…</div>
         </div>
         <!-- 底部关联抽屉 -->
-        <div style="border-top:1px solid #ddd; background:#fafafa; padding:10px 24px" class="col">
+        <div style="border-top:1px solid var(--wf-border-2); background:var(--wf-surface-2); padding:10px 24px" class="col">
           <div class="row" style="align-items:center">
-            <b style="font-size:12px">▾ 关联与反链</b>
+            <b style="font-size:12px"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg> 关联与反链</b>
             <span class="note-tag">底部抽屉，可收起</span>
           </div>
           <div class="row">
-            <span class="chip">📝 会议纪要 0612 ✕</span>
-            <span class="btn ghost" style="padding:1px 10px;font-size:11px">＋ 关联小记</span>
-            <span style="font-size:11px;color:#999;margin-left:8px">反链：被「周会汇总」@提及 1 次</span>
+            <span class="chip"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/></svg>会议纪要 0612 <svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></span>
+            <span class="btn ghost" style="padding:1px 10px;font-size:11px"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></svg>关联小记</span>
+            <span style="font-size:11px;color:var(--wf-text-3);margin-left:8px">反链：被「周会汇总」@提及 1 次</span>
           </div>
         </div>
-        <div class="statusbar"><span>1,036 字</span><span>已选 12 字</span><span class="grow"></span><span style="color:#c0392b">● 保存中…</span><span>富文本</span></div>
+        <div class="statusbar"><span>1,036 字</span><span>已选 12 字</span><span class="grow"></span><span style="color:var(--wf-danger)"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--wf-danger)"></span> 保存中…</span><span>富文本</span></div>
       </div>
       <!-- 讨论面板 -->
-      <div class="col" style="width:300px; border-left:1px solid #ddd; background:#fcfcfc; padding:12px">
+      <div class="col" style="width:300px; border-left:1px solid var(--wf-border-2); background:var(--wf-surface-2); padding:12px">
         <div class="label">批注（按选区偏移记录）<span class="note-tag">即时保存</span></div>
         <div class="annot">
           <b>高优先级 12 条</b>
           <div style="margin:4px 0">需要再拆一轮，部分可降级到 v2.1。</div>
-          <div style="font-size:11px;color:#999">回复(1) · 解决 · 删除</div>
+          <div style="font-size:11px;color:var(--wf-text-3)">回复(1) · 解决 · 删除</div>
         </div>
         <div class="annot invalid">
           <b>（原文已变更）</b>
@@ -71,9 +73,9 @@
         <div class="label" style="margin-top:10px">评论（顶层=问题，回复=回答）</div>
         <div class="box solid">
           <b style="font-size:12px">Q：需求来源渠道要补充吗？</b>
-          <div style="font-size:11px;color:#999;margin-top:4px">回答(2) · 输入回答…</div>
+          <div style="font-size:11px;color:var(--wf-text-3);margin-top:4px">回答(2) · 输入回答…</div>
         </div>
-        <div class="input">💬 提出一个文档问题…</div>
+        <div class="input"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>提出一个文档问题…</div>
       </div>
     </div>
   </div>
