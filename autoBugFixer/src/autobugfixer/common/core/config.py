@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     deepseek_fix_model: str = ""  # 修复通道模型（空 = 回落 deepseek_model）
 
     # 预算治理（11.3）
-    task_token_budget: int = 100_000  # 单任务 token 预算，超限转人工
+    task_token_budget: int = 100_000  # 单任务 token 预算，超限抛 BudgetExceededError -> FAILED
     daily_token_budget: int = 1_000_000  # 日总量预算
     stage_max_retry: int = 2  # 单 Stage LLM 调用重试次数
 
@@ -71,13 +71,16 @@ class Settings(BaseSettings):
     # 任务认领租约（并发互斥）：调度器/API/webhook 并发驱动同一任务时的双驱防护
     task_claim_lease_seconds: int = 15 * 60
 
-    # 命令白名单模板（FR-REG-01），支持 {param} 占位
+    # 生产模式（P0 整改）：开启后启动预检强制 API 鉴权 / FERNET_KEY /
+    # 沙箱化修复通道 / 非 mock webhook，缺一拒绝启动
+    production_mode: bool = False
+
+    # 命令白名单模板（FR-REG-01），支持 {param} 占位。
+    # 默认仅保留无害命令（P0-6 收窄：systemctl 等服务管理命令会在宿主机真实
+    # 执行，须由部署方显式配置）；SSH/Docker 环境可用环境行 cmd_whitelist 覆盖
     cmd_whitelist: list[str] = Field(
         default_factory=lambda: [
             "echo {text}",
-            "systemctl restart {service}",
-            "systemctl stop {service}",
-            "systemctl start {service}",
             "tail -n {n} {log}",
         ]
     )
@@ -107,12 +110,31 @@ class Settings(BaseSettings):
     claude_executable: str = "claude"
     claude_model: str | None = None  # 未配置时用 claude CLI 默认模型
     claude_timeout: float = 600.0
-    # headless 免交互必需：文件编辑免确认；工具白名单约束能力边界（空 = 不传，用 CLI 默认）
     claude_permission_mode: str = "acceptEdits"
-    claude_allowed_tools: str = "Read,Edit,Write,Glob,Grep,Bash"
+    # 工具白名单约束能力边界（空 = 不传，用 CLI 默认）。默认不含 Bash：
+    # acceptEdits 免确认 + Bash 等于把宿主机 shell 执行交给模型（P0-1 整改），
+    # 与 codex workspace-write 沙箱对齐；确需 Bash 时须自行承担 RCE 风险显式配置
+    claude_allowed_tools: str = "Read,Edit,Write,Glob,Grep"
     claude_max_turns: int = 0  # 智能体轮数上限（0 = 不传，用 CLI 默认；超时兜底）
     deepseek_fix_max_steps: int = 24  # DeepSeek 修复回路步数上限（含工具调用轮）
     deepseek_timeout: float = 120.0  # DeepSeek 单次 API 请求超时（秒）
+
+    # ---- API 安全（P0-2 整改） ----
+    # API 鉴权 token：配置后除 /api/health 外全部接口要求
+    # ``Authorization: Bearer <token>`` 或 ``X-API-Token: <token>``；
+    # production_mode=True 时必须配置（否则拒绝启动）
+    api_auth_token: str | None = None
+    # webhook 平台枚举白名单 + 每平台 HMAC 秘钥（platform -> secret）；
+    # 配置了 secret 的平台强制校验 X-Webhook-Signature（HMAC-SHA256 hex）
+    # 或 X-Webhook-Token（恒时比较）
+    webhook_allowed_platforms: list[str] = Field(
+        default_factory=lambda: ["mock", "jira", "zentao"])
+    webhook_secrets: dict[str, str] = Field(default_factory=dict)
+    # webhook 限流（固定窗口，进程内存态）与请求体上限：防同步受理被刷成 DoS/成本攻击
+    webhook_rate_limit_per_minute: int = 30
+    webhook_max_body_bytes: int = 1_000_000
+    # CSV 上传大小上限（字节），超限 413
+    csv_max_bytes: int = 2_000_000
 
     # 三维感知（FR-FIX-02，P1）：默认关闭保持轻量
     perception_enabled: bool = False
@@ -135,6 +157,9 @@ class Settings(BaseSettings):
     # 常驻调度器
     scheduler_poll_interval_seconds: int = 60
     scheduler_dispatch_limit: int = 2  # 单轮按优先级出队调度的任务数上限
+    # 调度器 leader 选举（P0-4：DB 租约锁，多实例部署时同轮只有一个调度者生效）
+    scheduler_leader_election: bool = True
+    scheduler_leader_lease_seconds: int = 120
     intervention_sla_hours: float = 24.0  # 介入单 SLA：临期提醒、超时升级
     intervention_remind_before_hours: float = 2.0  # 截止前多久提醒
     intervention_escalation: str = "remind"  # 超时动作：remind（提醒上级）/ suspend（挂起任务）

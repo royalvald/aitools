@@ -12,6 +12,7 @@ from autobugfixer.adapters.env import LocalExecutor
 from autobugfixer.features.intervention.notifier_im import build_notifier
 from autobugfixer.runtime.registry import get_bug_platform
 from autobugfixer.adapters.env.whitelist import CommandWhitelist
+from autobugfixer.api.auth import TokenAuthMiddleware, WebhookGuard
 from autobugfixer.common.core.config import Settings, get_settings
 from autobugfixer.common.core.db import init_db, make_engine, make_session_factory
 from autobugfixer.common.core.logging_setup import setup_logging
@@ -50,8 +51,12 @@ def create_app(
     """组装 FastAPI 应用：建库、装配适配器与编排器、挂载路由与 Web 控制台。
 
     codex：测试可注入桩（ScriptedCodexCLI/自定义驱动）；缺省按 fix_driver 配置构建真实驱动。
+
+    生产模式（production_mode=True，P0 整改）启动硬门槛：API Token 必配、
+    FERNET_KEY 必配、webhook 白名单不得含 mock；缺一拒绝启动（本地开发不受影响）。
     """
     settings = settings or get_settings()
+    _production_preflight(settings)
     engine = make_engine(settings.database_url)
     init_db(engine)
     # 感知模块自有表（checkfirst 幂等）
@@ -88,11 +93,14 @@ def create_app(
     )
 
     app = FastAPI(title="autobugfixer", version="0.1.0")
+    # API Token 鉴权（P0-2）：token 已配置即强制（除 /api/health）；未配置=本地开发放行
+    app.add_middleware(TokenAuthMiddleware, token=settings.api_auth_token)
     app.state.settings = settings
     app.state.session_factory = session_factory
     app.state.orchestrator = orchestrator
     app.state.llm_preflight = preflight
     app.state.codex_preflight = codex_errors
+    app.state.webhook_guard = WebhookGuard(settings)
     app.include_router(router, prefix="/api")
 
     # Web 控制台（静态 SPA）：挂载在 API 路由之后
@@ -100,6 +108,23 @@ def create_app(
 
     mount_web(app)
     return app
+
+
+def _production_preflight(settings: Settings) -> None:
+    """生产模式启动硬门槛（P0 整改）：安全底线缺一拒绝启动。"""
+    if not settings.production_mode:
+        return
+    errors: list[str] = []
+    if not settings.api_auth_token:
+        errors.append("生产模式未配置 API 鉴权：设置 AUTOBUGFIXER_API_AUTH_TOKEN")
+    from autobugfixer.common.security.credentials import credential_preflight
+
+    errors.extend(credential_preflight(settings))
+    if "mock" in settings.webhook_allowed_platforms:
+        errors.append("生产模式 webhook 平台白名单含 mock（伪造工单注入面）："
+                      "设置 AUTOBUGFIXER_WEBHOOK_ALLOWED_PLATFORMS=[\"jira\",\"zentao\"]")
+    if errors:
+        raise RuntimeError("生产模式启动预检失败: " + "; ".join(errors))
 
 
 def main() -> None:

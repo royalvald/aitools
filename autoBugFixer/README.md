@@ -46,8 +46,17 @@ python -m venv .venv
 | `CODEX_TIMEOUT` / `CODEX_SANDBOX` | `600` / `workspace-write` | codex 调用超时与沙箱（只能写工作区，禁网） |
 | `CLAUDE_EXECUTABLE` / `CLAUDE_MODEL` | `claude` / — | claude -p 修复通道（需 `ANTHROPIC_API_KEY` 或 `claude login`） |
 | `CLAUDE_TIMEOUT` / `CLAUDE_PERMISSION_MODE` | `600` / `acceptEdits` | claude 调用超时与权限模式（文件编辑免确认） |
-| `CLAUDE_ALLOWED_TOOLS` / `CLAUDE_MAX_TURNS` | `Read,Edit,Write,Glob,Grep,Bash` / `0` | claude 工具白名单与轮数上限（0 = 用 CLI 默认） |
-| `BUG_PLATFORM` | `mock` | `mock` / `jira` / `zentao`（CSV 走导入通道） |
+| `CLAUDE_ALLOWED_TOOLS` / `CLAUDE_MAX_TURNS` | `Read,Edit,Write,Glob,Grep` / `0` | claude 工具白名单与轮数上限（0 = 用 CLI 默认；默认已移除 `Bash`——免确认 shell 是 RCE 面，生产模式强制拒绝） |
+| `DEEPSEEK_FIX_MAX_STEPS` / `DEEPSEEK_TIMEOUT` | `24` / `120` | deepseek 修复回路步数上限与单次 API 超时（`run_command` 经全局 `CMD_WHITELIST` 白名单校验，未命中直接拒绝） |
+| `PRODUCTION_MODE` | `false` | 生产模式：启动预检强制 API Token / FERNET_KEY / 沙箱化修复通道 / 非 mock webhook，缺一拒绝启动 |
+| `API_AUTH_TOKEN` | — | API 鉴权 Token：配置后除 `/api/health` 外全部接口要求 `Authorization: Bearer <token>` 或 `X-API-Token` |
+| `WEBHOOK_ALLOWED_PLATFORMS` | `["mock","jira","zentao"]` | webhook 平台枚举白名单（生产模式禁 mock） |
+| `WEBHOOK_SECRETS` | `{}` | 每平台 HMAC 秘钥（JSON，如 `{"jira":"secret"}`）；配置即强制 `X-Webhook-Signature`（HMAC-SHA256 hex）或 `X-Webhook-Token` |
+| `WEBHOOK_RATE_LIMIT_PER_MINUTE` / `WEBHOOK_MAX_BODY_BYTES` | `30` / `1000000` | webhook 限流（固定窗口）与请求体上限 |
+| `CSV_MAX_BYTES` | `2000000` | CSV 上传大小上限（字节，超限 413） |
+| `CMD_WHITELIST` | `["echo {text}","tail -n {n} {log}"]` | 命令白名单模板（默认已收窄；systemctl 等宿主机服务管理命令须显式配置） |
+| `SCHEDULER_LEADER_ELECTION` / `SCHEDULER_LEADER_LEASE_SECONDS` | `true` / `120` | 调度器 leader 锁（DB 租约，多实例同轮只放行一个） |
+| `BUG_PLATFORM` | `mock` | `mock` / `jira` / `zentao`（CSV 走导入通道）；平台凭证可用 `BUG_PLATFORM_CONFIG` 的 `credential_ref` 键传 Fernet 密文（解密后合并注入，不再明文落配置） |
 | `ADMISSION_THRESHOLD` | `60` | 综合评分准入阈值（低于入队，否则转人工） |
 | `SCORING_ENGINE` | `v1` | `v1`（LLM 直接打分）/ `v2`（rubric 判定表单 + 本地映射四维分，Spec 04 §8） |
 | `SCORE_V2_WEIGHT_LOCATE/FIX/VERIFY/BLAST` | `0.3/0.3/0.2/0.2` | v2 四维权重（定位/修改/验证/波及） |
@@ -60,8 +69,8 @@ python -m venv .venv
 | `SCHEDULER_POLL_INTERVAL_SECONDS` | `60` | 调度器轮询间隔 |
 | `SCHEDULER_DISPATCH_LIMIT` | `2` | 单轮出队任务数上限 |
 | `INTERVENTION_SLA_HOURS` / `INTERVENTION_ESCALATION` | `24` / `remind` | 介入 SLA 与超时动作（remind/suspend；deadline 随介入单创建自动填充） |
-| `TASK_CLAIM_LEASE_SECONDS` | `900` | 任务认领租约：调度器/API/webhook 并发驱动同一任务时的双驱防护 |
-| `FERNET_KEY` | 开发兜底 | 凭据加密主密钥（生产必配） |
+| `TASK_CLAIM_LEASE_SECONDS` | `900` | 任务认领租约：调度器/API/webhook 并发驱动同一任务时的双驱防护（Stage 执行期间后台心跳续约，长修复任务不会被抢注） |
+| `FERNET_KEY` | 开发兜底（告警） | 凭据加密主密钥（生产必配：`PRODUCTION_MODE=true` 时缺失拒绝启动） |
 
 ## 目录结构
 
@@ -107,7 +116,7 @@ docs/                            # PRD、整体方案设计、阶段 specs、测
 - 修复驱动：`AUTOBUGFIXER_FIX_DRIVER=codex`（默认，codex exec 子进程，需 codex CLI + OpenAI 鉴权）、
   `AUTOBUGFIXER_FIX_DRIVER=claude`（Claude Code `claude -p` 子进程，需 claude CLI + `ANTHROPIC_API_KEY`
   或 `claude login`；权限模式/工具白名单/轮数上限 `AUTOBUGFIXER_CLAUDE_PERMISSION_MODE`（默认
-  `acceptEdits`）/ `AUTOBUGFIXER_CLAUDE_ALLOWED_TOOLS`（默认 `Read,Edit,Write,Glob,Grep,Bash`）/
+  `acceptEdits`）/ `AUTOBUGFIXER_CLAUDE_ALLOWED_TOOLS`（默认 `Read,Edit,Write,Glob,Grep`，已移除 `Bash`）/
   `AUTOBUGFIXER_CLAUDE_MAX_TURNS`）、或 `AUTOBUGFIXER_FIX_DRIVER=deepseek`（DeepSeek 智能体回路；
   修复模型 `AUTOBUGFIXER_DEEPSEEK_FIX_MODEL`，未配置回落分析模型）。三通道同接口可替换。
 - 设计依据：`docs/` 下 PRD 与整体方案设计（状态机见 3.1、数据模型 5.1、接口 6.1、补充设计 11.1~11.6）。

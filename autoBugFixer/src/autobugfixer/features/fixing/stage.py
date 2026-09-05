@@ -24,6 +24,7 @@ from autobugfixer.common.core.stage import StageResult, TaskContext
 from autobugfixer.common.core.state import TaskState
 from autobugfixer.common.core.bugtext import build_bug_block
 from autobugfixer.common.security.injection import wrap_untrusted
+from autobugfixer.common.security.redact import redact_sensitive
 from autobugfixer.features.completeness.repo_profile import render_repo_profiles
 from autobugfixer.features.fixing.workspace import (
     check_forbidden,
@@ -56,6 +57,9 @@ class FixingStage:
         # 修复驱动（Spec 05：codex/deepseek/claude 按配置选择）；预算调用前拦截（超限 -> FAILED）
         cli = ctx.codex or build_fix_driver(ctx.settings)
         ctx.llm.check_budget(task.id, ctx.session)
+        # 长跑前提交：释放 SQLite 写锁（经验命中/审计已落库），否则驱动运行的
+        # 几十分钟里认领心跳的续约 UPDATE 拿不到写锁，租约过期会被双驱（P0-4）
+        ctx.session.commit()
         try:
             result = cli.run(prompt, workspace)
         except CodexError as exc:
@@ -74,11 +78,13 @@ class FixingStage:
 
         # 出口侧静态校验（11.2）：禁改路径直接判失败转人工
         violations = check_forbidden(changed_files, ctx.settings.forbidden_paths)
+        # P0-6：prompt/原始日志落库前脱敏（agent 可能读过 .env 类文件并回显）
         record = FixRecord(
             task_id=task.id, attempt=attempt, branch=branch, worktree=str(workspace),
-            prompt_version=prompt_version(prompt_name), prompt_snapshot=prompt,
+            prompt_version=prompt_version(prompt_name),
+            prompt_snapshot=redact_sensitive(prompt),
             changed_files=changed_files, diff=diff, diff_hash=current_hash, summary=summary,
-            raw_log=result.raw_log, experience_hit=experience_hit,
+            raw_log=redact_sensitive(result.raw_log), experience_hit=experience_hit,
         )
         ctx.session.add(record)
         ctx.session.flush()

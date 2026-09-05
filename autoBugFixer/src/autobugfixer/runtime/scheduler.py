@@ -2,6 +2,8 @@
 
 单轮逻辑抽成 ``Scheduler.run_round``（可测）；``run_forever`` 循环 + 优雅停止。
 每轮执行：
+0. leader 门控（P0-4）：DB 租约锁，多实例部署时同轮只有一个调度者生效
+   （SQLite 多节点本身不支持，Postgres 化后即为多实例互斥防线）；
 1. 轮询 Bug 平台拉新（标准化入库）；
 2. 推进预处理：轮询接入的新任务与平台侧更新唤醒的任务
    （ANALYZING/PLANNING）完成完整性/方案/评分入队；
@@ -15,21 +17,69 @@ from __future__ import annotations
 import logging
 import signal
 import time
+import uuid
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import and_, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from autobugfixer.adapters.platform import BugPlatformAdapter
 from autobugfixer.features.intervention.notifier import NoticeMessage, Notifier
 from autobugfixer.common.core.config import Settings, get_settings
-from autobugfixer.common.core.models import Intervention, Task
+from autobugfixer.common.core.models import Intervention, LeaderLock, Task
 from autobugfixer.runtime.orchestrator import Orchestrator
 from autobugfixer.common.core.state import TaskState
 from autobugfixer.common.core.audit import AuditService
 from autobugfixer.features.ingest.ingestion import ingest_bug
 
 logger = logging.getLogger(__name__)
+
+
+class _LeaderElection:
+    """调度器 leader 锁（P0-4）：DB 单行租约，多实例同轮只放行一个调度者。
+
+    认领语义与 EnvLock 一致：未被持有 / 租约过期 / 自己持有 均可取；
+    冲突走 SAVEPOINT 回滚，不波及事务内其他改动。token 进程级唯一，
+    避免同库多实例（或同进程重建）误判重入。
+    """
+
+    def __init__(self, session_factory: sessionmaker[Session],
+                 lease_seconds: int = 120) -> None:
+        self.session_factory = session_factory
+        self.lease_seconds = lease_seconds
+        self.token = f"scheduler-{uuid.uuid4().hex[:12]}"
+
+    @staticmethod
+    def _expired(lock: LeaderLock, now: datetime) -> bool:
+        expires = lock.expires_at
+        if expires.tzinfo is None:
+            expires = expires.replace(tzinfo=timezone.utc)
+        return expires <= now
+
+    def acquire(self) -> bool:
+        """尝试取得/续期 leader 租约（同轮调用一次，幂等）。"""
+        now = datetime.now(timezone.utc)
+        with self.session_factory() as s:
+            lock = s.scalar(select(LeaderLock).where(LeaderLock.name == "scheduler"))
+            if lock is not None:
+                if lock.holder == self.token:
+                    lock.expires_at = now + timedelta(seconds=self.lease_seconds)
+                    s.commit()
+                    return True
+                if not self._expired(lock, now):
+                    return False
+                s.delete(lock)
+                s.flush()
+            try:
+                with s.begin_nested():
+                    s.add(LeaderLock(name="scheduler", holder=self.token,
+                                     expires_at=now + timedelta(seconds=self.lease_seconds)))
+                    s.flush()
+                s.commit()
+                return True
+            except IntegrityError:
+                return False
 
 
 class Scheduler:
@@ -45,15 +95,22 @@ class Scheduler:
         self.notifier = notifier
         self.session_factory = session_factory
         self.settings = settings or orchestrator.settings or get_settings()
+        # leader 选举（P0-4）：多实例部署时同轮只放行一个调度者；单实例可关
+        self._leader = (_LeaderElection(session_factory,
+                                        self.settings.scheduler_leader_lease_seconds)
+                        if self.settings.scheduler_leader_election else None)
         self._stop = False
 
     # ---------- 单轮（可测） ----------
 
     def run_round(self) -> dict:
-        """执行一轮调度，返回本轮统计。"""
+        """执行一轮调度，返回本轮统计（非 leader 实例跳过本轮，返回空统计）。"""
         stats = {"ingested": 0, "preprocessed": [], "dispatched": [], "locks_reclaimed": 0,
                  "inflight_recovered": [], "wait_env_woken": [],
                  "sla_reminded": 0, "sla_timeout": 0}
+        if self._leader is not None and not self._leader.acquire():
+            logger.info("非 leader 调度实例，跳过本轮（leader 锁被其他实例持有）")
+            return stats
         stats["ingested"] = self.poll_platform()
         stats["preprocessed"] = self.preprocess_pending()
         stats["locks_reclaimed"] = len(self.orchestrator.reclaim_stale_env_locks())

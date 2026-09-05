@@ -1,9 +1,11 @@
 # E2E 试验配置：独立 DB / 工作区 / 仿真环境目录（var/ 已 gitignore）
 # 用法: . test/e2e/env.sh && .venv/bin/autobugfixer-import ...
-mkdir -p /Users/iris/work/code/aitools/autoBugFixer/var/e2e
-export AUTOBUGFIXER_DATABASE_URL="sqlite:////Users/iris/work/code/aitools/autoBugFixer/var/e2e/autobugfixer.db"
-export AUTOBUGFIXER_WORKSPACE_ROOT="/Users/iris/work/code/aitools/autoBugFixer/var/e2e/workspaces"
-export AUTOBUGFIXER_ENV_ROOT="/Users/iris/work/code/aitools/autoBugFixer/var/e2e/testenv"
+# 仓库根从本脚本位置推导（换机器/换路径无需修改）
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/../.." && pwd)"
+mkdir -p "$REPO_ROOT/var/e2e"
+export AUTOBUGFIXER_DATABASE_URL="sqlite:///$REPO_ROOT/var/e2e/autobugfixer.db"
+export AUTOBUGFIXER_WORKSPACE_ROOT="$REPO_ROOT/var/e2e/workspaces"
+export AUTOBUGFIXER_ENV_ROOT="$REPO_ROOT/var/e2e/testenv"
 export AUTOBUGFIXER_USE_GIT_WORKTREE="true"
 
 # DeepSeek 接入（配置 Key 后整条流水线可脱离 OpenAI 真跑）：

@@ -3,14 +3,17 @@
 - ``docker`` SDK **惰性导入**：仅在连接时 import，缺包抛带安装提示的 RuntimeError，
   不作为项目硬依赖；
 - ``exec`` 前强制过命令白名单（CommandWhitelist），容器内以 ``sh -c`` 执行
-  （白名单已拒绝 shell 元字符，不会引入注入面）；
+  （白名单已拒绝 shell 元字符，不会引入注入面）；超时经容器内 ``timeout``
+  命令真正终止进程（SIGTERM/SIGKILL，P0-3），外层线程等待仅作兜底；
 - 文件拷入拷出走 tar 归档（``put_archive`` / ``get_archive``）；
+- snapshot/restore（P0-3）：容器内 workdir 打 tar 版本化快照，供部署失败真实回滚；
 - ``health_check`` 检查容器 running，可附加配置的健康检查命令（同样过白名单）。
 """
 
 from __future__ import annotations
 
 import io
+import shlex
 import tarfile
 from pathlib import Path, PurePosixPath
 
@@ -78,17 +81,20 @@ class DockerExecutor:
     def exec(self, cmd: str) -> ExecResult:
         """白名单校验后在容器内以 sh -c 执行命令（exec_timeout 超时生效）。
 
-        docker SDK 的 exec_run 不接受超时参数，此处用线程包装等待：
-        超时后放弃等待（不 join 挂死线程）并按 124（超时约定退出码）返回。
+        超时经容器内 ``timeout -k`` 前缀真正终止进程（SIGTERM 后 SIGKILL，
+        P0-3——此前超时只是放弃等待，容器内进程仍继续跑）；docker SDK 的
+        exec_run 本身不接受超时参数，外层线程等待仅作兜底（此时按退出码
+        124 返回）。容器无 ``timeout`` 命令时自动降级为直接执行。
         """
         from concurrent.futures import ThreadPoolExecutor
         from concurrent.futures import TimeoutError as FuturesTimeoutError
 
         self.whitelist.assert_allowed(cmd)  # 越权直接拒绝
+        argv = ["/bin/sh", "-c", self._timeout_wrapped(cmd)]
         pool = ThreadPoolExecutor(max_workers=1)
         try:
             future = pool.submit(self._container().exec_run,
-                                 ["/bin/sh", "-c", cmd], workdir=self.workdir, demux=True)
+                                 argv, workdir=self.workdir, demux=True)
             try:
                 returncode, output = future.result(timeout=self.exec_timeout)
             except FuturesTimeoutError:
@@ -97,9 +103,61 @@ class DockerExecutor:
         finally:
             pool.shutdown(wait=False, cancel_futures=True)  # 不等挂死线程
         out, err = output if isinstance(output, tuple) else (output, b"")
-        return ExecResult(
+        result = ExecResult(
             cmd=cmd, returncode=returncode, stdout=_decode(out).strip(), stderr=_decode(err).strip()
         )
+        # 容器内无 timeout 命令（退出码 127）：降级直跑（行为与旧版一致）
+        if (result.returncode == 127
+                and "timeout" in result.stderr and "not found" in result.stderr):
+            result = self._exec_plain(cmd)
+        return result
+
+    def _timeout_wrapped(self, cmd: str) -> str:
+        """包一层容器内 timeout：到点 SIGTERM、再 5s SIGKILL，进程真被终止。"""
+        seconds = max(int(self.exec_timeout), 1)
+        return f"timeout -k 5 {seconds} /bin/sh -c {shlex.quote(cmd)}"
+
+    def _exec_plain(self, cmd: str) -> ExecResult:
+        """无 timeout 前缀的直接执行（容器缺 coreutils 时的降级路径）。"""
+        returncode, output = self._container().exec_run(
+            ["/bin/sh", "-c", cmd], workdir=self.workdir, demux=True)
+        out, err = output if isinstance(output, tuple) else (output, b"")
+        return ExecResult(cmd=cmd, returncode=returncode,
+                          stdout=_decode(out).strip(), stderr=_decode(err).strip())
+
+    # ---- 容器内快照/恢复（P0-3：workdir 打 tar 版本化快照） ----
+
+    def _run_internal(self, cmd: str) -> None:
+        """系统内部命令（快照/恢复），不经白名单（非模型/平台可控输入）。"""
+        returncode, output = self._container().exec_run(
+            ["/bin/sh", "-c", cmd], workdir="/", demux=True)
+        out, err = output if isinstance(output, tuple) else (output, b"")
+        if returncode != 0:
+            raise RuntimeError(f"容器内命令失败({returncode}): {_decode(err)[:200]}")
+
+    def _snap_dir(self, tag: str) -> str:
+        if self.workdir in ("", "/"):
+            raise ValueError(f"非法快照目标 workdir: {self.workdir!r}")
+        return f"{self.workdir.rstrip('/')}.snapshots/{tag}"
+
+    def snapshot(self, tag: str) -> str:
+        """容器内快照：workdir 内容打 tar 存至 ``<workdir>.snapshots/<tag>/``。"""
+        snap = self._snap_dir(tag)
+        parent = shlex.quote(str(PurePosixPath(snap).parent))
+        work = shlex.quote(self.workdir)
+        self._run_internal(f"mkdir -p {parent} && rm -rf {shlex.quote(snap)} && "
+                           f"mkdir -p {shlex.quote(snap)} && "
+                           f"tar -cf {shlex.quote(snap + '/snapshot.tar')} -C {work} .")
+        return snap
+
+    def restore(self, tag: str) -> None:
+        """容器内恢复：清空 workdir 后解包快照（覆盖语义）。"""
+        snap = self._snap_dir(tag)
+        work = shlex.quote(self.workdir)
+        archive = shlex.quote(snap + "/snapshot.tar")
+        self._run_internal(f"test -f {archive}")
+        self._run_internal(f"find {work} -mindepth 1 -maxdepth 1 -exec rm -rf {{}} + "
+                          f"&& tar -xf {archive} -C {work}")
 
     def upload(self, local: str | Path, remote_rel: str) -> None:
         """把本地文件/目录打包为 tar 拷入容器。"""

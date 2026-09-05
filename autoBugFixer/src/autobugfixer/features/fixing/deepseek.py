@@ -5,7 +5,9 @@
   chat completions + function calling 驱动修复智能体回路；
 - 工具集：list_files / read_file / write_file / run_command / finish；
   文件工具做路径包含校验（拒绝绝对路径与 ``..`` 逃逸出工作区）；
-  run_command 以工作区为 cwd 子进程执行（超时杀进程）；
+- run_command 强制过 ``CommandWhitelist``（P0-1：LLM 生成的命令不再直接
+  ``shell=True`` 执行），模板外命令直接拒绝并以错误应答回传模型；
+  白名单校验已排除 shell 元字符，仍以 argv 形式执行（双保险不经 shell）；
 - 停止条件：finish 调用 / 无工具调用的最终答复 / 步数上限 / API 错误；
 - 变更产物仍由 ``compute_diff`` 独立计算，不信任模型自述（与 codex 通道一致）；
 - ``transport`` 注入点：测试注入脚本化应答序列，生产路径走 httpx 直连。
@@ -14,11 +16,13 @@
 from __future__ import annotations
 
 import json
+import shlex
 import subprocess
 from pathlib import Path
 
 import httpx
 
+from autobugfixer.adapters.env.whitelist import CommandWhitelist, CommandRejectedError
 from autobugfixer.common.core.config import Settings
 from autobugfixer.features.fixing.codex import CodexError, CodexRunResult
 
@@ -32,7 +36,7 @@ SYSTEM_PROMPT = """你是自动化 Bug 修复系统的执行引擎，在指定�
 
 规则：
 - 所有文件操作限定在工作区内，路径一律使用相对路径；
-- run_command 以工作区为工作目录执行 shell 命令（无额外沙箱，禁止破坏性命令）；
+- run_command 只能执行白名单内命令（越权命令会被系统直接拒绝），无额外沙箱；
 - 修复完成后必须调用 finish 工具提交修复说明（根因/改动/自验/风险四段）；
 - 每轮只做必要的工具调用，避免无效往返。
 """
@@ -76,18 +80,25 @@ class DeepSeekFixer:
     :param model: 修复用模型（建议 deepseek-chat）。
     :param timeout: 单次 API 请求超时（秒）。
     :param max_steps: 智能体回路步数上限（每轮 = 一次 API 调用及其工具执行）。
+    :param whitelist: run_command 命令白名单；默认空名单 = 拒绝一切命令执行
+      （fail-closed，P0-1）。生产经 ``from_settings`` 注入全局 cmd_whitelist。
     :param transport: 请求注入点（测试用）：``transport(messages) -> 应答 dict``；
       缺省走 httpx 直连 chat completions。
     """
 
     def __init__(self, *, api_key: str, base_url: str = "https://api.deepseek.com",
                  model: str = "deepseek-chat", timeout: float = 120.0,
-                 max_steps: int = 24, transport=None) -> None:
+                 max_steps: int = 24,
+                 whitelist: CommandWhitelist | list[str] | None = None,
+                 transport=None) -> None:
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
         self.model = model
         self.timeout = timeout
         self.max_steps = max_steps
+        if whitelist is not None and not isinstance(whitelist, CommandWhitelist):
+            whitelist = CommandWhitelist(list(whitelist))
+        self.whitelist = whitelist or CommandWhitelist([])
         self._transport = transport
 
     @classmethod
@@ -99,6 +110,7 @@ class DeepSeekFixer:
             model=settings.deepseek_fix_model or settings.deepseek_model,
             timeout=settings.deepseek_timeout,
             max_steps=settings.deepseek_fix_max_steps,
+            whitelist=settings.cmd_whitelist,
         )
 
     # ---- 智能体回路 ----
@@ -233,9 +245,22 @@ class DeepSeekFixer:
         target.write_text(content, encoding="utf-8")
 
     def _run_command(self, command: str, workspace: Path) -> dict:
-        proc = subprocess.run(command, shell=True, cwd=str(workspace),
-                              capture_output=True, text=True,
-                              timeout=_COMMAND_TIMEOUT)
+        """执行白名单内命令：argv 形式子进程（不经 shell），越权命令拒绝并回传错误。"""
+        try:
+            self.whitelist.assert_allowed(command)
+        except CommandRejectedError as exc:
+            return {"ok": False, "error": str(exc)}
+        argv = shlex.split(command)
+        if not argv:
+            return {"ok": False, "error": "空命令"}
+        try:
+            proc = subprocess.run(argv, cwd=str(workspace),
+                                  capture_output=True, text=True,
+                                  timeout=_COMMAND_TIMEOUT)
+        except FileNotFoundError:
+            return {"ok": False, "error": f"可执行文件不存在: {argv[0]}"}
+        except subprocess.TimeoutExpired:
+            return {"ok": False, "error": f"命令超时（{_COMMAND_TIMEOUT}s）: {command}"}
         return {"ok": proc.returncode == 0, "returncode": proc.returncode,
                 "stdout": proc.stdout.strip()[:_TOOL_OUTPUT_LIMIT],
                 "stderr": proc.stderr.strip()[:_TOOL_OUTPUT_LIMIT]}

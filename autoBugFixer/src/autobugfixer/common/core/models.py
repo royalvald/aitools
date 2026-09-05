@@ -289,6 +289,22 @@ class EnvLock(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
+class LeaderLock(Base):
+    """调度器 leader 锁（P0-4）：DB 租约实现，多实例部署时同轮只有一个调度者生效。
+
+    单行表（name 唯一），holder 为实例级随机 token；租约到期自动可被抢占，
+    无外部组件依赖（与 EnvLock 同一套租约语义）。
+    """
+
+    __tablename__ = "leader_lock"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), unique=True, index=True)
+    holder: Mapped[str] = mapped_column(String(100), default="")
+    acquired_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class LLMUsage(Base):
     """LLM 调用计量（11.3）。"""
 

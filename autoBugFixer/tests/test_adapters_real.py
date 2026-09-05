@@ -308,16 +308,29 @@ class _FakeSSHClient:
     def __init__(self):
         self.commands: list[str] = []
         self.connect_args: dict = {}
+        self.policies: list[object] = []
+        self.loaded_host_keys: list[str] = []
         self.sftp = _FakeSFTP()
         _FakeSSHClient.instances.append(self)
 
+    def load_system_host_keys(self):
+        self.loaded_host_keys.append("system")
+
+    def load_host_keys(self, path):
+        if "/nonexistent" in path:
+            raise OSError(f"No such file: {path}")
+        self.loaded_host_keys.append(path)
+
     def set_missing_host_key_policy(self, policy):
-        pass
+        self.policies.append(policy)
 
     def connect(self, host, port=22, username=None, password=None,
                 key_filename=None, timeout=None):
         self.connect_args = {"host": host, "port": port, "username": username,
                              "password": password, "key_filename": key_filename}
+
+    def get_transport(self):
+        return SimpleNamespace(is_active=lambda: True)
 
     def exec_command(self, cmd, timeout=None):
         self.commands.append(cmd)
@@ -330,10 +343,19 @@ class _FakeSSHClient:
         pass
 
 
+class _RejectPolicy:
+    pass
+
+
+class _AutoAddPolicy:
+    pass
+
+
 @pytest.fixture()
 def fake_paramiko(monkeypatch):
     _FakeSSHClient.instances = []
-    fake = SimpleNamespace(SSHClient=_FakeSSHClient, AutoAddPolicy=object)
+    fake = SimpleNamespace(SSHClient=_FakeSSHClient, AutoAddPolicy=_AutoAddPolicy,
+                           RejectPolicy=_RejectPolicy)
     monkeypatch.setitem(sys.modules, "paramiko", fake)
     return fake
 
@@ -418,13 +440,14 @@ class _FakeContainer:
         self.execs: list[dict] = []
         self.archives: list[tuple[str, bytes]] = []
         self.files: dict[str, bytes] = {}
+        self.exec_rc = 0  # exec_run 统一返回码（模拟内部命令失败）
 
     def reload(self):
         pass
 
     def exec_run(self, cmd, workdir=None, demux=False):
         self.execs.append({"cmd": cmd, "workdir": workdir, "demux": demux})
-        return (0, (b"docker-out\n", b""))
+        return (self.exec_rc, (b"docker-out\n", b""))
 
     def put_archive(self, path, data):
         self.archives.append((path, bytes(data)))
@@ -475,7 +498,10 @@ def test_docker_exec_whitelist_and_output(fake_docker):
     result = ex.exec("echo hi")
     assert result.ok and result.stdout == "docker-out"
     call = fake_docker.execs[0]
-    assert call["cmd"] == ["/bin/sh", "-c", "echo hi"]
+    # P0-3：命令包一层容器内 timeout（到点 SIGTERM/SIGKILL 真正终止进程）
+    assert call["cmd"][0] == "/bin/sh" and call["cmd"][1] == "-c"
+    assert call["cmd"][2].startswith("timeout -k 5 ")
+    assert call["cmd"][2].endswith("/bin/sh -c 'echo hi'")
     assert call["workdir"] == "/app"
 
     with pytest.raises(CommandRejectedError):

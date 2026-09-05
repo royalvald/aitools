@@ -72,13 +72,15 @@ class ClaudeCodeCLI:
     :param timeout: 单次调用超时（秒），超时杀进程。
     :param permission_mode: 权限模式，默认 ``acceptEdits``（文件编辑免确认，
         headless 必需；配合 allowed_tools 约束能力边界，对标 codex workspace-write）。
-    :param allowed_tools: ``--allowedTools`` 工具白名单（空 = 不传）。
+    :param allowed_tools: ``--allowedTools`` 工具白名单（空 = 不传）。默认不含
+        ``Bash``（P0-1：acceptEdits + Bash 等于免确认执行宿主机 shell，RCE 面）；
+        与 codex workspace-write 沙箱能力对齐，确需时显式配置并自担风险。
     :param max_turns: ``--max-turns`` 轮数上限（0 = 不传，由 timeout 兜底）。
     """
 
     def __init__(self, executable: str = "claude", *, model: str | None = None,
                  timeout: float = 600.0, permission_mode: str = "acceptEdits",
-                 allowed_tools: str = "Read,Edit,Write,Glob,Grep,Bash",
+                 allowed_tools: str = "Read,Edit,Write,Glob,Grep",
                  max_turns: int = 0) -> None:
         self.executable = executable
         self.model = model

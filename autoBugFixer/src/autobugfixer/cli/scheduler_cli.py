@@ -26,6 +26,12 @@ def build_scheduler(settings: Settings | None = None, *, codex=None) -> Schedule
     codex：测试可注入桩（ScriptedCodexCLI/自定义驱动）；缺省按 fix_driver 配置构建真实驱动。
     """
     settings = settings or get_settings()
+    # 凭证安全预检（P0-5）：生产模式缺 FERNET_KEY 拒绝启动（与 API 启动点同口径）
+    from autobugfixer.common.security.credentials import credential_preflight
+
+    cred_errors = credential_preflight(settings)
+    if cred_errors:
+        raise CodexPreflightError(f"凭证预检失败: {'; '.join(cred_errors)}")
     engine = make_engine(settings.database_url)
     init_db(engine)
     session_factory = make_session_factory(engine)

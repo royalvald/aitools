@@ -34,7 +34,12 @@ class EnvLockService:
         return expires <= now
 
     def acquire(self, env_id: int, task_id: int) -> bool:
-        """尝试取锁：未被持有、或租约已过期、或本来就是自己持有，则成功。"""
+        """尝试取锁：未被持有、或租约已过期、或本来就是自己持有，则成功。
+
+        冲突回滚走 SAVEPOINT（begin_nested）：只撤销锁行插入，不波及同一
+        事务里调用方已写入的任务字段（如 task.environment_id，P0-4——
+        此前整事务 rollback 会把任务永久卡死 WAIT_ENV 且无人唤醒）。
+        """
         now = datetime.now(timezone.utc)
         lock = self._get(env_id)
         if lock is not None:
@@ -45,15 +50,15 @@ class EnvLockService:
             self.session.delete(lock)  # 过期锁回收
             self.session.flush()
         try:
-            self.session.add(EnvLock(
-                env_id=env_id, holder_task_id=task_id,
-                expires_at=now + timedelta(seconds=self.lease_seconds),
-            ))
-            self.session.flush()
+            with self.session.begin_nested():  # SAVEPOINT：仅覆盖锁行插入
+                self.session.add(EnvLock(
+                    env_id=env_id, holder_task_id=task_id,
+                    expires_at=now + timedelta(seconds=self.lease_seconds),
+                ))
+                self.session.flush()
             return True
         except IntegrityError:
-            self.session.rollback()
-            return False
+            return False  # SAVEPOINT 已回滚，事务内其余改动保持完好
 
     def renew(self, env_id: int, task_id: int) -> bool:
         """续期租约。"""

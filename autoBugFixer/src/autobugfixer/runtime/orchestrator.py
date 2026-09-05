@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import or_, update
@@ -42,6 +43,47 @@ STATE_TO_STAGE: dict[TaskState, str] = {
     TaskState.VERIFYING: "verifying",
     TaskState.LEARNING: "learning",
 }
+
+
+class _ClaimHeartbeat:
+    """Stage 执行期间的后台租约续期线程（P0-4：长任务防双驱）。
+
+    单个 Stage 步骤（如 codex 修复）可能超过认领租约时长；执行期间按
+    租约 1/3 周期续约，租约被他人接管（说明本执行者已过期被抢）即停止。
+    daemon 线程 + stop 事件，进程崩溃不阻塞退出。
+    """
+
+    def __init__(self, orchestrator: "Orchestrator", task_id: int,
+                 lease: datetime, *, interval: float | None = None) -> None:
+        self._orchestrator = orchestrator
+        self._task_id = task_id
+        self._lease = lease
+        self._stop = threading.Event()
+        lease_seconds = orchestrator.settings.task_claim_lease_seconds
+        self._interval = (interval if interval is not None
+                          else max(min(lease_seconds / 3, 60.0), 5.0))
+        self._thread = threading.Thread(
+            target=self._loop, daemon=True, name=f"claim-heartbeat-{task_id}")
+
+    def _loop(self) -> None:
+        while not self._stop.wait(self._interval):
+            try:
+                new_lease = self._orchestrator._renew_claim(self._task_id, self._lease)
+            except Exception:
+                # SQLite 单写者模型下，Stage 事务持有写锁期间续约 UPDATE 可能
+                # 短暂拿不到锁（database is locked）：下个周期继续重试，不放弃
+                logger.warning("task=%s 认领租约续期暂失败（下周期重试）", self._task_id)
+                continue
+            if new_lease is None:
+                logger.warning("task=%s 认领租约已被他人接管，停止续约", self._task_id)
+                return
+            self._lease = new_lease
+
+    def start(self) -> None:
+        self._thread.start()
+
+    def stop(self) -> None:
+        self._stop.set()
 
 
 class Orchestrator:
@@ -150,11 +192,12 @@ class Orchestrator:
 
     # ---------- 任务认领（并发互斥，11.1 防双驱） ----------
 
-    def _try_claim(self, task_id: int) -> bool:
+    def _try_claim(self, task_id: int) -> datetime | None:
         """原子认领任务：claimed_until 为空或已过期方可写入新租约。
 
         多执行者（调度器/API/webhook/介入回写）并发驱动同一任务时，
         后到者在此被挡下，避免两个修复进程写同一工作区。
+        返回租约截止时间（naive UTC，心跳续约的比对基准）；认领失败返回 None。
         """
         now = datetime.now(timezone.utc).replace(tzinfo=None)  # 统一 naive UTC 存储
         lease = (datetime.now(timezone.utc)
@@ -168,7 +211,24 @@ class Orchestrator:
                 ).values(claimed_until=lease)
             ).rowcount
             s.commit()
-            return bool(rows)
+            return lease if rows else None
+
+    def _renew_claim(self, task_id: int, expected: datetime) -> datetime | None:
+        """心跳续约：仅当 claimed_until 仍等于本执行者写入值时延长（被他人接管即停）。
+
+        返回新租约截止时间；比对失败（租约被抢/已释放）返回 None。
+        """
+        new_lease = (datetime.now(timezone.utc)
+                     + timedelta(seconds=self.settings.task_claim_lease_seconds)
+                     ).replace(tzinfo=None)
+        with self.session_factory() as s:
+            rows = s.execute(
+                update(Task).where(
+                    Task.id == task_id, Task.claimed_until == expected,
+                ).values(claimed_until=new_lease)
+            ).rowcount
+            s.commit()
+            return new_lease if rows else None
 
     def _release_claim(self, task_id: int) -> None:
         """释放认领（幂等；租约到期后调度器回收也会兜底）。"""
@@ -186,15 +246,21 @@ class Orchestrator:
         只写审计留痕（用于预处理模式：评分准入后停在 SCORED，不自动进入修复）。
 
         并发防护：执行前原子认领（claimed_until 租约），被其他执行者持有时
-        返回 None（视同阻塞），绝不并行跑同一任务。
+        返回 None（视同阻塞），绝不并行跑同一任务。Stage 执行期间后台线程
+        按租约 1/3 周期心跳续约（P0-4：codex 等长任务单步可超过租约时长，
+        无续期会被另一执行者抢注并行写同一工作区）。
         """
-        if not self._try_claim(task_id):
+        lease = self._try_claim(task_id)
+        if lease is None:
             self._state_of(task_id)  # 任务不存在时保持 KeyError 语义
             logger.info("task=%s 已被其他执行者持有（claim），本步跳过", task_id)
             return None
+        heartbeat = _ClaimHeartbeat(self, task_id, lease)
+        heartbeat.start()
         try:
             return self._run_task_locked(task_id, hold_next_states)
         finally:
+            heartbeat.stop()
             self._release_claim(task_id)
 
     def _run_task_locked(self, task_id: int,
@@ -209,7 +275,7 @@ class Orchestrator:
                 return None
             stage_name = STATE_TO_STAGE.get(state)
             if stage_name is None:
-                return None  # 无 Stage 路由的状态（如 DISCOVERED 由接入服务直接推进）
+                return None  # 防御性兜底：非阻塞非终态均已路由，防未来新增状态漏配
             stage = self.stages[stage_name]
             ctx = self._build_context(session, task)
             try:

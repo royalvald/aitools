@@ -24,13 +24,14 @@ ENV_TYPES = {"local", "ssh", "docker"}
 
 
 def validate_environment(env, *, global_whitelist: list[str] | None = None,
-                         vault=None) -> tuple[list[str], list[str]]:
+                         vault=None, on_decrypt=None) -> tuple[list[str], list[str]]:
     """环境配置预检（Spec 06 §2.1 P1）：返回 (errors, warnings)。
 
     规则：
     ① type 枚举校验（local/ssh/docker；拼错或 k8s 等预留值报错，
       不再静默降级 local）；
-    ② ssh 必填 conn_config.host，credential_ref 非空时须可解密为 JSON；
+    ② ssh 必填 conn_config.host，credential_ref 非空时须可解密为 JSON
+      （解密动作经 ``on_decrypt`` 回调留痕，P0-6）；
     ③ docker 必填 conn_config.container；
     ④ deploy_script 非空且逐条命中该环境生效的白名单
       （local 用全局配置，ssh/docker 用环境行 cmd_whitelist，与运行期一致）；
@@ -59,7 +60,9 @@ def validate_environment(env, *, global_whitelist: list[str] | None = None,
             try:
                 from autobugfixer.common.security.credentials import CredentialVault
 
-                plain = (vault or CredentialVault()).decrypt(ref)
+                plain = (vault or CredentialVault()).decrypt(
+                    ref, label=f"env:{getattr(env, 'id', '')}",
+                    on_decrypt=on_decrypt)
                 if not isinstance(json.loads(plain), dict):
                     raise ValueError("非 JSON 对象")
             except Exception as exc:

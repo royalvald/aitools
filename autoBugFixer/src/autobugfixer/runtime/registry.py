@@ -68,7 +68,12 @@ def _ensure_builtins() -> None:
 
 
 def get_bug_platform(name: str, config: dict | None = None, **kwargs):
-    """按名字解析缺陷平台适配器。config/ kwargs 原样透传适配器构造参数。"""
+    """按名字解析缺陷平台适配器。config/ kwargs 原样透传适配器构造参数。
+
+    P0-5：config 支持 ``credential_ref`` 键（Fernet 密文，解密后为 JSON dict，
+    如 ``{"api_token": "..."}``）——平台凭证不再明文进 ``bug_platform_config``
+    环境变量/配置文件，密文解密后合并进构造参数（仅驻留内存）。
+    """
     _ensure_builtins()
     try:
         factory = _BUG_PLATFORMS[name]
@@ -76,7 +81,18 @@ def get_bug_platform(name: str, config: dict | None = None, **kwargs):
         raise KeyError(
             f"未知缺陷平台适配器: {name!r}（已注册: {sorted(_BUG_PLATFORMS)}）"
         ) from None
-    return factory(**{**dict(config or {}), **kwargs})
+    merged = dict(config or {})
+    ref = merged.pop("credential_ref", None)
+    if ref:
+        import json as _json
+
+        from autobugfixer.common.security.credentials import CredentialVault
+
+        secret = _json.loads(CredentialVault().decrypt(ref, label=f"platform:{name}"))
+        if not isinstance(secret, dict):
+            raise ValueError("平台 credential_ref 解密后须为 JSON 对象")
+        merged.update(secret)
+    return factory(**{**merged, **kwargs})
 
 
 def get_env_executor(env_type: str, config: dict | None = None, **kwargs):
@@ -91,16 +107,17 @@ def get_env_executor(env_type: str, config: dict | None = None, **kwargs):
     return factory(**{**dict(config or {}), **kwargs})
 
 
-def get_env_executor_for(env, *, vault=None):
+def get_env_executor_for(env, *, vault=None, audit=None):
     """按 Environment 模型行构建执行器（鸭子类型：type/conn_config/cmd_whitelist/credential_ref）。
 
-    ssh 类型凭据由 ``credential_ref``（Fernet 密文）解密注入；local/docker 走 conn_config。
+    ssh 类型凭据由 ``credential_ref``（Fernet 密文）解密注入（解密动作经
+    ``audit`` 回调留痕，P0-6）；local/docker 走 conn_config。
     """
     env_type = getattr(env, "type", "local")
     if env_type == "ssh":
         from autobugfixer.adapters.env.ssh import SSHExecutor
 
-        return SSHExecutor.from_env_model(env, vault=vault)
+        return SSHExecutor.from_env_model(env, vault=vault, audit=audit)
     if env_type == "docker":
         from autobugfixer.adapters.env.docker import DockerExecutor
 

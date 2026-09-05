@@ -94,19 +94,23 @@ def _refresh_bug(bug: BugTicket, data: BugTicketData) -> bool:
 
 
 def _create_task(session: Session, bug: BugTicket, max_retry: int) -> Task:
-    """为 BugTicket 创建任务实例并写入 DISCOVERED -> ANALYZING 的完整状态历史。"""
+    """为 BugTicket 创建任务实例并完整留痕初始迁移（P0-4：DISCOVERED -> ANALYZING 走 transition_task）。
+
+    诞生历史（None -> DISCOVERED）不属于状态迁移，仍手工补一条；
+    随后的 DISCOVERED -> ANALYZING 统一走 ``transition_task``：校验合法性 +
+    状态历史 + state_transition 审计，与其他所有迁移同一口径。
+    """
+    from autobugfixer.common.core.transitions import transition_task
+
     task = Task(bug_ticket_id=bug.id, state=TaskState.DISCOVERED.value,
                 max_retry=max_retry, current_stage="ingest")
     session.add(task)
     session.flush()
-    for from_state, to_state, msg in [
-        (None, TaskState.DISCOVERED, "Bug 接入标准化完成"),
-        (TaskState.DISCOVERED, TaskState.ANALYZING, "进入完整性分析"),
-    ]:
-        session.add(TaskStateHistory(
-            task_id=task.id, from_state=from_state.value if from_state else None,
-            to_state=to_state.value, stage="ingest", message=msg))
-    task.state = TaskState.ANALYZING.value
+    session.add(TaskStateHistory(
+        task_id=task.id, from_state=None, to_state=TaskState.DISCOVERED.value,
+        stage="ingest", message="Bug 接入标准化完成"))
+    transition_task(session, task, TaskState.ANALYZING,
+                    stage="ingest", message="进入完整性分析")
     session.flush()
     return task
 

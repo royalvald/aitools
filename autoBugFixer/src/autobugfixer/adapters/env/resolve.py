@@ -8,6 +8,8 @@ def resolve_executor(ctx):
 
     ssh/docker 类型走 registry 构建（凭据由 Vault 解密注入）；
     local 等仿真类型沿用注入的默认执行器，保持现有行为。
+    凭据解密动作落 ``credential_decrypt`` 审计（P0-6：谁在何时解密了
+    哪个环境的凭证——经 SSHExecutor.from_env_model 的 audit 回调）。
     """
     from autobugfixer.common.core.models import Environment
     from autobugfixer.runtime.registry import get_env_executor_for
@@ -17,5 +19,6 @@ def resolve_executor(ctx):
         env = ctx.session.get(Environment, ctx.task.environment_id)
         if env is not None and env.type in ("ssh", "docker"):
             return get_env_executor_for(
-                env, vault=CredentialVault(ctx.settings.fernet_key))
+                env, vault=CredentialVault(ctx.settings.fernet_key),
+                audit=ctx.audit)
     return ctx.executor

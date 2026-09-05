@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
@@ -223,6 +224,8 @@ def resolve_intervention(request: Request, intervention_id: int, body: ResolveBo
 async def platform_webhook(request: Request, platform: str):
     """平台事件接入（安全唤醒语义）：
 
+    - 受理守卫（P0-2）：平台枚举白名单 -> 限流 -> 请求体上限 -> 签名校验，
+      伪造工单/重放刷量在入口被拒，不再裸奔；
     - 入库/刷新/唤醒仍由 ``ingest_bug`` 幂等完成；
     - 仅当任务停在 ANALYZING（新接入或平台补全唤醒）时推进**预处理**
       （停在 SCORED 等调度器按优先级出队，受 admission_hold 与派发上限约束）；
@@ -231,7 +234,16 @@ async def platform_webhook(request: Request, platform: str):
     """
     from autobugfixer.adapters.platform import BugTicketData
 
-    payload = await request.json()
+    guard = getattr(request.app.state, "webhook_guard", None)
+    if guard is not None:
+        guard.check_platform(platform)
+        guard.check_rate(platform)
+    body = await request.body()
+    if guard is not None:
+        guard.check_body(body)
+        guard.verify_signature(platform, body, request)
+    payload = json.loads(body)
+    payload.pop("platform", None)  # 平台名以路径为准（容忍客户端回显 platform 字段）
     sf = request.app.state.session_factory
     data = BugTicketData(platform=platform, **payload)
     platform_adapter = request.app.state.orchestrator.platform
@@ -307,6 +319,87 @@ def refresh_repo_route(request: Request, repo_id: int, profile: bool = True):
                 "profile_summary": (repo.profile or {}).get("summary", "")}
 
 
+# ---------- 测试环境配置（P0-5：白名单信任根的写入走带鉴权 API + 变更审计） ----------
+
+@router.get("/environments")
+def list_environments(request: Request):
+    """环境配置列表（凭据密文字段不回显，仅返回是否配置）。"""
+    from autobugfixer.common.core.models import Environment
+
+    sf = request.app.state.session_factory
+    with sf() as s:
+        envs = s.scalars(select(Environment).order_by(Environment.id)).all()
+        return {"items": [{
+            "id": e.id, "name": e.name, "type": e.type,
+            "conn_config": e.conn_config,
+            "has_credential": bool(e.credential_ref),
+            "cmd_whitelist": e.cmd_whitelist, "deploy_script": e.deploy_script,
+        } for e in envs]}
+
+
+class EnvironmentBody(BaseModel):
+    """环境配置写入请求体（upsert by name）。
+
+    credential：明文 JSON（如 ``{"username": ..., "password": ...}``），
+    服务端 Fernet 加密后存 credential_ref，明文不落库不回显。
+    """
+
+    name: str
+    type: str = "local"  # local / ssh / docker
+    conn_config: dict = {}
+    credential: str | None = None  # 明文 JSON，服务端加密
+    cmd_whitelist: list[str] = []
+    deploy_script: list[str] = []
+
+
+@router.post("/environments")
+def upsert_environment(request: Request, body: EnvironmentBody):
+    """创建/更新环境配置：预检必败项 + Fernet 加密凭据 + 变更审计。
+
+    environment 表是命令白名单的信任根（cmd_whitelist/deploy_script/
+    credential_ref 都在此），此前只能直写 DB 无鉴权无留痕；本接口配合
+    API 鉴权中间件（P0-2）成为唯一推荐写入途径，每次变更落
+    ``environment_upsert`` 审计（含变更字段摘要）。
+    """
+    from autobugfixer.adapters.env import validate_environment
+    from autobugfixer.common.core.models import Environment
+    from autobugfixer.common.core.audit import AuditService
+    from autobugfixer.common.security.credentials import CredentialVault
+
+    sf = request.app.state.session_factory
+    settings = request.app.state.settings
+    with sf() as s:
+        env = s.scalar(select(Environment).where(Environment.name == body.name))
+        created = env is None
+        if created:
+            env = Environment(name=body.name)
+        changes: dict = {}
+        for field, value in (("type", body.type), ("conn_config", body.conn_config),
+                             ("cmd_whitelist", body.cmd_whitelist),
+                             ("deploy_script", body.deploy_script)):
+            if getattr(env, field, None) != value:
+                changes[field] = value
+                setattr(env, field, value)
+        if body.credential is not None:
+            changes["credential_ref"] = "<fernet-encrypted>"
+            env.credential_ref = CredentialVault(settings.fernet_key).encrypt(body.credential)
+        if not created and not changes:
+            return {"id": env.id, "name": env.name, "created": False, "changes": {}}
+        s.add(env)
+        s.flush()
+        # 预检必败项：配置错误直接拒绝入库（避免部署期才发现）
+        errors, _ = validate_environment(env, global_whitelist=settings.cmd_whitelist)
+        if errors:
+            raise HTTPException(400, f"环境配置预检失败: {'; '.join(errors)}")
+        AuditService(s).log(action="environment_upsert", target=f"env:{env.id}",
+                            actor="api",
+                            detail={"name": body.name, "created": created,
+                                    "changed_fields": sorted(changes)})
+        s.commit()
+        return {"id": env.id, "name": env.name, "created": created,
+                "changed_fields": sorted(changes)}
+
+
 # ---------- CSV 导入 ----------
 
 @router.post("/import/csv")
@@ -318,7 +411,10 @@ async def import_csv(request: Request,
     from autobugfixer.features.ingest.csv_import import CsvFormatError, parse_csv
     from autobugfixer.features.ingest.importer import analyze_tasks, import_bug_rows
 
-    content = await file.read()
+    max_bytes = request.app.state.settings.csv_max_bytes
+    content = await file.read(max_bytes + 1)
+    if len(content) > max_bytes:  # P0-2：上传体积上限，防无界 read 打爆内存/磁盘
+        raise HTTPException(413, f"CSV 上传超过大小上限 {max_bytes} 字节")
     try:
         parsed = parse_csv(content, platform=platform)
     except CsvFormatError as exc:
