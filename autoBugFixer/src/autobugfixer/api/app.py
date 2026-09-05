@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 def _build_codex(settings: Settings):
-    """按配置构建修复驱动（Spec 05：codex / deepseek 由 fix_driver 决定）。"""
+    """按配置构建修复驱动（Spec 05：codex / deepseek / claude 由 fix_driver 决定）。"""
     return build_fix_driver(settings)
 
 

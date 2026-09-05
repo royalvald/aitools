@@ -3,12 +3,14 @@
 | 项 | 值 |
 |---|---|
 | 涉及状态 | `FIXING`（执行态）；出口 `{DEPLOYING, MANUAL, FAILED, LEARNING}` |
-| 修复驱动 | **`codex exec`（唯一通道，本 spec 已实现）**——headless 子进程，OpenAI Codex CLI |
+| 修复驱动 | **`fix_driver` 三通道**：`codex exec`（本 spec 主体）/ `deepseek` 智能体回路 / `claude -p`（Claude Code CLI），经 `fixing/driver.py` 工厂同接口选择 |
 | 源码 | `fixing/stage.py`、`fixing/workspace.py + core/bugtext.py + env/resolve.py`、`fixing/codex.py`（新增）；遗留移除清单见 §6 |
 | 提示词 | `prompts/templates/fixing_v2.md`、`fixing_retry_v2.md`（v2：五步工作流 + 硬性约束 + 自检清单 + 结构化修复说明，借鉴 SWE-agent 默认模板与 Agentless 最小 diff 实证；占位符契约与 v1 一致） |
 | 上游 / 下游 | 评分准入（Spec 04）、验证重试环（Spec 07）→ 部署（Spec 06）、失败经验（Spec 08） |
 
 > 决策记录（2025 走查确认）：修复驱动统一为 Codex；langchain 修复通道、claude_code_cli 通道、fake 修复模拟**全部移除**（范围仅限修复路径；分析类阶段的 LLM 调用与 Fake 结构化输出不受影响，否则无 Key 测试体系崩塌，见 §6 边界）。
+>
+> 决策记录（2026-09 扩展）：驱动接口化后接入第二/第三通道——`fixing/deepseek.py`（DeepSeek chat completions + function calling 智能体回路）与 `fixing/claude.py`（Claude Code `claude -p` headless 子进程，见 §2.6），经 `fixing/driver.py` 工厂按 `fix_driver` 构建、启动预检分流；三者同接口（`run(prompt, workspace) -> CodexRunResult`），出口校验/工作区/指令组装各通道同样适用。2025 移除的是旧 `adapters/claude_code_cli.py` langchain 适配器，与本次 headless CLI 通道无关。
 
 ## 1. 目标
 
@@ -74,6 +76,19 @@ codex exec 收到 prompt 后在其内部自主完成"探索（read/grep）→ �
 ### 2.5 测试注入策略（非 Fake LLM 模式）
 
 `codex exec` 依赖外部 CLI 与 API Key，全链路测试不可真实调用。测试注入**桩**：`ScriptedCodexCLI` 与 `CodexCLI` 同接口（构造 argv → 执行 → 返回事件流/最终消息/退出码），e2e 套件 monkeypatch 替换子进程执行点。这是标准测试替身，不是被移除的 Fake 修复模拟——生产路径无桩、必真调 codex。
+
+### 2.6 多驱动扩展：deepseek / claude（与 §2.2 codex 同契约）
+
+| 项 | deepseek（智能体回路） | claude（Claude Code CLI） |
+|---|---|---|
+| 形态 | httpx 直连 chat completions + function calling，工具集 `list_files/read_file/write_file/run_command/finish`，步数上限 `deepseek_fix_max_steps`（默认 24） | `claude -p <prompt> --output-format json` 子进程；工作区经 cwd 注入 |
+| 关键参数 | `deepseek_api_key / base_url / fix_model / timeout` | `claude_permission_mode`（默认 `acceptEdits`，文件编辑免确认）、`claude_allowed_tools`（默认 `Read,Edit,Write,Glob,Grep,Bash`）、`claude_model / timeout / max_turns` |
+| 鉴权预检 | API Key 配置检查 | CLI 可执行 + `ANTHROPIC_API_KEY` 或 `claude login`（`~/.claude` 存在性） |
+| summary 来源 | `finish` 工具参数 / 无工具调用的最终答复 | 结果 JSON `result` 字段（`is_error=true` → `CodexError`） |
+| 用量计量 | 逐轮 `usage.prompt_tokens / completion_tokens` 累加 | 结果 JSON `usage`：输入含 `input_tokens + cache_creation + cache_read`，输出 `output_tokens` |
+| 出口验收 | 与 codex 一致：`compute_diff` 独立计算，不信任模型/CLI 自述；§5 四分支同样适用 | 同左 |
+
+三通道经 `fixing/driver.py` 的 `build_fix_driver / fix_driver_preflight` 按 `fix_driver`（`codex / deepseek / claude`）分流；用量留痕模型名前缀取驱动名（如 `claude:claude-sonnet-4-5`）。测试同 §2.5：桩（`ScriptedCodexCLI` 或 transport 注入）替换执行点，全链路不真调外部服务。
 
 ## 3. 工作区三形态（prepare_workspace，不变）
 

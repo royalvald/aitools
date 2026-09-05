@@ -98,12 +98,19 @@ class Settings(BaseSettings):
     bug_platform: str = "mock"  # mock / jira / zentao（csv 走导入通道）
     bug_platform_config: dict = Field(default_factory=dict)
 
-    # 修复驱动（Spec 05：codex exec 子进程；扩展 deepseek 智能体回路，同接口可替换）
-    fix_driver: str = "codex"  # codex / deepseek
+    # 修复驱动（Spec 05：codex exec 子进程；扩展 deepseek 智能体回路 / claude -p 子进程，同接口可替换）
+    fix_driver: str = "codex"  # codex / deepseek / claude
     codex_executable: str = "codex"
     codex_model: str | None = None  # 未配置时用 codex CLI 默认模型
     codex_timeout: float = 600.0
     codex_sandbox: str = "workspace-write"  # 进程只能写工作区内文件，网络默认禁用
+    claude_executable: str = "claude"
+    claude_model: str | None = None  # 未配置时用 claude CLI 默认模型
+    claude_timeout: float = 600.0
+    # headless 免交互必需：文件编辑免确认；工具白名单约束能力边界（空 = 不传，用 CLI 默认）
+    claude_permission_mode: str = "acceptEdits"
+    claude_allowed_tools: str = "Read,Edit,Write,Glob,Grep,Bash"
+    claude_max_turns: int = 0  # 智能体轮数上限（0 = 不传，用 CLI 默认；超时兜底）
     deepseek_fix_max_steps: int = 24  # DeepSeek 修复回路步数上限（含工具调用轮）
     deepseek_timeout: float = 120.0  # DeepSeek 单次 API 请求超时（秒）
 

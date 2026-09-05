@@ -44,6 +44,9 @@ python -m venv .venv
 | `LLM_MAX_TOKENS` | `4096` | 分析类 LLM 调用输出上限（planning 固定放宽到 8192 防 JSON 截断） |
 | `CODEX_EXECUTABLE` / `CODEX_MODEL` | `codex` / — | codex exec 修复通道（需 `OPENAI_API_KEY` 或 `codex login`） |
 | `CODEX_TIMEOUT` / `CODEX_SANDBOX` | `600` / `workspace-write` | codex 调用超时与沙箱（只能写工作区，禁网） |
+| `CLAUDE_EXECUTABLE` / `CLAUDE_MODEL` | `claude` / — | claude -p 修复通道（需 `ANTHROPIC_API_KEY` 或 `claude login`） |
+| `CLAUDE_TIMEOUT` / `CLAUDE_PERMISSION_MODE` | `600` / `acceptEdits` | claude 调用超时与权限模式（文件编辑免确认） |
+| `CLAUDE_ALLOWED_TOOLS` / `CLAUDE_MAX_TURNS` | `Read,Edit,Write,Glob,Grep,Bash` / `0` | claude 工具白名单与轮数上限（0 = 用 CLI 默认） |
 | `BUG_PLATFORM` | `mock` | `mock` / `jira` / `zentao`（CSV 走导入通道） |
 | `ADMISSION_THRESHOLD` | `60` | 综合评分准入阈值（低于入队，否则转人工） |
 | `SCORING_ENGINE` | `v1` | `v1`（LLM 直接打分）/ `v2`（rubric 判定表单 + 本地映射四维分，Spec 04 §8） |
@@ -75,7 +78,7 @@ src/autobugfixer/                # 树状分包：common 通用 / features 功�
 │   ├── completeness/            #   阶段02：完整性分析（FR-PRE-02）
 │   ├── planning/                #   阶段03：验证方案生成（FR-PRE-03）
 │   ├── scoring/                 #   阶段04：难度评分（v1 + v2 rubric，FR-PRE-04）
-│   ├── fixing/                  #   阶段05：AI 修复（codex 通道 + 工作区 + 出口校验）
+│   ├── fixing/                  #   阶段05：AI 修复（codex/deepseek/claude 通道 + 工作区 + 出口校验）
 │   ├── deploying/               #   阶段06：部署（环境锁 + 回滚）
 │   ├── verifying/               #   阶段07：回归验证（DSL 执行 + 证据落盘）
 │   ├── learning/                #   阶段08：经验沉淀与关闭
@@ -101,8 +104,10 @@ docs/                            # PRD、整体方案设计、阶段 specs、测
 - 真实分析模式：`AUTOBUGFIXER_LLM_MODE=anthropic` + `AUTOBUGFIXER_ANTHROPIC_API_KEY`，或
   `AUTOBUGFIXER_LLM_MODE=deepseek` + `AUTOBUGFIXER_DEEPSEEK_API_KEY`（OpenAI 兼容接口，
   模型/地址可用 `AUTOBUGFIXER_DEEPSEEK_MODEL` / `AUTOBUGFIXER_DEEPSEEK_BASE_URL` 覆盖）。
-- 修复驱动：`AUTOBUGFIXER_FIX_DRIVER=codex`（默认，codex exec 子进程，需 codex CLI + OpenAI 鉴权），
-  或 `AUTOBUGFIXER_FIX_DRIVER=deepseek`（DeepSeek 智能体回路，与 codex 同接口；修复模型
-  `AUTOBUGFIXER_DEEPSEEK_FIX_MODEL`，未配置回落分析模型）。
-- 设计依据：`docs/` 下 PRD 与整体方案设计（状态机见 3.1、数据模型 5.1、接口 6.1、补充设计 11.1~11.6）。
+- 修复驱动：`AUTOBUGFIXER_FIX_DRIVER=codex`（默认，codex exec 子进程，需 codex CLI + OpenAI 鉴权）、
+  `AUTOBUGFIXER_FIX_DRIVER=claude`（Claude Code `claude -p` 子进程，需 claude CLI + `ANTHROPIC_API_KEY`
+  或 `claude login`；权限模式/工具白名单/轮数上限 `AUTOBUGFIXER_CLAUDE_PERMISSION_MODE`（默认
+  `acceptEdits`）/ `AUTOBUGFIXER_CLAUDE_ALLOWED_TOOLS`（默认 `Read,Edit,Write,Glob,Grep,Bash`）/
+  `AUTOBUGFIXER_CLAUDE_MAX_TURNS`）、或 `AUTOBUGFIXER_FIX_DRIVER=deepseek`（DeepSeek 智能体回路；
+  修复模型 `AUTOBUGFIXER_DEEPSEEK_FIX_MODEL`，未配置回落分析模型）。三通道同接口可替换。
 - 设计依据：`docs/` 下 PRD 与整体方案设计（状态机见 3.1、数据模型 5.1、接口 6.1、补充设计 11.1~11.6）。

@@ -2,7 +2,8 @@
 
 流程：准备工作区 -> （可选）修复前三维感知基线 -> 经验库检索复用 ->
 组装修复指令（首轮含修复思路大纲，重试轮含失败反馈）-> 修复驱动执行
-（fix_driver 配置：codex exec 沙箱 / deepseek 工具回路）-> 独立 compute_diff
+（fix_driver 配置：codex exec 沙箱 / deepseek 工具回路 / claude -p 子进程）
+-> 独立 compute_diff
 验收（不信任驱动自述）-> 禁改路径 / 零变更 / 相同 diff 出口校验 ->
 留痕入库（FixRecord + llm_usage）。
 """
@@ -35,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 
 class FixingStage:
-    """AI 修复阶段（修复驱动 codex/deepseek + 经验复用、重试反馈、出口校验）。"""
+    """AI 修复阶段（修复驱动 codex/deepseek/claude + 经验复用、重试反馈、出口校验）。"""
 
     name = "fixing"
 
@@ -52,19 +53,20 @@ class FixingStage:
         prompt_name = "fixing" if attempt == 1 else "fixing_retry"
         prompt, experience_hit = self._build_prompt(ctx, prompt_name, attempt, perception_note)
 
-        # 修复驱动（Spec 05：codex/deepseek 按配置选择）；预算调用前拦截（超限 -> FAILED）
+        # 修复驱动（Spec 05：codex/deepseek/claude 按配置选择）；预算调用前拦截（超限 -> FAILED）
         cli = ctx.codex or build_fix_driver(ctx.settings)
         ctx.llm.check_budget(task.id, ctx.session)
         try:
             result = cli.run(prompt, workspace)
         except CodexError as exc:
-            logger.error("codex exec 失败（task=%s）: %s", task.id, exc)
+            logger.error("修复驱动调用失败（task=%s）: %s", task.id, exc)
             return StageResult(status="failed", next_state=TaskState.FAILED,
                                message=f"修复通道调用失败: {exc}")
-        # 事件流用量计量（解析失败已记 0，不阻断；模型名按 codex 配置留痕）
+        # 事件流用量计量（解析失败已记 0，不阻断；模型名按驱动配置留痕）
         ctx.llm.record_usage(
             task.id, "fixing", tokens_in=result.tokens_in, tokens_out=result.tokens_out,
-            session=ctx.session, model=f"codex:{getattr(cli, 'model', None) or 'default'}")
+            session=ctx.session,
+            model=f"{ctx.settings.fix_driver}:{getattr(cli, 'model', None) or 'default'}")
         summary = result.summary
 
         changed_files, diff = compute_diff(workspace)
