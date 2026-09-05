@@ -89,7 +89,7 @@ flowchart TD
 │ ⚙ ├──────────────────────────────────────────────────────────────┤
 │    │  StatusBar：字数 · 保存状态(未保存/保存中/已保存) · 档位      │
 └────┴──────────────────────────────────────────────────────────────┘
-  ▲ AppNavRail（图标导航栏，宽度固定，tooltip 展示名称+快捷键）
+  ▲ AppNavRail（图标 + 小字标签导航栏，宽度固定 64px，tooltip 展示快捷键）
 ```
 
 ### 3.2 工作台 Dashboard
@@ -421,14 +421,15 @@ stateDiagram-v2
 | 卡片/浮层 | `--color-surface` | `#ffffff` | 对话框、卡片 |
 | 侧栏/面板浅灰 | `--color-surface-2` | `#f7f8fa` | 目录树、面板底 |
 | 悬浮层级 | `--color-surface-3` | `#f1f5f9` | 悬停/嵌套层 |
-| 正文文字 | `--color-foreground` | `#262626` | — |
-| 次要文字 | `--color-muted-foreground` | `#8C8C8C` | meta、placeholder |
+| 正文文字 | `--color-foreground` | `#1e293b` | slate 冷灰体系 |
+| 次要文字 | `--color-muted-foreground` | `#64748b` | meta、placeholder |
 | 主强调（语雀绿） | `--color-primary` / `--color-primary-hover` | `#31B97F` / `#2AA671` | 主按钮、激活态 |
 | 强调浅底 | `--color-accent-soft` | `#E6F7F0` | 选中/激活背景 |
 | 焦点环 | `--color-ring` | `#7FD4AE` | `:focus-visible` 描边 |
-| 边框 / 强边框 | `--color-border` / `--color-border-strong` | `#E8EAED` / `#d6dae2` | 分隔线 / 强调分割 |
+| 输入聚焦光晕 | `--nw-ring-soft` | `rgba(49,185,127,.14)` | `.input:focus` 3px 柔环 |
+| 边框 / 强边框 | `--color-border` / `--color-border-strong` | `#e8edf2` / `#cbd5e1` | 发丝级分隔 / 强调分割 |
 | 成功 / 警告 / 危险 | `--color-success` / `--color-warning` / `--color-danger`（各含 `-soft` 浅底） | `#16a34a` / `#d97706` / `#dc2626` | 状态反馈 |
-| 圆角 | `--radius-sm` / `md` / `lg` / `xl` | 6 / 8 / 14 / 20px | 控件 → 卡片 → 对话框 |
+| 圆角 | `--radius-sm` / `md` / `lg` / `xl` | 6 / 8 / 12 / 16px | 控件 → 卡片 → 对话框 |
 | 阴影 | `--shadow-xs` / `sm` / `md` / `lg` | 低饱和近距离投影 | 浮层层级 |
 | 白板画布 | `--color-canvas-bg` / `canvas-dot` / `canvas-grid` | `#f1f5f9` / `#cbd5e1` / `#e2e8f0` | 仅白板 |
 
@@ -451,7 +452,7 @@ stateDiagram-v2
 
 线框按 1200×720 绘制；窗口收缩时按以下规则降级，任何情况下不允许页面级横向滚动：
 
-- NavRail 固定 56px，不收缩。
+- NavRail 固定 64px（图标 + 小字标签），不收缩。
 - KbDetail 目录树默认 240px；窗口 < 1100px 时可收起为 40px 图标条。
 - KbDocEditor 讨论面板默认 300px 并排挤占；窗口 < 1150px 时改为覆盖式抽屉（浮于正文之上，不挤压编辑区）。
 - 对话框宽度取 `min(设计宽, 92vw)`；高度超屏时内容区内部滚动，操作按钮常驻底部。

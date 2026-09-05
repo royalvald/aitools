@@ -14,8 +14,15 @@ export interface KbGridPageProps {
   onMountExternal: () => void
 }
 
-// 名称首字符色块的调色板
-const CARD_COLORS = ['#31B97F', '#38A3E0', '#8B7CF6', '#F0A03C', '#E4637C', '#2BB3A8']
+// 名称首字符色块的软色板（class 见 index.css .kb-avatar-*，含暗色变体）
+const CARD_AVATAR_CLASSES = [
+  'kb-avatar-0',
+  'kb-avatar-1',
+  'kb-avatar-2',
+  'kb-avatar-3',
+  'kb-avatar-4',
+  'kb-avatar-5'
+]
 
 // 语雀式知识库列表页：页头 + 卡片网格 + 空态。
 export function KbGridPage({
@@ -86,7 +93,7 @@ export function KbGridPage({
             {/* 新建卡片 */}
             <button
               type="button"
-              className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-[var(--radius-lg)] border-2 border-dashed border-[var(--nw-border)] py-10 text-[var(--nw-muted-foreground)] transition-colors hover:border-[var(--nw-primary)] hover:text-[var(--nw-primary)]"
+              className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-[var(--radius-lg)] border border-dashed border-[var(--nw-border-strong)] py-10 text-[var(--nw-muted-foreground)] transition-colors hover:border-[var(--nw-primary)] hover:text-[var(--nw-primary)]"
               onClick={onCreate}
             >
               <Plus className="h-6 w-6" />
@@ -95,7 +102,8 @@ export function KbGridPage({
 
             {kbs.map((kb) => {
               const isExternal = kb.source === 'external'
-              const color = CARD_COLORS[kb.name.charCodeAt(0) % CARD_COLORS.length]
+              const avatarClass =
+                CARD_AVATAR_CLASSES[kb.name.charCodeAt(0) % CARD_AVATAR_CLASSES.length]
               return (
                 <div
                   key={kb.id}
@@ -145,11 +153,10 @@ export function KbGridPage({
                     </div>
                   )}
 
-                  {/* 顶部行：首字符色块 */}
+                  {/* 顶部行：首字符色块（软底 + 同色深字） */}
                   <div className="flex items-center gap-2">
                     <div
-                      className="flex h-10 w-10 items-center justify-center rounded-lg text-base font-semibold text-white"
-                      style={{ backgroundColor: color }}
+                      className={`flex h-10 w-10 items-center justify-center rounded-[10px] text-base font-semibold ${avatarClass}`}
                     >
                       {kb.name.charAt(0) || '库'}
                     </div>

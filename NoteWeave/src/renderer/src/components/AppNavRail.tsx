@@ -35,19 +35,21 @@ export function AppNavRail({
       <div className="mt-6 flex w-full flex-col items-center gap-1">
         <button
           type="button"
-          className={cn('nav-rail-item flex w-full flex-col items-center gap-1', view === 'dashboard' && 'is-active')}
+          className={cn('nav-rail-item', view === 'dashboard' && 'is-active')}
           title="工作台"
           onClick={() => onNavigate('dashboard')}
         >
           <House className="h-5 w-5" />
+          <span className="nav-rail-label">工作台</span>
         </button>
         <button
           type="button"
-          className={cn('nav-rail-item flex w-full flex-col items-center gap-1', view === 'knowledge-base' && 'is-active')}
+          className={cn('nav-rail-item', view === 'knowledge-base' && 'is-active')}
           title="知识库"
           onClick={() => onNavigate('knowledge-base')}
         >
           <Library className="h-5 w-5" />
+          <span className="nav-rail-label">知识库</span>
         </button>
       </div>
 
@@ -62,6 +64,7 @@ export function AppNavRail({
           onClick={onOpenSearch}
         >
           <Search className="h-5 w-5" />
+          <span className="nav-rail-label">搜索</span>
         </button>
         <button
           type="button"
@@ -70,6 +73,7 @@ export function AppNavRail({
           onClick={onOpenAssets}
         >
           <Images className="h-5 w-5" />
+          <span className="nav-rail-label">资源</span>
         </button>
         <button
           type="button"
@@ -78,6 +82,7 @@ export function AppNavRail({
           onClick={onOpenTrash}
         >
           <Trash2 className="h-5 w-5" />
+          <span className="nav-rail-label">回收站</span>
         </button>
         <ThemeToggle collapsed />
         <button
@@ -87,6 +92,7 @@ export function AppNavRail({
           onClick={onOpenSettings}
         >
           <Settings className="h-5 w-5" />
+          <span className="nav-rail-label">设置</span>
         </button>
       </div>
     </aside>

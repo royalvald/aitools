@@ -13,7 +13,7 @@ const OPTIONS: { value: Theme; label: string; icon: typeof Sun }[] = [
 ]
 
 interface ThemeToggleProps {
-  /** 折叠态：仅显示图标按钮，点击在三者间循环 */
+  /** 折叠态（导航轨内）：图标 + 小字标签，点击在三者间循环 */
   collapsed?: boolean
 }
 
@@ -25,16 +25,18 @@ export function ThemeToggle({ collapsed = false }: ThemeToggleProps) {
   const ActiveIcon = OPTIONS.find((o) => o.value === current)?.icon ?? Sun
 
   if (collapsed) {
+    // 导航轨折叠态：与 .nav-rail-item 一致的图标 + 小字标签
     return (
       <button
         onClick={() => {
           const idx = OPTIONS.findIndex((o) => o.value === current)
           update({ theme: OPTIONS[(idx + 1) % OPTIONS.length].value })
         }}
-        className="btn-icon"
+        className="nav-rail-item"
         title={`主题：${OPTIONS.find((o) => o.value === current)?.label}（点击切换）`}
       >
-        <ActiveIcon className="h-4 w-4" />
+        <ActiveIcon className="h-5 w-5" />
+        <span className="nav-rail-label">主题</span>
       </button>
     )
   }
